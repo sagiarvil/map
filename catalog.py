@@ -779,7 +779,44 @@ def _fts_match_expression(term_list: list[str]) -> str:
     return ' OR '.join(dict.fromkeys(parts))
 
 
-def condition(sector: str, region: str, minimum: float | str = 0, box: Any = None) -> tuple[str, list[Any]]:
+CONTACT_MODES = ('all', 'has_email', 'has_phone', 'both', 'email_only', 'phone_only')
+
+
+def contact_match(has_email: bool, has_phone: bool, mode: str = 'all') -> bool:
+    if mode == 'all' or not mode:
+        return True
+    if mode not in CONTACT_MODES:
+        raise ValueError('Geçersiz iletişim filtresi')
+    if mode == 'has_email':
+        return has_email
+    if mode == 'has_phone':
+        return has_phone
+    if mode == 'both':
+        return has_email and has_phone
+    if mode == 'email_only':
+        return has_email and not has_phone
+    if mode == 'phone_only':
+        return has_phone and not has_email
+    return True
+
+
+def _tr_variants(s: str) -> list[str]:
+    v = text(s, 120)
+    if not v:
+        return []
+    tr_up = v.translate(str.maketrans('iıçğöşü', 'İIÇĞÖŞÜ')).upper()
+    tr_lo = v.translate(str.maketrans('İIÇĞÖŞÜ', 'iıçğöşü')).lower()
+    tr_ti = ' '.join((w[:1].translate(str.maketrans('iıçğöşü', 'İIÇĞÖŞÜ')).upper() + w[1:]) for w in tr_lo.split())
+    return list(dict.fromkeys(x for x in (v, tr_ti, tr_lo, tr_up, fold(v)) if x))
+
+
+def condition(
+    sector: str,
+    region: str,
+    minimum: float | str = 0,
+    box: Any = None,
+    district: str = '',
+) -> tuple[str, list[Any]]:
     clauses: list[str] = []
     args: list[Any] = []
     t = terms(sector)
@@ -800,6 +837,17 @@ def condition(sector: str, region: str, minimum: float | str = 0, box: Any = Non
     if region:
         clauses.append('p.region=?')
         args.append(text(region, 200))
+    d_vars = _tr_variants(district)
+    if d_vars:
+        ph = ','.join('?' for _ in d_vars)
+        addr_likes = ' OR '.join('p.address LIKE ?' for _ in d_vars[:4])
+        clauses.append(
+            f'(EXISTS(SELECT 1 FROM place_meta dm WHERE dm.place_id=p.id AND dm.district IN ({ph})) '
+            f'OR p.search_text LIKE ? OR {addr_likes})'
+        )
+        args.extend(d_vars)
+        args.append(f'% {fold(district)} %')
+        args.extend(f'%{dv}%' for dv in d_vars[:4])
     try:
         min_f = float(minimum)
     except (TypeError, ValueError) as exc:
@@ -816,6 +864,95 @@ def condition(sector: str, region: str, minimum: float | str = 0, box: Any = Non
     return (' WHERE ' + ' AND '.join(clauses) if clauses else ''), args
 
 
+def portfolio_listing(
+    store: Any,
+    sector: str = '',
+    region: str = '',
+    district: str = '',
+    contact_mode: str = 'all',
+    minimum: float | str = 0,
+    box: Any = None,
+    offset: int = 0,
+    limit: int = 100,
+) -> dict[str, Any]:
+    """Unified industrial portfolio query merging catalog places + crawled website contacts & phones."""
+    if contact_mode and contact_mode not in CONTACT_MODES:
+        raise ValueError('Geçersiz iletişim filtresi')
+    where, args = condition(sector, region, minimum, box, district)
+    limit = max(1, min(limit, 500))
+    offset = max(0, offset)
+
+    with store.db() as c:
+        excluded = {r[0] for r in c.execute('SELECT email FROM suppression')}
+        place_emails: dict[str, set[str]] = {}
+        for pid, em in c.execute(
+            'SELECT l.place_id, t.email FROM place_jobs l JOIN contacts t ON t.job_id=l.job_id'
+        ):
+            if em not in excluded:
+                place_emails.setdefault(pid, set()).add(em)
+        place_phones: dict[str, set[str]] = {}
+        for pid, ph in c.execute(
+            'SELECT l.place_id, t.phone FROM place_jobs l JOIN job_phones t ON t.job_id=l.job_id'
+        ):
+            place_phones.setdefault(pid, set()).add(ph)
+
+        total = websites = with_email = with_phone = with_both = 0
+        page_rows: list[dict[str, Any]] = []
+        cur = c.execute(
+            '''SELECT p.id, p.name, p.category, p.region, p.address, p.lat, p.lon,
+                      p.website, p.confidence, p.source,
+                      m.province, m.district, m.emails, m.phones
+               FROM places p LEFT JOIN place_meta m ON m.place_id = p.id'''
+            + where
+            + " ORDER BY (p.website!='') DESC, p.confidence DESC, p.id",
+            args,
+        )
+        for r in cur:
+            pid = r['id']
+            ems = (set(json.loads(r['emails'] or '[]')) - excluded) | place_emails.get(pid, set())
+            phs = set(json.loads(r['phones'] or '[]')) | place_phones.get(pid, set())
+            he, hp = bool(ems), bool(phs)
+            if not contact_match(he, hp, contact_mode):
+                continue
+            idx = total
+            total += 1
+            if r['website']:
+                websites += 1
+            if he:
+                with_email += 1
+            if hp:
+                with_phone += 1
+            if he and hp:
+                with_both += 1
+            if offset <= idx < offset + limit:
+                city = r['province'] or province_of(r['region'].split(',')[0])
+                page_rows.append({
+                    'id': pid,
+                    'name': r['name'],
+                    'category': r['category'].replace('_', ' '),
+                    'city': city,
+                    'district': r['district'] or '',
+                    'website': r['website'],
+                    'emails': sorted(ems),
+                    'phones': sorted(phs),
+                    'address': r['address'],
+                    'lat': r['lat'],
+                    'lon': r['lon'],
+                    'confidence': r['confidence'],
+                    'source': r['source'],
+                })
+
+    return {
+        'total': total,
+        'websites': websites,
+        'with_email': with_email,
+        'with_phone': with_phone,
+        'with_both': with_both,
+        'rows': page_rows,
+        'terms': terms(sector),
+    }
+
+
 def listing(
     store: Any,
     sector: str = '',
@@ -823,8 +960,9 @@ def listing(
     minimum: float | str = 0,
     box: Any = None,
     offset: int = 0,
+    district: str = '',
 ) -> dict[str, Any]:
-    where, args = condition(sector, region, minimum, box)
+    where, args = condition(sector, region, minimum, box, district)
     with store.db() as c:
         stats = dict(
             c.execute(
@@ -853,6 +991,7 @@ def queue(
     minimum: float | str = 0,
     box: Any = None,
     limit: int = 1000,
+    district: str = '',
 ) -> dict[str, int]:
     sec = text(sector, 200)
     reg = text(region, 200)
@@ -860,7 +999,7 @@ def queue(
         raise ValueError('Sektör ve bölge gerekli')
     if not 1 <= limit <= 100000:
         raise ValueError('Kuyruk sınırı 1–100.000')
-    where, args = condition(sec, reg, minimum, box)
+    where, args = condition(sec, reg, minimum, box, district)
     stamp = now()
     with store.db() as c:
         c.execute('BEGIN IMMEDIATE')

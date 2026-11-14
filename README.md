@@ -1,37 +1,43 @@
-# Lead Intelligence Pro V3 — Industrial Geospatial & Async B2B Engine
+# Lead Intelligence Pro V3 — Industrial Geospatial & Cloud/Local Hybrid B2B Engine
 
-Türkçe endüstriyel B2B işletme keşif ve kurumsal iletişim madenciliği platformu. C++ **PyArrow S3 GeoParquet** kolonar veri akışı, **OpenStreetMap (ODbL)** tekilleştirilmiş füzyonu, **SQLite FTS5** Türkçe morfolojik sektör indeksi ve **Asyncio HTTP/2** yüksek eşzamanlılıklı izinli web tarama motoru üzerinde çalışır.
+Türkçe endüstriyel B2B işletme keşif ve kurumsal iletişim madenciliği platformu. Hem doğrudan bulut üzerinde (**https://haritalar.web.app/**) hem de yerel **128-Korutin Async HTTP/2 Turbo Köprüsü** (`http://127.0.0.1:8765`) ile çift motorlu (Dual-Engine) çalışır.
 
-## V3 Pro Endüstriyel Yetenekler
+## Çift Motorlu (Dual-Engine) Mimari
 
-- **Sınırsız İl & Sanayi Kümesi Kapsamı:** Eski dar şehir merkezi kutuları yerine 81 il tam sınırı ve sanayi kümeleri (ör. İzmir'de Karabağlar, Kısıkköy Mobilya Şehri, Torbalı, Kemalpaşa OSB, Menderes İTOB dahil 30 ilçenin tamamı). Büyük bölgeler otomatik **Quadtree** dilimlerine bölünerek tek akışta indirilir.
-- **C++ PyArrow S3 GeoParquet + OpenStreetMap Füzyonu:** 64 MB GeoJSON darboğazı kaldırıldı; Overture S3 verisi doğrudan kolonar olarak çekilir ve OpenStreetMap Overpass verisiyle mesafe + domain bazında tekilleştirilerek birleştirilir.
-- **SQLite FTS5 + 120+ Türkçe B2B Sektör Taksonomisi:** Türkçe ek almış firma adlarını (`Mobilyacılık`, `Koltuk`, `Marangoz`, `Ahşap` vb.) ve İngilizce Overture/OSM kategorilerini milisaniyeler içinde eşleştirir; serbest metin adreslerden **İl / İlçe** bilgisini otomatik ayrıştırır.
-- **Async HTTP/2 + Uyumayan Domain Zamanlayıcı (64–256 Korutin):** `httpx[http2]` bağlantı havuzu, `gzip/deflate` sıkıştırma, `dnspython` bellek-içi önbellekli asenkron MX doğrulaması (`dig` alt süreç maliyeti olmadan) ve toplu SQLite yazımı (`flush_outcomes`).
-- **Yüksek Yakalama Oranlı (High-Recall) Çıkarıcı:** `Schema.org` (`application/ld+json`) yapısal veri madenciliği, görünür metin Türkiye telefon numaraları (faks filtreli), kurumsal WhatsApp (`wa.me`) hatları, Cloudflare `data-cfemail` çözümü, `/kvkk` & `/kunye` & `/subeler` öncelikli taraması ve 120+ departman/marka e-posta deseni.
-- **Sıfır N+1 Sorgulu Sabit Bellekli Excel (.xlsx):** Tek `Firmalar` sayfası (`Firma adı, Sektör, İl, İlçe, E-posta 1..N, Telefon 1..N, Adres`), formül enjeksiyonu korumalı.
+1. **Bulut & CDN Web Uygulaması (`https://haritalar.web.app/`):**
+   - Sunucu kurulumu gerektirmeden tüm bilgisayar, tablet ve telefonlarda doğrudan tarayıcıda çalışır.
+   - Sıkıştırılmış CDN il veri paketleri (`/data/*.json`), 81 il + uluslararası canlı OpenStreetMap Nominatim/Overpass keşfi, 120+ Türkçe B2B sektör taksonomisi, ilçe ve iletişim filtreleri (`Tüm Firmalar`, `E-postası Olanlar`, `Telefonu Olanlar`, `E-posta + Telefon`, `Sadece E-posta`, `Sadece Telefon`).
+   - Tarayıcı-içi Google DNS-over-HTTPS (`dns.google`) canlı MX doğrulaması ve sıfır bağımlılıklı saf JavaScript OOXML tek sayfa `Firmalar` **Excel (`.xlsx`)** üreteci (`hosting/xlsx-engine.js`).
+2. **Yerel Mac Turbo Köprüsü (`127.0.0.1:8765` — Private Network Access):**
+   - Mac üzerinde arka planda çalışan `LaunchAgent` servisi açık olduğunda `https://haritalar.web.app/` otomatik olarak yerel motora bağlanır.
+   - **C++ PyArrow S3 GeoParquet** tam il kolonar veri akışı + **128 Eşzamanlı HTTP/2 Korutin** ile kurumsal web sitelerinin `/iletisim`, `/kvkk`, `Schema.org JSON-LD`, `data-cfemail` ve görünür telefon/e-posta kayıtlarını canlı tarar.
 
-## Kurulum ve Çalıştırma (macOS / Linux)
-
-Python 3.11+ gerekir:
+## Kurulum ve Arka Plan Servisi (macOS / Linux)
 
 ```sh
 bash setup.command
+bash install-mac-service.command   # macOS LaunchAgent (128 korutin, haritalar.web.app köprüsü)
 ```
 
-Sonraki başlatmalar (varsayılan 64 asenkron korutin; 256'ya kadar artırılabilir):
+Manuel başlatma:
 
 ```sh
 bash start.command --workers 128
 ```
 
-Panel: `http://127.0.0.1:8765`
+Firebase Hosting (`https://haritalar.web.app`) dağıtımı:
 
-## Doğrulama ve Kalite Kapıları
+```sh
+bash deploy-firebase.command
+```
+
+## Doğrulama ve 4 Kalite Kapısı
 
 ```sh
 .venv/bin/python -m unittest discover -s tests -v
 node --check static/app.js
+node --check hosting/app.js
+node --check hosting/xlsx-engine.js
 ```
 
 ## Güvenlik ve Veri Etiği

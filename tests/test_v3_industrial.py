@@ -261,6 +261,142 @@ class V3GeospatialAndBatchTests(unittest.TestCase):
             ns = {'m': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
             self.assertFalse(ET.fromstring(xml).findall('.//m:f', ns))
 
+    def test_portfolio_district_contact_modes_and_haritalar_cors(self) -> None:
+        import http.client
+        import json
+        import subprocess
+        import threading
+        from http.server import ThreadingHTTPServer
+        from app import Handler
+
+        features = {
+            'type': 'FeatureCollection',
+            'features': [
+                {
+                    'type': 'Feature',
+                    'id': 'f_both',
+                    'geometry': {'type': 'Point', 'coordinates': [27.13, 38.37]},
+                    'properties': {
+                        'names': {'primary': 'Karabağlar Koltuk Tasarım'},
+                        'taxonomy': {'primary': 'furniture_store'},
+                        'emails': ['info@karabaglarkoltuk.com.tr'],
+                        'phones': ['+90 232 250 11 22'],
+                        'addresses': [{'freeform': 'Yeşillik Cad. Karabağlar İzmir', 'locality': 'Karabağlar', 'region': 'İzmir', 'country': 'TR'}],
+                        'confidence': 0.92,
+                    },
+                },
+                {
+                    'type': 'Feature',
+                    'id': 'f_phone',
+                    'geometry': {'type': 'Point', 'coordinates': [27.22, 38.46]},
+                    'properties': {
+                        'names': {'primary': 'Bornova Ahşap Mobilya'},
+                        'taxonomy': {'primary': 'furniture_store'},
+                        'phones': ['+90 232 341 22 33'],
+                        'addresses': [{'freeform': 'Bornova İzmir', 'locality': 'Bornova', 'region': 'İzmir', 'country': 'TR'}],
+                        'confidence': 0.88,
+                    },
+                },
+                {
+                    'type': 'Feature',
+                    'id': 'f_email',
+                    'geometry': {'type': 'Point', 'coordinates': [27.36, 38.16]},
+                    'properties': {
+                        'names': {'primary': 'Torbalı Modüler Mutfak'},
+                        'taxonomy': {'primary': 'kitchen_furniture'},
+                        'emails': ['satis@torbalimutfak.com.tr'],
+                        'addresses': [{'freeform': 'Torbalı OSB İzmir', 'locality': 'Torbalı', 'region': 'İzmir', 'country': 'TR'}],
+                        'confidence': 0.90,
+                    },
+                },
+            ],
+        }
+        catalog.ingest(self.store, features, 'İzmir, Türkiye')
+
+        all_res = catalog.portfolio_listing(self.store, 'Mobilya', 'İzmir, Türkiye', contact_mode='all')
+        self.assertEqual(all_res['total'], 3)
+        self.assertEqual(catalog.portfolio_listing(self.store, 'Mobilya', 'İzmir, Türkiye', contact_mode='has_email')['total'], 2)
+        self.assertEqual(catalog.portfolio_listing(self.store, 'Mobilya', 'İzmir, Türkiye', contact_mode='has_phone')['total'], 2)
+        self.assertEqual(catalog.portfolio_listing(self.store, 'Mobilya', 'İzmir, Türkiye', contact_mode='both')['total'], 1)
+        self.assertEqual(catalog.portfolio_listing(self.store, 'Mobilya', 'İzmir, Türkiye', contact_mode='email_only')['total'], 1)
+        self.assertEqual(catalog.portfolio_listing(self.store, 'Mobilya', 'İzmir, Türkiye', contact_mode='phone_only')['total'], 1)
+        self.assertEqual(catalog.portfolio_listing(self.store, 'Mobilya', 'İzmir, Türkiye', district='Karabağlar')['total'], 1)
+
+        # Verify haritalar.web.app Private Network Access CORS preflight + portfolio API
+        srv = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        srv.store = self.store  # type: ignore[attr-defined]
+        srv.discovery = threading.BoundedSemaphore(1)  # type: ignore[attr-defined]
+        th = threading.Thread(target=srv.serve_forever, daemon=True)
+        th.start()
+        try:
+            conn = http.client.HTTPConnection('127.0.0.1', srv.server_port, timeout=5)
+            conn.request(
+                'OPTIONS',
+                '/api/session',
+                headers={
+                    'Origin': 'https://haritalar.web.app',
+                    'Access-Control-Request-Method': 'GET',
+                    'Access-Control-Request-Private-Network': 'true',
+                },
+            )
+            opt_res = conn.getresponse()
+            opt_res.read()
+            self.assertEqual(opt_res.status, 204)
+            self.assertEqual(opt_res.getheader('Access-Control-Allow-Origin'), 'https://haritalar.web.app')
+            self.assertEqual(opt_res.getheader('Access-Control-Allow-Private-Network'), 'true')
+
+            conn.request('GET', '/api/session', headers={'Origin': 'https://haritalar.web.app'})
+            s_res = conn.getresponse()
+            tok = json.loads(s_res.read())['token']
+            self.assertEqual(s_res.status, 200)
+
+            conn.request(
+                'GET',
+                '/api/portfolio?sector=Mobilya&region=%C4%B0zmir%2C%20T%C3%BCrkiye&contact_mode=has_email',
+                headers={'Origin': 'https://haritalar.web.app', 'X-Local-Token': tok},
+            )
+            p_res = conn.getresponse()
+            p_data = json.loads(p_res.read())
+            self.assertEqual(p_res.status, 200)
+            self.assertEqual(p_data['total'], 2)
+            conn.close()
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            th.join()
+
+        # Verify browser pure-JS xlsx-engine.js produces a valid, formula-safe OOXML .xlsx
+        xlsx_js = Path(__file__).resolve().parents[1] / 'hosting' / 'xlsx-engine.js'
+        out_browser_xlsx = Path(self.tmp.name) / 'browser_firmalar.xlsx'
+        node_script = f"""
+        const fs = require('fs');
+        require({json.dumps(str(xlsx_js))});
+        (async () => {{
+          const blob = await globalThis.XlsxEngine.generateFirmalarXlsx([
+            {{
+              name: '=1+1 Tehlikeli Formül A.Ş.',
+              category: 'Mobilya',
+              city: 'İzmir',
+              district: 'Karabağlar',
+              emails: ['info@test.com.tr'],
+              phones: ['+902322001010'],
+              website: 'https://test.com.tr',
+              address: 'Kısıkköy Mobilya Şehri'
+            }}
+          ]);
+          const buf = Buffer.from(await blob.arrayBuffer());
+          fs.writeFileSync({json.dumps(str(out_browser_xlsx))}, buf);
+        }})();
+        """
+        subprocess.run(['node', '-e', node_script], check=True, timeout=10)
+        with zipfile.ZipFile(out_browser_xlsx) as zf:
+            wb_xml = zf.read('xl/workbook.xml').decode('utf-8')
+            sh_xml = zf.read('xl/worksheets/sheet1.xml').decode('utf-8')
+            self.assertIn('name="Firmalar"', wb_xml)
+            self.assertIn('Kısıkköy Mobilya Şehri', sh_xml)
+            ns = {'m': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+            self.assertFalse(ET.fromstring(sh_xml.encode('utf-8')).findall('.//m:f', ns))
+
 
 if __name__ == '__main__':
     unittest.main()

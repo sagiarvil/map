@@ -73,8 +73,21 @@
           <label>Hedef bölge etiketi
             <input id="geoRegion" value="İzmir, Türkiye">
           </label>
+          <label>İlçe filtresi (isteğe bağlı — örn. Karabağlar, Torbalı, Bornova)
+            <input id="geoDistrict" placeholder="Tüm ilçeler">
+          </label>
           <label>Hedef sektör (120+ Türkçe B2B sektör taksonomisi; | ile çoklu arama)
             <input id="geoSector" value="Mobilya">
+          </label>
+          <label>İletişim filtresi (Excel dışa aktarım ve portföy kapsamı)
+            <select id="geoContactMode">
+              <option value="all" selected>Tüm Firmalar (Maksimum Kapsam)</option>
+              <option value="has_email">E-postası Olanlar</option>
+              <option value="has_phone">Telefonu Olanlar</option>
+              <option value="both">E-posta + Telefon Olanlar</option>
+              <option value="email_only">Sadece E-posta (Telefonsuz)</option>
+              <option value="phone_only">Sadece Telefon (E-postasız)</option>
+            </select>
           </label>
           <label>Hazır il &amp; sanayi bölgesi sınırı (Tam il kapsamı)
             <select id="geoPreset">

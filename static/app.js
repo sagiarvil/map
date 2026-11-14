@@ -381,8 +381,10 @@ function geoInput() {
   const region = $('geoRegion').value.trim();
   const sector = $('geoSector').value.trim();
   const minimum = Number($('geoMinimum').value);
+  const district = $('geoDistrict') ? $('geoDistrict').value.trim() : '';
+  const contact_mode = $('geoContactMode') ? $('geoContactMode').value : 'all';
   if (!region || !sector) throw Error('Sektör ve bölge girin');
-  return { region, sector, minimum };
+  return { region, sector, minimum, district, contact_mode };
 }
 
 function geoPermit() {

@@ -17,11 +17,15 @@ def generate(
     region: str = '',
     minimum: float = 0,
     box: Any = None,
+    district: str = '',
+    contact_mode: str = 'all',
 ) -> None:
     import xlsxwriter
 
+    if contact_mode and contact_mode not in catalog.CONTACT_MODES:
+        raise ValueError('Geçersiz iletişim filtresi')
     path = Path(path)
-    where, args = catalog.condition(sector, region, minimum, box)
+    where, args = catalog.condition(sector, region, minimum, box, district)
 
     with tempfile.TemporaryDirectory(prefix='lead_snapshot_', dir=path.parent) as tmp:
         spool = Path(tmp) / 'rows.jsonl'
@@ -66,6 +70,8 @@ def generate(
                 nonlocal ne, np, total
                 clean_emails = sorted(set(emails) - excluded)
                 clean_phones = sorted(set(phones))
+                if not catalog.contact_match(bool(clean_emails), bool(clean_phones), contact_mode):
+                    return
                 ne = max(ne, len(clean_emails))
                 np = max(np, len(clean_phones))
                 total += 1
@@ -132,8 +138,12 @@ def generate(
                         'SELECT job_id, phone FROM job_phones WHERE NOT EXISTS(SELECT 1 FROM place_jobs l WHERE l.job_id = job_phones.job_id)'
                     ):
                         job_phones[jid].append(ph)
+                    d_fold = catalog.fold(district) if district else ''
                     for j in standalone:
                         jid = j['id']
+                        w_dist = j['w_dist'] or ''
+                        if d_fold and d_fold not in catalog.fold(w_dist + ' ' + (j['w_addr'] or '')):
+                            continue
                         city = (
                             catalog.province_of(j['w_prov'] or '')
                             or catalog.province_of(j['region'].split(',')[0])
@@ -142,7 +152,7 @@ def generate(
                             j['title'] or j['domain'],
                             j['sector'],
                             city,
-                            j['w_dist'] or '',
+                            w_dist,
                             job_emails.get(jid, []),
                             job_phones.get(jid, []),
                             j['w_addr'] or '',

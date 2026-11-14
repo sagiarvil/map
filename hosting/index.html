@@ -1,38 +1,202 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="noindex,nofollow">
-  <title>Lead Intelligence Pro V3 | Endüstriyel Coğrafi İstihbarat</title>
+  <title>Haritalar &amp; Lead Intelligence Pro V3 — Endüstriyel Firma İstihbaratı</title>
+  <meta name="description" content="Sektör, ülke, il, ilçe ve iletişim filtreleriyle endüstriyel B2B firma keşfi ve tek sayfa Excel (.xlsx) dışa aktarım platformu.">
   <link rel="stylesheet" href="/style.css">
+  <script src="/xlsx-engine.js" defer></script>
+  <script src="/app.js" defer></script>
 </head>
 <body>
-  <main>
-    <header><span>LEAD INTELLIGENCE / V3 PRO</span><span>ENDÜSTRİYEL YEREL MOTOR</span></header>
-    <section>
-      <p class="eyebrow">SEKTÖREL İŞLETME İSTİHBARATI</p>
-      <h1>Milyon ölçekli açık veri.<br>Tek Excel portföyü.</h1>
-      <p>PyArrow S3 GeoParquet kolonar akışı, OpenStreetMap füzyonu, SQLite FTS5 morfolojik arama ve HTTP/2 yüksek hızlı kurumsal iletişim madenciliği.</p>
-      <div class="actions">
-        <a class="primary" href="http://127.0.0.1:8765/">Yerel motoru aç</a>
-        <a href="/downloads/lead-intelligence-pro.zip" download>Mac kurulum paketini indir</a>
+  <div class="shell">
+    <header class="topbar reveal">
+      <div class="brand-wrap">
+        <div class="brand-mark" aria-hidden="true">V3</div>
+        <div>
+          <h1 class="brand-title">Lead Intelligence Pro — Haritalar İstihbarat Merkezi</h1>
+          <p class="brand-sub">Overture GeoParquet CDN + OpenStreetMap Füzyonu + HTTP/2 Kurumsal İletişim Madenciliği</p>
+        </div>
       </div>
-      <p class="note">Bu sayfa kurulum portalıdır. Motorun Mac üzerinde çalışması gerekir; Firebase üzerinde tarama yapılmaz. Firma verileri Firebase'e gönderilmez.</p>
+      <div class="top-actions">
+        <span id="engineBadge" class="engine-badge cloud" role="status">
+          <span class="dot"></span>
+          <span id="engineText">Motor kontrol ediliyor…</span>
+        </span>
+        <button id="reconnectBtn" class="sm" type="button" title="Yerel Mac 128-Korutin Turbo Motorunu kontrol et">Turbo Köprü Yenile</button>
+        <a href="/downloads/lead-intelligence-pro.zip" class="btn-link sm" download>Mac Turbo Paketi (.zip)</a>
+      </div>
+    </header>
+
+    <section id="statusBanner" class="status-banner reveal" aria-live="polite">
+      <div class="status-row">
+        <span id="statusText">Veri motoru hazırlanıyor…</span>
+        <span id="statusSub" class="badge">Hazır</span>
+      </div>
+      <div class="progress-track" id="progressTrack" hidden>
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
     </section>
-    <div class="grid">
-      <article><h2>01 / Keşif</h2><p>Overture GeoParquet + OpenStreetMap paralel keşfi ve 81 il tam kapsama sınırı.</p></article>
-      <article><h2>02 / Zenginleştirme</h2><p>64–256 korutinli HTTP/2 motoru, JSON-LD, KVKK ve görünür metin telefon çıkarımı.</p></article>
-      <article><h2>03 / Excel</h2><p>Sıfır N+1 sorgulu tek Firmalar sayfası: Firma adı, Sektör, İl, İlçe, E-postalar, Telefonlar, Adres.</p></article>
-    </div>
-    <section class="instructions">
-      <h2>İlk kurulum</h2>
-      <p>ZIP dosyasını açın. Python 3.11 veya üzeri yüklü olmalıdır. Terminal'de klasöre geçerek aşağıdaki komutu çalıştırın:</p>
-      <pre>bash setup.command</pre>
-      <p>Sonraki açılışlar (varsayılan 64 asenkron korutin):</p>
-      <pre>bash start.command --workers 128</pre>
-    </section>
-    <footer><a href="https://github.com/sagiarvil/map">GitHub</a> · <a href="https://docs.overturemaps.org/attribution/">Veri atıfları</a></footer>
-  </main>
+
+    <main>
+      <section class="card reveal" aria-labelledby="filterHeading">
+        <div class="card-head">
+          <h2 id="filterHeading">Sektörel &amp; Coğrafi Hedefleme Filtreleri</h2>
+          <span id="shardHint">120+ Türkçe B2B Sektör Taksonomisi · 81 İl &amp; Uluslararası Arama</span>
+        </div>
+
+        <div class="chip-bar" id="sectorChips" role="group" aria-label="Hızlı sektör seçimi">
+          <button type="button" class="chip active" data-sector="Mobilya">Mobilya</button>
+          <button type="button" class="chip" data-sector="Mutfak">Mutfak</button>
+          <button type="button" class="chip" data-sector="Ahşap">Ahşap &amp; Marangoz</button>
+          <button type="button" class="chip" data-sector="Dekorasyon">Dekorasyon &amp; İç Mimar</button>
+          <button type="button" class="chip" data-sector="İnşaat">İnşaat &amp; Yapı</button>
+          <button type="button" class="chip" data-sector="Müteahhit">Müteahhit</button>
+          <button type="button" class="chip" data-sector="Mimar">Mimarlık</button>
+          <button type="button" class="chip" data-sector="Metal">Metal &amp; Çelik</button>
+          <button type="button" class="chip" data-sector="Makina">Makina &amp; Otomasyon</button>
+          <button type="button" class="chip" data-sector="Plastik">Plastik &amp; Kalıp</button>
+          <button type="button" class="chip" data-sector="Tekstil">Tekstil &amp; Konfeksiyon</button>
+          <button type="button" class="chip" data-sector="Lojistik">Lojistik &amp; Nakliyat</button>
+          <button type="button" class="chip" data-sector="Otomotiv">Otomotiv</button>
+          <button type="button" class="chip" data-sector="Gıda">Gıda Üretim &amp; Toptan</button>
+          <button type="button" class="chip" data-sector="Elektrik">Elektrik &amp; Enerji</button>
+          <button type="button" class="chip" data-sector="Medikal">Sağlık &amp; Medikal</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="sectorInput">Sektör / Anahtar Kelime</label>
+            <input id="sectorInput" type="text" value="Mobilya" placeholder="Örn: Mobilya, Mutfak | Koltuk">
+          </div>
+
+          <div class="field">
+            <label for="countrySelect">Ülke</label>
+            <select id="countrySelect">
+              <option value="Türkiye" selected>Türkiye</option>
+              <option value="Almanya">Almanya</option>
+              <option value="Hollanda">Hollanda</option>
+              <option value="İngiltere">İngiltere</option>
+              <option value="Fransa">Fransa</option>
+              <option value="İtalya">İtalya</option>
+              <option value="ABD">ABD</option>
+              <option value="BAE">Birleşik Arap Emirlikleri</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="citySelect">Şehir / İl</label>
+            <select id="citySelect"></select>
+            <input id="cityCustomInput" type="text" placeholder="Şehir yazın (örn. Berlin, Münih)" hidden>
+          </div>
+
+          <div class="field">
+            <label for="districtSelect">İlçe / Sanayi Bölgesi</label>
+            <select id="districtSelect">
+              <option value="">Tüm İlçeler (Tam İl Kapsamı)</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="contactModeSelect">Arama Türü (İletişim Filtresi)</label>
+            <select id="contactModeSelect">
+              <option value="all" selected>Tüm Firmalar (Maksimum Kapsam)</option>
+              <option value="has_email">E-postası Olanlar (Tel Dahil)</option>
+              <option value="has_phone">Telefonu Olanlar (E-posta Dahil)</option>
+              <option value="both">E-posta + Telefon Olanlar</option>
+              <option value="email_only">Sadece E-posta (Telefonsuz)</option>
+              <option value="phone_only">Sadece Telefon (E-postasız)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <label class="consent-label">
+            <input id="consentCheck" type="checkbox" checked>
+            Açık coğrafi veri (Overture / OpenStreetMap ODbL) ve bağımsız kurumsal site tarama kurallarına uygun kullanıyorum.
+          </label>
+          <div class="action-group">
+            <button id="searchBtn" type="button" class="primary">Firmaları Bul &amp; Getir</button>
+            <button id="enrichBtn" type="button">Web Sitelerini Derin Tara</button>
+            <button id="exportXlsxBtn" type="button" class="accent">Excel İndir (.xlsx)</button>
+            <button id="exportCsvBtn" type="button">CSV İndir</button>
+            <button id="openMapsBtn" type="button">Google Maps'te Gör ↗</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="kpi-grid" aria-label="Özet metrikler">
+        <article class="kpi reveal">
+          <small>Eşleşen Toplam Firma</small>
+          <strong id="kpiTotal">—</strong>
+          <span id="kpiRegionSub">Seçili bölge ve sektör</span>
+        </article>
+        <article class="kpi reveal">
+          <small>Web Sitesi Bulunan</small>
+          <strong id="kpiWebsites">—</strong>
+          <span id="kpiWebRate">Kurumsal domain</span>
+        </article>
+        <article class="kpi reveal">
+          <small>E-postası Bulunan</small>
+          <strong id="kpiEmails">—</strong>
+          <span>Kurumsal e-posta kaydı</span>
+        </article>
+        <article class="kpi reveal">
+          <small>Telefonu Bulunan</small>
+          <strong id="kpiPhones">—</strong>
+          <span>Doğrulanmış telefon hattı</span>
+        </article>
+        <article class="kpi reveal">
+          <small>Tam İletişim (E-posta + Tel)</small>
+          <strong id="kpiBoth">—</strong>
+          <span id="kpiEngineMode">Çift kanallı erişim</span>
+        </article>
+      </section>
+
+      <section class="card reveal" aria-labelledby="resultsHeading">
+        <div class="card-head">
+          <h2 id="resultsHeading">Firma Portföy Listesi</h2>
+          <span id="activeFilterSummary">Hazırlanıyor…</span>
+        </div>
+
+        <div id="districtStrip" class="district-strip" aria-label="İlçe dağılımı"></div>
+
+        <div class="table-toolbar">
+          <input id="quickSearchInput" class="search-inline" type="search" placeholder="Sonuçlarda ara: firma adı, ilçe, web sitesi, e-posta veya telefon…">
+          <div class="pager">
+            <button id="prevPageBtn" type="button" class="sm" disabled>← Önceki</button>
+            <span id="pageInfoText">0–0 / 0</span>
+            <button id="nextPageBtn" type="button" class="sm" disabled>Sonraki →</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Firma Adı &amp; Adres</th>
+                <th>Sektör / Kategori</th>
+                <th>İl / İlçe</th>
+                <th>Kurumsal E-posta</th>
+                <th>Telefon</th>
+                <th>Web Sitesi &amp; Harita</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody">
+              <tr>
+                <td colspan="6" class="empty-state">Veriler yükleniyor…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Lead Intelligence Pro V3 Industrial · Overture Maps Foundation &amp; OpenStreetMap (ODbL)</span>
+      <span>Doğrudan Google Maps kazıma yapılmaz · robots.txt uyumlu ve formül-enjeksiyon korumalı (.xlsx) mimari</span>
+    </footer>
+  </div>
 </body>
 </html>

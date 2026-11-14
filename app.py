@@ -505,6 +505,24 @@ class Workers:
 
 class Handler(BaseHTTPRequestHandler):
     server_version = 'LeadLocal/3.0'
+    CLOUD_ORIGINS = ('https://haritalar.web.app', 'https://haritalar.firebaseapp.com')
+
+    def _allowed_origins(self) -> tuple[str, ...]:
+        port = self.server.server_port  # type: ignore[attr-defined]
+        return (f'http://127.0.0.1:{port}', f'http://localhost:{port}', *self.CLOUD_ORIGINS)
+
+    def _cors_headers(self) -> dict[str, str]:
+        origin = self.headers.get('Origin')
+        if origin and origin in self._allowed_origins():
+            return {
+                'Access-Control-Allow-Origin': origin,
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, X-Local-Token',
+                'Access-Control-Allow-Private-Network': 'true',
+                'Access-Control-Expose-Headers': 'Content-Disposition',
+                'Vary': 'Origin',
+            }
+        return {}
 
     def send_data(
         self,
@@ -525,6 +543,8 @@ class Handler(BaseHTTPRequestHandler):
             "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; "
             "object-src 'none'; frame-ancestors 'none'; base-uri 'none'",
         )
+        for k, v in self._cors_headers().items():
+            self.send_header(k, v)
         for k, v in (extra or {}).items():
             self.send_header(k, v)
         self.end_headers()
@@ -534,16 +554,33 @@ class Handler(BaseHTTPRequestHandler):
         self.send_data(json.dumps(value, ensure_ascii=False).encode(), code=code)
 
     def check(self, api: bool = False) -> bool:
-        if self.headers.get('Host') != f'127.0.0.1:{self.server.server_port}':  # type: ignore[attr-defined]
+        port = self.server.server_port  # type: ignore[attr-defined]
+        if self.headers.get('Host') not in (f'127.0.0.1:{port}', f'localhost:{port}'):
             self.out({'error': 'Geçersiz Host'}, 403)
+            return False
+        origin = self.headers.get('Origin')
+        if origin is not None and origin not in self._allowed_origins():
+            self.out({'error': 'Geçersiz Origin'}, 403)
             return False
         if api and not secrets.compare_digest(self.headers.get('X-Local-Token', ''), TOKEN):
             self.out({'error': 'Oturum anahtarı gerekli'}, 403)
             return False
-        if self.headers.get('Origin') not in (None, f'http://127.0.0.1:{self.server.server_port}'):  # type: ignore[attr-defined]
-            self.out({'error': 'Geçersiz Origin'}, 403)
-            return False
         return True
+
+    def do_OPTIONS(self) -> None:
+        port = self.server.server_port  # type: ignore[attr-defined]
+        if self.headers.get('Host') not in (f'127.0.0.1:{port}', f'localhost:{port}'):
+            self.out({'error': 'Geçersiz Host'}, 403)
+            return
+        origin = self.headers.get('Origin')
+        if origin is not None and origin not in self._allowed_origins():
+            self.out({'error': 'Geçersiz Origin'}, 403)
+            return
+        self.send_response(204)
+        for k, v in self._cors_headers().items():
+            self.send_header(k, v)
+        self.send_header('Access-Control-Max-Age', '600')
+        self.end_headers()
 
     def do_GET(self) -> None:
         p = urlsplit(self.path)
@@ -554,7 +591,7 @@ class Handler(BaseHTTPRequestHandler):
         s: Store = self.server.store  # type: ignore[attr-defined]
         try:
             if p.path == '/api/session':
-                self.out({'token': TOKEN})
+                self.out({'token': TOKEN, 'engine': 'v3-turbo'})
                 return
             if p.path == '/api/status':
                 self.out(s.status())
@@ -584,6 +621,22 @@ class Handler(BaseHTTPRequestHandler):
                         q.get('minimum', ['0'])[0],
                         q.get('box', [''])[0],
                         int(q.get('offset', ['0'])[0]),
+                        q.get('district', [''])[0],
+                    )
+                )
+                return
+            if p.path == '/api/portfolio':
+                self.out(
+                    catalog.portfolio_listing(
+                        s,
+                        q.get('sector', [''])[0],
+                        q.get('region', [''])[0],
+                        q.get('district', [''])[0],
+                        q.get('contact_mode', ['all'])[0],
+                        q.get('minimum', ['0'])[0],
+                        q.get('box', [''])[0],
+                        int(q.get('offset', ['0'])[0]),
+                        int(q.get('limit', ['100'])[0]),
                     )
                 )
                 return
@@ -597,6 +650,8 @@ class Handler(BaseHTTPRequestHandler):
                         q.get('region', [''])[0],
                         float(q.get('minimum', ['0'])[0]),
                         q.get('box', [''])[0],
+                        q.get('district', [''])[0],
+                        q.get('contact_mode', ['all'])[0],
                     )
                     self.send_response(200)
                     self.send_header(
@@ -604,9 +659,11 @@ class Handler(BaseHTTPRequestHandler):
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                     )
                     self.send_header('Content-Length', str(dest.stat().st_size))
-                    self.send_header('Content-Disposition', 'attachment; filename="lead-intelligence.xlsx"')
+                    self.send_header('Content-Disposition', 'attachment; filename="firmalar.xlsx"')
                     self.send_header('Cache-Control', 'no-store')
                     self.send_header('X-Content-Type-Options', 'nosniff')
+                    for k, v in self._cors_headers().items():
+                        self.send_header(k, v)
                     self.end_headers()
                     with dest.open('rb') as f:
                         shutil.copyfileobj(f, self.wfile)
@@ -657,6 +714,7 @@ class Handler(BaseHTTPRequestHandler):
                             d.get('minimum', 0),
                             d.get('box'),
                             int(d.get('limit', 5000)),
+                            d.get('district', ''),
                         )
                     )
                     return
