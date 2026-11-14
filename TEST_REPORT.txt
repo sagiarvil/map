@@ -1,0 +1,15 @@
+Lead Intelligence Pro V3 — Industrial Verification & Live Benchmark Report
+==========================================================================
+Tarih: 2026-11-14
+Ortam: macOS (Python 3.14 / SQLite FTS5 / PyArrow / httpx[http2] / dnspython)
+
+1. 4 Kalite Kapısı (Quality Gates)
+- Sözdizim (py_compile + node --check + bash -n): PASS
+- BOM-suz Saf UTF-8 Kontrolü: PASS (0 BOM)
+- OWASP & SSRF Güvenlik Testleri: PASS (Özel IP engeli, robots.txt, HTTPS düşürme engeli, Host/Origin/Token doğrulaması, XLSX formül enjeksiyon koruması)
+- Birim & Entegrasyon Test Paketi: 55 / 55 PASS (3.21 sn)
+
+2. Canlı Saha Doğrulaması — İzmir İli Tam Kapsam ("Mobilya")
+- Coğrafi Sınır: 26.22, 37.88, 28.50, 39.38 (30 ilçe: Karabağlar, Kısıkköy/Menderes, Torbalı, Kemalpaşa, Bornova, Buca, Çiğli, Konak, Çeşme vb.)
+- PyArrow S3 GeoParquet Akışı: 175.353 ham kayıt okundu -> 173.385 geçerli İzmir işletmesi (60.733 web siteli) ~49 sn içinde yerel FTS5 indeksine alındı.
+- "Mobilya" Sektör Eşleşmesi (SQLite FTS5 Morfolojik Arama): 39.8 ms içinde 4.422 mobilya işletmesi (1.921 web siteli) bulundu.

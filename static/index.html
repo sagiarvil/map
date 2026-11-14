@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lead Intelligence Pro V3 — Industrial Geospatial Engine</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <aside>
+    <div class="brand">
+      <span class="mark">LI</span>
+      <div>LEAD INTELLIGENCE<small>V3 PRO / INDUSTRIAL ENGINE</small></div>
+    </div>
+    <nav>
+      <a href="#overview">Genel görünüm</a>
+      <a href="#geo">Endüstriyel bölge keşfi</a>
+      <a href="#research">Google Maps araştırma</a>
+      <a href="#sources">Kaynak &amp; keşif</a>
+      <a href="#portfolio">Müşteri portföyü</a>
+      <a href="#operations">Sistem yönetimi</a>
+    </nav>
+    <div class="local">
+      <b>ASYNC HTTP/2 · PYARROW</b><br>
+      64–256 Eşzamanlı Korutin<br>
+      FTS5 + Overture + OSM Füzyon
+    </div>
+  </aside>
+  <main>
+    <header id="overview" class="reveal">
+      <div>
+        <p class="eyebrow">ENDÜSTRİYEL İŞ GELİŞTİRME &amp; COĞRAFİ İSTİHBARAT</p>
+        <h1>Sektörel işletme istihbaratı</h1>
+        <p class="sub">PyArrow S3 GeoParquet akışı · OpenStreetMap füzyonu · HTTP/2 asenkron web madenciliği.</p>
+      </div>
+      <span class="pill" id="state">Bağlanıyor</span>
+    </header>
+
+    <div id="notice" role="status"></div>
+
+    <section class="metrics">
+      <article class="reveal">
+        <small>İşletme görevleri</small>
+        <strong id="total">—</strong>
+        <span id="phonesMetric">Firma / sektör / bölge</span>
+      </article>
+      <article class="reveal">
+        <small>Başarılı taramalar</small>
+        <strong id="done">—</strong>
+        <span>İletişim bulunan görevler</span>
+      </article>
+      <article class="reveal">
+        <small>Benzersiz e-posta</small>
+        <strong id="emails">—</strong>
+        <span>Ret listesi hariç</span>
+      </article>
+      <article class="reveal">
+        <small>Aynı alan + MX</small>
+        <strong id="strong">—</strong>
+        <span>Kurumsal DNS doğrulamalı</span>
+      </article>
+    </section>
+
+    <section class="panel geo reveal" id="geo">
+      <div class="sectionhead">
+        <span class="number">00</span>
+        <h2>Endüstriyel sektörel keşif / Overture GeoParquet + OpenStreetMap</h2>
+      </div>
+      <p>Tam il sınırları ve sanayi kümeleri dahil kolonar S3 veri akışı + OpenStreetMap tekilleştirilmiş füzyon. Ücretli API anahtarı gerekmez.</p>
+      <div class="geo-grid">
+        <div>
+          <label>Hedef bölge etiketi
+            <input id="geoRegion" value="İzmir, Türkiye">
+          </label>
+          <label>Hedef sektör (120+ Türkçe B2B sektör taksonomisi; | ile çoklu arama)
+            <input id="geoSector" value="Mobilya">
+          </label>
+          <label>Hazır il &amp; sanayi bölgesi sınırı (Tam il kapsamı)
+            <select id="geoPreset">
+              <option value="">Özel koordinat</option>
+              <option value="izmir" selected>İzmir — Tüm İl (30 İlçe · Karabağlar · Kısıkköy · Torbalı · Kemalpaşa)</option>
+              <option value="izmir_mobilya">İzmir — Mobilya Üretim Hattı (Karabağlar · Kısıkköy · Torbalı · Menderes)</option>
+              <option value="istanbul">İstanbul — Tüm İl (Avrupa + Anadolu Tam Sınır)</option>
+              <option value="ankara">Ankara — Tüm İl (Siteler · Ostim · İvedik Dahil)</option>
+              <option value="bursa">Bursa &amp; İnegöl — Tüm İl (Mobilya &amp; OSB Tam Kapsam)</option>
+              <option value="kayseri">Kayseri — Tüm İl &amp; OSB</option>
+              <option value="konya">Konya — Sanayi &amp; Merkez</option>
+              <option value="antalya">Antalya — Tüm İl</option>
+              <option value="gaziantep">Gaziantep — Tüm İl &amp; Başpınar OSB</option>
+              <option value="adana">Adana — Tüm İl</option>
+              <option value="mersin">Mersin — Tüm İl</option>
+              <option value="kocaeli">Kocaeli — Tüm İl &amp; Gebze OSB</option>
+              <option value="denizli">Denizli — Tüm İl</option>
+              <option value="manisa">Manisa — Tüm İl &amp; OSB</option>
+              <option value="sakarya">Sakarya — Tüm İl &amp; Hendek OSB</option>
+              <option value="eskisehir">Eskişehir — Tüm İl &amp; OSB</option>
+              <option value="aydin">Aydın — Tüm İl</option>
+              <option value="mugla">Muğla — Tüm İl (Bodrum · Marmaris · Fethiye)</option>
+              <option value="samsun">Samsun — Tüm İl</option>
+              <option value="hatay">Hatay — Tüm İl (Antakya · İskenderun)</option>
+              <option value="tekirdag">Tekirdağ — Tüm İl (Çorlu · Çerkezköy OSB)</option>
+            </select>
+          </label>
+          <label>Coğrafi sınır (batı, güney, doğu, kuzey — Büyük iller otomatik Quadtree dilimlenir)
+            <input id="geoBox" value="26.22,37.88,28.50,39.38">
+          </label>
+          <label>Veri motoru modu
+            <select id="geoSource">
+              <option value="hybrid" selected>Hibrit Pro (Overture S3 GeoParquet + OpenStreetMap Füzyonu)</option>
+              <option value="overture">Yalnızca Overture Places (C++ PyArrow Hızlı Akış)</option>
+              <option value="osm">Yalnızca OpenStreetMap (Overpass Canlı Sorgu)</option>
+            </select>
+          </label>
+          <label>Kaynak güven eşiği
+            <select id="geoMinimum">
+              <option value="0" selected>Tüm kayıtlar (maksimum kapsam)</option>
+              <option value="0.5">En az %50</option>
+              <option value="0.8">En az %80</option>
+              <option value="0.95">En az %95</option>
+            </select>
+          </label>
+        </div>
+        <div>
+          <label class="check">
+            <input id="geoPermit" type="checkbox">Açık veri lisansını (Overture / ODbL) ve bağımsız web sitelerinin tarama koşullarını kontrol ettim.
+          </label>
+          <div class="actions">
+            <button class="primary" id="geoDownload">Bölgedeki işletmeleri indir</button>
+            <button id="geoSearch">Yerel katalogda sektörü bul (FTS5)</button>
+          </div>
+          <label>Alternatif: GeoJSON dosyası (en fazla 120 MB)
+            <input type="file" id="geoFile" accept=".geojson,.json">
+          </label>
+          <button id="geoImport">Dosyayı içe aktar</button>
+          <label>Bu filtrede bir defada kuyruğa alınacak işletme
+            <select id="geoLimit">
+              <option value="500">500</option>
+              <option value="2500">2.500</option>
+              <option value="5000" selected>5.000</option>
+              <option value="10000">10.000</option>
+              <option value="50000">50.000</option>
+            </select>
+          </label>
+          <button class="primary" id="geoQueue">Web sitesi bulunanları yüksek hızda tara</button>
+        </div>
+      </div>
+
+      <div class="geo-stats">
+        <div><small>Filtre eşleşmesi</small><strong id="geoTotal">—</strong></div>
+        <div><small>Web sitesi bulunan</small><strong id="geoSites">—</strong></div>
+        <div><small>Site kapsama oranı</small><strong id="geoCoverage">—</strong></div>
+      </div>
+      <p id="geoInfo" role="status"></p>
+      <div class="toolbar">
+        <button id="geoPrev">Önceki</button>
+        <span id="geoPage"></span>
+        <button id="geoNext">Sonraki</button>
+        <button class="primary" id="xlsxScope">Filtreyi Excel (.xlsx) indir</button>
+        <button id="xlsx">Tüm portföyü Excel indir</button>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>İşletme / İlçe &amp; Adres</th>
+              <th>Kategori / Kaynak</th>
+              <th>Güven</th>
+              <th>Web sitesi &amp; Hazır Tel</th>
+              <th>Tarama / Harita</th>
+            </tr>
+          </thead>
+          <tbody id="geoRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="split">
+      <section class="panel reveal" id="research">
+        <div class="sectionhead"><span class="number">01</span><h2>Google Maps araştırma</h2></div>
+        <p>Aramayı resmi Google Maps bağlantısı olarak açar. Otomatik Maps veri kazıma yapılmaz.</p>
+        <label>Sektör / anahtar kelime<input id="sector" value="Mobilya"></label>
+        <label>Bölge<input id="region" value="İzmir, Türkiye"></label>
+        <div class="actions">
+          <button class="primary" id="maps">Google Maps'te araştır ↗</button>
+          <button id="variants">Alternatif aramalar</button>
+        </div>
+        <div id="queries" class="stack"></div>
+      </section>
+
+      <section class="panel reveal" id="sources">
+        <div class="sectionhead"><span class="number">02</span><h2>İzinli kaynaklardan keşif</h2></div>
+        <p>OSB / oda / fuar katılımcı rehberlerindeki harici web sitesi bağlantılarını çıkarır (500 adaya kadar).</p>
+        <label>Firma rehberi / üye listesi URL<input id="directory" placeholder="https://..." type="url"></label>
+        <label class="check"><input id="dirPermit" type="checkbox">Bu kaynağın otomatik tarama ve kullanım iznini kontrol ettim.</label>
+        <button id="discover" class="primary">Aday web sitelerini bul</button>
+        <div id="candidates" class="stack"></div>
+      </section>
+    </div>
+
+    <section class="panel reveal">
+      <div class="sectionhead"><span class="number">03</span><h2>Tarama kuyruğuna ekle</h2></div>
+      <div class="split inner">
+        <div>
+          <label>Web siteleri — her satıra bir adres
+            <textarea id="urls" rows="5" placeholder="https://firma-web-sitesi..."></textarea>
+          </label>
+          <label>Bağımsız kaynak açıklaması / URL
+            <input id="origin" placeholder="Firma kendi sitesi, izinli OSB/fuar rehberi..." maxlength="1000">
+          </label>
+        </div>
+        <div>
+          <label>CSV (url, sector, region, origin sütunları)
+            <input id="csv" type="file" accept=".csv,text/csv">
+          </label>
+          <p class="sub">CSV alanları boşsa yukarıdaki sektör, bölge ve kaynak etiketleri kullanılır. Üst sınır: 50.000 satır.</p>
+          <label class="check"><input id="permit" type="checkbox">Bu web siteleri / veri kaynağı için otomatik araştırma ve kullanım koşullarını kontrol ettim.</label>
+          <button class="primary" id="add">Kuyruğa ekle</button>
+        </div>
+      </div>
+      <pre id="importResult" hidden></pre>
+    </section>
+
+    <section class="panel reveal" id="portfolio">
+      <div class="sectionhead"><span class="number">04</span><h2>Müşteri portföyü</h2></div>
+      <div class="toolbar">
+        <input id="filter" placeholder="Firma, sektör veya bölge ara">
+        <select id="statusFilter">
+          <option value="">Tüm durumlar</option>
+          <option value="queued">Bekliyor</option>
+          <option value="running">Çalışıyor</option>
+          <option value="done">Tamamlandı</option>
+          <option value="empty">E-posta yok</option>
+          <option value="partial">Kısmi</option>
+          <option value="failed">Başarısız</option>
+        </select>
+        <button id="retryFailed">Başarısızları tekrar dene</button>
+        <button id="export" class="primary">CSV indir</button>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Firma / web sitesi</th>
+              <th>Sektör / bölge</th>
+              <th>Durum</th>
+              <th>E-posta / Tel</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button id="prev">Önceki</button>
+        <span id="pageInfo"></span>
+        <button id="next">Sonraki</button>
+      </div>
+    </section>
+
+    <section class="panel reveal" id="operations">
+      <div class="sectionhead"><span class="number">05</span><h2>Sistem yönetimi</h2></div>
+      <div class="actions">
+        <button id="pause">Kuyruğu duraklat</button>
+        <button id="resume">Devam et</button>
+        <button id="backup">SQLite yedeği oluştur</button>
+      </div>
+      <p id="queueInfo" class="sub"></p>
+      <label>Kalıcı ret listesine e-posta ekle
+        <input id="suppression" type="email" placeholder="info@firma...">
+      </label>
+      <button id="suppress">Dışa aktarımdan çıkar</button>
+      <p class="sub">Gönderim otomasyonu yoktur. Ret listesi, İYS onayı veya hukuki uygunluk belgesi yerine geçmez. Yalnızca izinli kaynakları kullanın.</p>
+    </section>
+
+    <footer>LEAD INTELLIGENCE PRO / v3.0 Industrial · PyArrow S3 + OpenStreetMap + Async HTTP/2</footer>
+  </main>
+
+  <dialog id="detail">
+    <div class="sectionhead">
+      <h2 id="detailTitle">İletişim kanıtları</h2>
+      <button id="closeDetail">Kapat</button>
+    </div>
+    <p id="detailMeta"></p>
+    <div id="detailRows" class="stack"></div>
+    <div id="detailPhones" class="stack"></div>
+  </dialog>
+</body>
+</html>

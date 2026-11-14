@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+data/
+*.sqlite*
+*.db
+*.xlsx
+*.zip
+*.log
+.env
+.env.*
+.DS_Store
+
+.firebase/
+hosting/downloads/

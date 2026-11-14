@@ -1,0 +1,4 @@
+overturemaps==2.1.1
+XlsxWriter==3.2.9
+httpx[http2]>=0.27.0,<1.0.0
+dnspython>=2.6.0,<3.0.0
