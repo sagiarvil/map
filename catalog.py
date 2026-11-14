@@ -24,7 +24,17 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-from engine import EMAIL, ROLE, ScanError, domain_key, normalize, now, phone_normalize
+from engine import (
+    BAD_EMAIL_DOMAINS,
+    BAD_EMAIL_TLDS,
+    EMAIL,
+    ROLE,
+    ScanError,
+    domain_key,
+    normalize,
+    now,
+    phone_normalize,
+)
 
 try:
     import httpx
@@ -310,13 +320,30 @@ def province_of(raw: Any) -> str:
     return PROVINCE_NAMES.get(fold(raw_s), '')
 
 
+def _infer_province_from_freeform(freeform: str) -> str:
+    if not freeform:
+        return ''
+    if '/' in freeform:
+        parts = freeform.rsplit('/', 1)[-1].strip().split()
+        if parts:
+            tail = parts[0].strip('.,;()-')
+            if p := province_of(tail):
+                return p
+    tokens = fold(freeform).split()
+    for tok in reversed(tokens[-4:]):
+        if p := PROVINCE_NAMES.get(tok):
+            return p
+    return ''
+
+
 def _infer_district(province: str, locality: str, freeform: str) -> str:
-    if locality and fold(locality) != fold(province):
+    if locality and fold(locality) != fold(province) and not province_of(locality):
         if province in DISTRICT_LOOKUP:
             floc = fold(locality)
             for fd, official in DISTRICT_LOOKUP[province]:
                 if fd == floc:
                     return official
+        return locality[:120]
     if province and freeform:
         m = re.search(r'([\wÇĞİÖŞÜçğıöşü -]+)\s*/\s*' + re.escape(province) + r'\b', freeform, re.I)
         if m:
@@ -353,7 +380,7 @@ def feature(f: Any, region: str, source: str) -> tuple[Any, ...] | None:
     if not name:
         return None
     operating = text(p.get('operating_status'), 60)
-    if operating == 'permanently_closed':
+    if operating.lower() in ('closed', 'permanently_closed', 'temporarily_closed', 'inactive', 'defunct'):
         return None
     tax = p.get('taxonomy') or p.get('categories') or {}
     tax = tax if isinstance(tax, dict) else {}
@@ -398,6 +425,21 @@ def feature(f: Any, region: str, source: str) -> tuple[Any, ...] | None:
     return (key, name, primary, search_blob, region, addr_str, lat, lon, site, cf, operating, source, now(), provenance)
 
 
+def _clean_poi_email(raw: Any) -> str:
+    if not isinstance(raw, str):
+        return ''
+    e = raw.strip().removeprefix('mailto:').split('?')[0].strip().lower()
+    if not e or len(e) > 254 or not EMAIL.fullmatch(e):
+        return ''
+    local, _, domain = e.partition('@')
+    if local.startswith('.') or '..' in local:
+        return ''
+    tld = domain.rsplit('.', 1)[-1]
+    if tld in BAD_EMAIL_TLDS or domain in BAD_EMAIL_DOMAINS or any(domain.endswith('.' + bd) for bd in BAD_EMAIL_DOMAINS):
+        return ''
+    return e
+
+
 def meta(f: dict[str, Any], key: str, fallback_region: str = '') -> tuple[str, str, str, str, str]:
     p = f['properties']
     province = district = ''
@@ -411,22 +453,19 @@ def meta(f: dict[str, Any], key: str, fallback_region: str = '') -> tuple[str, s
             continue
         locality = text(a.get('locality'), 200)
         freeform = text(a.get('freeform'), 400)
-        province = province_of(a.get('region')) or province_of(locality) or fallback_prov
+        province = (
+            province_of(a.get('region'))
+            or province_of(locality)
+            or _infer_province_from_freeform(freeform)
+            or fallback_prov
+        )
         district = text(a.get('district') or a.get('county') or a.get('municipality'), 200)
         if not district:
             district = _infer_district(province, locality, freeform)
         if province or district:
             break
     raw_emails = p.get('emails')
-    emails = (
-        sorted({
-            v.strip().lower()
-            for v in raw_emails
-            if isinstance(v, str) and EMAIL.fullmatch(v.strip()) and ROLE.fullmatch(v.strip().split('@')[0])
-        })
-        if isinstance(raw_emails, list)
-        else []
-    )
+    emails = sorted({ce for v in raw_emails if (ce := _clean_poi_email(v))}) if isinstance(raw_emails, list) else []
     raw_phones = p.get('phones')
     phones = sorted({n for v in raw_phones if (n := phone_normalize(v))}) if isinstance(raw_phones, list) else []
     return key, province, district, json.dumps(emails), json.dumps(phones)
@@ -454,7 +493,8 @@ def _upsert_pairs(store: Any, pairs: list[tuple[tuple[Any, ...], tuple[str, str,
                ON CONFLICT(place_id) DO UPDATE SET
                  province=CASE WHEN excluded.province!='' THEN excluded.province ELSE place_meta.province END,
                  district=CASE WHEN excluded.district!='' THEN excluded.district ELSE place_meta.district END,
-                 emails=excluded.emails, phones=excluded.phones''',
+                 emails=CASE WHEN excluded.emails!='[]' THEN excluded.emails ELSE place_meta.emails END,
+                 phones=CASE WHEN excluded.phones!='[]' THEN excluded.phones ELSE place_meta.phones END''',
             metas,
         )
 
@@ -683,9 +723,9 @@ def _ingest_osm_elements(
         emails_set: set[str] = set()
         for re_m in raw_emails:
             if isinstance(re_m, str):
-                em = re_m.strip().lower()
-                if EMAIL.fullmatch(em) and ROLE.fullmatch(em.split('@')[0]):
-                    emails_set.add(em)
+                for part in re.split(r'[;,|\s]+', re_m):
+                    if ce := _clean_poi_email(part):
+                        emails_set.add(ce)
 
         street = ' '.join(x for x in (text(tags.get('addr:street'), 150), text(tags.get('addr:housenumber'), 40)) if x)
         suburb = text(tags.get('addr:suburb') or tags.get('addr:neighbourhood'), 120)
@@ -886,7 +926,8 @@ def portfolio_listing(
         excluded = {r[0] for r in c.execute('SELECT email FROM suppression')}
         place_emails: dict[str, set[str]] = {}
         for pid, em in c.execute(
-            'SELECT l.place_id, t.email FROM place_jobs l JOIN contacts t ON t.job_id=l.job_id'
+            "SELECT l.place_id, t.email FROM place_jobs l JOIN contacts t ON t.job_id=l.job_id "
+            "WHERE t.mx NOT IN ('nxdomain', 'null_mx')"
         ):
             if em not in excluded:
                 place_emails.setdefault(pid, set()).add(em)
@@ -897,14 +938,14 @@ def portfolio_listing(
             place_phones.setdefault(pid, set()).add(ph)
 
         total = websites = with_email = with_phone = with_both = 0
-        page_rows: list[dict[str, Any]] = []
+        matched_rows: list[tuple[tuple[int, int, int, int, int, float], sqlite3.Row, set[str], set[str]]] = []
+        dist_counts: dict[str, int] = {}
         cur = c.execute(
             '''SELECT p.id, p.name, p.category, p.region, p.address, p.lat, p.lon,
                       p.website, p.confidence, p.source,
                       m.province, m.district, m.emails, m.phones
                FROM places p LEFT JOIN place_meta m ON m.place_id = p.id'''
-            + where
-            + " ORDER BY (p.website!='') DESC, p.confidence DESC, p.id",
+            + where,
             args,
         )
         for r in cur:
@@ -914,9 +955,9 @@ def portfolio_listing(
             he, hp = bool(ems), bool(phs)
             if not contact_match(he, hp, contact_mode):
                 continue
-            idx = total
+            hw = bool(r['website'])
             total += 1
-            if r['website']:
+            if hw:
                 websites += 1
             if he:
                 with_email += 1
@@ -924,23 +965,31 @@ def portfolio_listing(
                 with_phone += 1
             if he and hp:
                 with_both += 1
-            if offset <= idx < offset + limit:
-                city = r['province'] or province_of(r['region'].split(',')[0])
-                page_rows.append({
-                    'id': pid,
-                    'name': r['name'],
-                    'category': r['category'].replace('_', ' '),
-                    'city': city,
-                    'district': r['district'] or '',
-                    'website': r['website'],
-                    'emails': sorted(ems),
-                    'phones': sorted(phs),
-                    'address': r['address'],
-                    'lat': r['lat'],
-                    'lon': r['lon'],
-                    'confidence': r['confidence'],
-                    'source': r['source'],
-                })
+            d_name = r['district'] or ''
+            if d_name:
+                dist_counts[d_name] = dist_counts.get(d_name, 0) + 1
+            q_score = (int(he and hp), int(he), int(hw and hp), int(hw), int(hp), float(r['confidence'] or 0.0))
+            matched_rows.append((q_score, r, ems, phs))
+
+        matched_rows.sort(key=lambda item: item[0], reverse=True)
+        page_rows: list[dict[str, Any]] = []
+        for _, r, ems, phs in matched_rows[offset:offset + limit]:
+            city = r['province'] or province_of(r['region'].split(',')[0])
+            page_rows.append({
+                'id': r['id'],
+                'name': r['name'],
+                'category': r['category'].replace('_', ' '),
+                'city': city,
+                'district': r['district'] or '',
+                'website': r['website'],
+                'emails': sorted(ems),
+                'phones': sorted(phs),
+                'address': r['address'],
+                'lat': r['lat'],
+                'lon': r['lon'],
+                'confidence': r['confidence'],
+                'source': r['source'],
+            })
 
     return {
         'total': total,
@@ -948,6 +997,7 @@ def portfolio_listing(
         'with_email': with_email,
         'with_phone': with_phone,
         'with_both': with_both,
+        'districts': sorted(dist_counts.items(), key=lambda kv: kv[1], reverse=True)[:16],
         'rows': page_rows,
         'terms': terms(sector),
     }
@@ -1085,6 +1135,135 @@ def _download_legacy_cli(store: Any, region: str, w: float, s: float, e: float, 
         return ingest(store, data, region, f'{SOURCE} / CLI, bbox {w},{s},{e},{n}')
 
 
+def deduplicate_region(store: Any, region: str) -> int:
+    """Fuse duplicate spatial pins within ~55m (exact folded name or shared phone + brand stem) into a single clean record."""
+    with store.db() as c:
+        rows = c.execute(
+            '''SELECT p.id, p.name, p.lat, p.lon, p.website, p.address, p.confidence,
+                      m.province, m.district, m.emails, m.phones
+               FROM places p LEFT JOIN place_meta m ON m.place_id = p.id
+               WHERE p.region = ?''',
+            (region,),
+        ).fetchall()
+
+    if len(rows) < 2:
+        return 0
+
+    def richness(r: sqlite3.Row) -> tuple[int, int, int, float, int]:
+        ems = json.loads(r['emails'] or '[]')
+        phs = json.loads(r['phones'] or '[]')
+        return (int(bool(r['website'])), len(ems), len(phs), float(r['confidence'] or 0.0), len(r['address'] or ''))
+
+    sorted_rows = sorted(rows, key=richness, reverse=True)
+    name_grid: dict[tuple[str, int, int], dict[str, Any]] = {}
+    phone_grid: dict[tuple[str, str, int, int], dict[str, Any]] = {}
+    merges: dict[str, dict[str, Any]] = {}
+    drop_ids: list[str] = []
+    relink_pairs: list[tuple[str, str]] = []
+
+    for r in sorted_rows:
+        pid = r['id']
+        fname = fold(r['name'])
+        if not fname:
+            continue
+        first_tok = fname.split()[0]
+        gx, gy = round(float(r['lat']) * 1800), round(float(r['lon']) * 1800)
+        px, py = round(float(r['lat']) * 900), round(float(r['lon']) * 900)
+        ems = set(json.loads(r['emails'] or '[]'))
+        phs = set(json.loads(r['phones'] or '[]'))
+
+        survivor: dict[str, Any] | None = None
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                cand = name_grid.get((fname, gx + dx, gy + dy))
+                if cand is not None:
+                    survivor = cand
+                    break
+            if survivor is not None:
+                break
+
+        if survivor is None and len(first_tok) >= 4 and phs:
+            for ph in phs:
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        cand = phone_grid.get((ph, first_tok, px + dx, py + dy))
+                        if cand is not None:
+                            survivor = cand
+                            break
+                    if survivor is not None:
+                        break
+                if survivor is not None:
+                    break
+
+        if survivor is not None:
+            drop_ids.append(pid)
+            relink_pairs.append((pid, survivor['id']))
+            survivor['emails'] |= ems
+            survivor['phones'] |= phs
+            if not survivor['website'] and r['website']:
+                survivor['website'] = r['website']
+            if len(r['address'] or '') > len(survivor['address']):
+                survivor['address'] = r['address']
+            if not survivor['district'] and r['district']:
+                survivor['district'] = r['district']
+            if not survivor['province'] and r['province']:
+                survivor['province'] = r['province']
+            survivor['dirty'] = True
+            merges[survivor['id']] = survivor
+            continue
+
+        entry = {
+            'id': pid,
+            'website': r['website'] or '',
+            'address': r['address'] or '',
+            'province': r['province'] or '',
+            'district': r['district'] or '',
+            'emails': ems,
+            'phones': phs,
+            'dirty': False,
+        }
+        name_grid[(fname, gx, gy)] = entry
+        if len(first_tok) >= 4:
+            for ph in phs:
+                phone_grid[(ph, first_tok, px, py)] = entry
+
+    if not drop_ids:
+        return 0
+
+    with store.db() as c:
+        for old_pid, surv_id in relink_pairs:
+            c.execute(
+                'INSERT OR IGNORE INTO place_jobs(place_id, job_id) SELECT ?, job_id FROM place_jobs WHERE place_id=?',
+                (surv_id, old_pid),
+            )
+        for surv in merges.values():
+            if not surv['dirty']:
+                continue
+            c.execute(
+                'UPDATE places SET website=?, address=? WHERE id=?',
+                (surv['website'], surv['address'], surv['id']),
+            )
+            c.execute(
+                '''INSERT INTO place_meta VALUES(?,?,?,?,?)
+                   ON CONFLICT(place_id) DO UPDATE SET
+                     province=excluded.province, district=excluded.district,
+                     emails=excluded.emails, phones=excluded.phones''',
+                (
+                    surv['id'],
+                    surv['province'],
+                    surv['district'],
+                    json.dumps(sorted(surv['emails'])),
+                    json.dumps(sorted(surv['phones'])),
+                ),
+            )
+        for idx in range(0, len(drop_ids), 500):
+            chunk = drop_ids[idx:idx + 500]
+            placeholders = ','.join('?' for _ in chunk)
+            c.execute(f'DELETE FROM places WHERE id IN ({placeholders})', chunk)
+
+    return len(drop_ids)
+
+
 def download(
     store: Any,
     region: str,
@@ -1101,12 +1280,14 @@ def download(
     if mode == 'osm':
         els = _fetch_osm_overpass(w, s, e, n, sector)
         osm_res = _ingest_osm_elements(store, els, region, sector)
+        deduped = deduplicate_region(store, region)
         return {
             'read': osm_res['osm_read'],
-            'valid': osm_res['osm_added'] + osm_res['osm_merged'],
-            'unique': osm_res['osm_added'],
-            'skipped': 0,
+            'valid': max(0, osm_res['osm_added'] + osm_res['osm_merged'] - deduped),
+            'unique': max(0, osm_res['osm_added'] - deduped),
+            'skipped': deduped,
             'websites': listing(store, sector, region)['websites'] if sector else 0,
+            'deduped': deduped,
             **osm_res,
         }
 
@@ -1131,7 +1312,9 @@ def download(
             except Exception:
                 pass
 
-    base['unique'] += osm_stats['osm_added']
-    base['valid'] += osm_stats['osm_added']
+    deduped = deduplicate_region(store, region)
+    base['unique'] = max(0, base['unique'] + osm_stats['osm_added'] - deduped)
+    base['valid'] = max(0, base['valid'] + osm_stats['osm_added'] - deduped)
+    base['deduped'] = deduped
     base.update(osm_stats)
     return base

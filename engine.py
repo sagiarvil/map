@@ -47,6 +47,13 @@ try:
 except ImportError:  # pragma: no cover
     HAS_DNSPYTHON = False
 
+try:
+    from selectolax.lexbor import LexborHTMLParser
+    HAS_LEXBOR = True
+except ImportError:  # pragma: no cover
+    LexborHTMLParser = None  # type: ignore[assignment]
+    HAS_LEXBOR = False
+
 AGENT = 'LeadResearchLocal'
 MAX_BYTES = 2_000_000
 DEFAULT_DOMAIN_DELAY = 0.35
@@ -70,6 +77,8 @@ ROLE = re.compile(
     r'ik|insankaynaklari|hr|kariyer|career|careers|'
     r'b2b|customer|customerservice|musteri|müşteri|musterihizmetleri|'
     r'kvkk|hukuk|legal|press|basin|medya|pr|'
+    r'izmir|istanbul|ankara|bursa|antalya|konya|kayseri|adana|gaziantep|kocaeli|mersin|denizli|'
+    r'manisa|sakarya|eskisehir|samsun|hatay|tekirdag|aydin|mugla|inegol|siteler|masko|modoko|osb|'
     r'verkauf|kontakt|vertrieb|anfrage|bestellung|'
     r'accueil|vente|ventes|commandes|devis)(?:[._+-][a-z0-9]{1,25})?$',
     re.I,
@@ -131,11 +140,14 @@ BLOCK = (
 
 BAD_EMAIL_TLDS = (
     'png', 'jpg', 'jpeg', 'svg', 'css', 'js', 'webp', 'gif', 'ico', 'woff', 'woff2',
-    'example', 'invalid', 'test', 'local', 'sentry',
+    'ttf', 'eot', 'mp4', 'mp3', 'pdf', 'zip', 'example', 'invalid', 'test', 'local', 'sentry',
 )
 BAD_EMAIL_DOMAINS = (
     'example.com', 'example.org', 'example.net', 'domain.com', 'email.com',
-    'yoursite.com', 'yourdomain.com', 'wixpress.com', 'sentry.io',
+    'yoursite.com', 'yourdomain.com', 'websiteniz.com', 'ornek.com',
+    'wixpress.com', 'sentry-next.wixpress.com', 'sentry.io', 'sentry.wixpress.com',
+    'latofonts.com', 'indiantypefoundry.com', 'typemade.mx', 'fonts.googleapis.com',
+    'wordpress.org', 'w3.org', 'schema.org', 'cloudflare.com', 'godaddy.com', 'gravatar.com',
 )
 
 
@@ -662,7 +674,7 @@ class AsyncCrawlSession:
 
 
 def phone_normalize(raw: Any) -> str:
-    """Keep published public business numbers as normalized E.164/444 text."""
+    """Keep published public business numbers as normalized E.164/444 text while rejecting placeholder junk."""
     if not isinstance(raw, str):
         return ''
     raw = unquote(raw).strip().split(';', 1)[0].split('?', 1)[0]
@@ -673,11 +685,14 @@ def phone_normalize(raw: Any) -> str:
     if digits.startswith('00'):
         digits = digits[2:]
         raw = '+' + digits
-    if len(digits) == 12 and digits.startswith('90') and digits[2] in '234589':
+    # Reject repeated-digit fake placeholders (e.g. +905555555555, 02120000000)
+    if len(digits) >= 7 and len(set(digits[-7:])) == 1:
+        return ''
+    if len(digits) == 12 and digits.startswith('90') and digits[2] in '23458':
         return '+' + digits
-    if len(digits) == 11 and digits.startswith('0') and digits[1] in '234589':
+    if len(digits) == 11 and digits.startswith('0') and digits[1] in '23458':
         return '+90' + digits[1:]
-    if len(digits) == 10 and digits[0] in '234589':
+    if len(digits) == 10 and digits[0] in '23458':
         return '+90' + digits
     if raw.startswith('+') and 7 <= len(digits) <= 15:
         return '+' + digits
@@ -711,20 +726,22 @@ def extract_text_phones(visible_text: str) -> set[str]:
     return found
 
 
-def _walk_jsonld(node: Any, mails: list[str], tels: list[str], addr_out: dict[str, str]) -> None:
+def _walk_jsonld(node: Any, mails: list[str], tels: list[str], addr_out: dict[str, str], depth: int = 0) -> None:
+    if depth > 14:
+        return
     if isinstance(node, list):
-        for item in node[:50]:
-            _walk_jsonld(item, mails, tels, addr_out)
+        for item in node[:80]:
+            _walk_jsonld(item, mails, tels, addr_out, depth + 1)
         return
     if not isinstance(node, dict):
         return
-    for k in ('email', 'emails'):
+    for k in ('email', 'emails', 'contactEmail', 'supportEmail', 'salesEmail', 'corporateEmail'):
         val = node.get(k)
-        if isinstance(val, str):
+        if isinstance(val, str) and '@' in val:
             mails.append(val.removeprefix('mailto:'))
         elif isinstance(val, list):
-            mails.extend(str(x).removeprefix('mailto:') for x in val if isinstance(x, str))
-    for k in ('telephone', 'phone'):
+            mails.extend(str(x).removeprefix('mailto:') for x in val if isinstance(x, str) and '@' in x)
+    for k in ('telephone', 'phone', 'phones', 'phoneNumber', 'contactPhone', 'whatsapp', 'mobile'):
         val = node.get(k)
         if isinstance(val, str):
             tels.append(val)
@@ -733,8 +750,8 @@ def _walk_jsonld(node: Any, mails: list[str], tels: list[str], addr_out: dict[st
     addr = node.get('address')
     if isinstance(addr, dict):
         street = str(addr.get('streetAddress') or '').strip()
-        locality = str(addr.get('addressLocality') or '').strip()
-        region = str(addr.get('addressRegion') or '').strip()
+        locality = str(addr.get('addressLocality') or addr.get('district') or '').strip()
+        region = str(addr.get('addressRegion') or addr.get('city') or '').strip()
         postal = str(addr.get('postalCode') or '').strip()
         full = ', '.join(x for x in (street, locality, region, postal) if x)
         if full and not addr_out.get('address'):
@@ -743,14 +760,25 @@ def _walk_jsonld(node: Any, mails: list[str], tels: list[str], addr_out: dict[st
             addr_out['province'] = region[:100]
         if locality and not addr_out.get('district'):
             addr_out['district'] = locality[:100]
-    elif isinstance(addr, str) and addr.strip() and not addr_out.get('address'):
+    elif isinstance(addr, str) and addr.strip() and len(addr.strip()) >= 8 and not addr_out.get('address'):
         addr_out['address'] = addr.strip()[:500]
-    for k in ('@graph', 'contactPoint', 'department', 'subOrganization', 'location', 'mainEntity'):
-        if k in node:
-            _walk_jsonld(node[k], mails, tels, addr_out)
+    for k, v in node.items():
+        if isinstance(v, (dict, list)) and k in (
+            '@graph', 'contactPoint', 'department', 'subOrganization', 'location', 'mainEntity',
+            'props', 'pageProps', 'siteData', 'company', 'contact', 'footer', 'settings', 'branches', 'stores',
+        ):
+            _walk_jsonld(v, mails, tels, addr_out, depth + 1)
 
 
-class Page(HTMLParser):
+RSC_JSON_KV = re.compile(
+    r'\\?"(?:email|contactEmail|telephone|phone|whatsapp)\\?"\s*:\s*\\?"([^"\\]{4,120})\\?"',
+    re.I,
+)
+
+
+class _StdlibPage(HTMLParser):
+    """Pure-Python fallback parser when selectolax C99 Lexbor is unavailable."""
+
     def __init__(self, txt: str) -> None:
         super().__init__(convert_charrefs=True)
         self.text: list[str] = []
@@ -760,8 +788,8 @@ class Page(HTMLParser):
         self.title: list[str] = []
         self.addr_info: dict[str, str] = {}
         self.skip = 0
-        self.in_jsonld = False
-        self._jsonld_buf: list[str] = []
+        self.in_json = False
+        self._json_buf: list[str] = []
         self.intitle = False
         self.anchor: list[str] | None = None
         self.feed(txt)
@@ -769,16 +797,29 @@ class Page(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         d = {k.lower(): (v or '') for k, v in attrs}
-        cf = d.get('data-cfemail')
-        if cf and not self.skip:
-            dec = decode_cfemail(cf)
-            if dec:
-                self.mail.append(dec)
+        if not self.skip:
+            cf = d.get('data-cfemail')
+            if cf:
+                if dec := decode_cfemail(cf):
+                    self.mail.append(dec)
+            if d.get('data-email'):
+                self.mail.append(d['data-email'])
+            if d.get('data-phone'):
+                self.tel.append(d['data-phone'])
+        if tag == 'meta' and not self.skip:
+            prop = (d.get('property') or d.get('name') or '').lower()
+            content = d.get('content', '').strip()
+            if content:
+                if prop in ('og:email', 'business:contact_data:email'):
+                    self.mail.append(content)
+                elif prop in ('og:phone_number', 'business:contact_data:phone_number'):
+                    self.tel.append(content)
         if tag == 'script':
             typ = d.get('type', '').split(';', 1)[0].strip().lower()
-            if typ == 'application/ld+json' and not self.skip:
-                self.in_jsonld = True
-                self._jsonld_buf = []
+            sid = d.get('id', '').strip()
+            if (typ == 'application/ld+json' or sid in ('__NEXT_DATA__', '__NUXT_DATA__')) and not self.skip:
+                self.in_json = True
+                self._json_buf = []
                 return
             self.skip += 1
             return
@@ -797,26 +838,24 @@ class Page(HTMLParser):
             if low.startswith('mailto:'):
                 self.mail.append(unquote(href[7:].split('?')[0]))
             elif '/cdn-cgi/l/email-protection' in low:
-                dec = decode_cfemail(href)
-                if dec:
+                if dec := decode_cfemail(href):
                     self.mail.append(dec)
             elif low.startswith('tel:'):
                 self.tel.append(href[4:])
             elif 'wa.me/' in low or 'whatsapp' in low:
-                wp = _whatsapp_phone(href)
-                if wp:
+                if wp := _whatsapp_phone(href):
                     self.tel.append(wp)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag == 'script' and self.in_jsonld:
-            self.in_jsonld = False
-            raw_json = ''.join(self._jsonld_buf).strip()
-            if raw_json and len(raw_json) <= 300_000:
+        if tag == 'script' and self.in_json:
+            self.in_json = False
+            raw_json = ''.join(self._json_buf).strip()
+            if raw_json and len(raw_json) <= 600_000:
                 try:
                     _walk_jsonld(json.loads(raw_json), self.mail, self.tel, self.addr_info)
                 except (ValueError, TypeError, RecursionError):
                     pass
-            self._jsonld_buf = []
+            self._json_buf = []
             return
         if tag in ('script', 'style', 'template', 'noscript') and self.skip:
             self.skip -= 1
@@ -826,8 +865,8 @@ class Page(HTMLParser):
             self.anchor = None
 
     def handle_data(self, s: str) -> None:
-        if self.in_jsonld:
-            self._jsonld_buf.append(s)
+        if self.in_json:
+            self._json_buf.append(s)
             return
         if self.skip:
             return
@@ -837,14 +876,114 @@ class Page(HTMLParser):
         if self.anchor is not None:
             self.anchor[1] += ' ' + s[:160]
 
+
+class Page:
+    """C99 Lexbor-accelerated HTML5 & SPA hydration contact extractor."""
+
+    def __init__(self, txt: str) -> None:
+        self.links: list[list[str]] = []
+        self.mail: list[str] = []
+        self.tel: list[str] = []
+        self.title: list[str] = []
+        self.addr_info: dict[str, str] = {}
+        self._visible_text: str = ''
+
+        if not HAS_LEXBOR:
+            fb = _StdlibPage(txt)
+            self.links = fb.links
+            self.mail = fb.mail
+            self.tel = fb.tel
+            self.title = fb.title
+            self.addr_info = fb.addr_info
+            self._visible_text = ' '.join(fb.text)
+            return
+
+        tree = LexborHTMLParser(txt)
+
+        # 1. Extract structured JSON-LD + Next.js/Nuxt hydration state BEFORE stripping scripts
+        for sc in tree.css('script'):
+            attrs = sc.attrs
+            typ = (attrs.get('type') or '').split(';', 1)[0].strip().lower()
+            sid = (attrs.get('id') or '').strip()
+            if typ == 'application/ld+json' or sid in ('__NEXT_DATA__', '__NUXT_DATA__'):
+                raw_json = sc.text(deep=True).strip()
+                if raw_json and len(raw_json) <= 600_000:
+                    try:
+                        _walk_jsonld(json.loads(raw_json), self.mail, self.tel, self.addr_info)
+                    except (ValueError, TypeError, RecursionError):
+                        pass
+            else:
+                # Next.js App Router RSC payload ONLY if explicit self.__next_f.push marker exists
+                body_js = sc.text(deep=True)
+                if 'self.__next_f.push' in body_js:
+                    for m in RSC_JSON_KV.finditer(body_js):
+                        val = m.group(1)
+                        if '@' in val:
+                            self.mail.append(val)
+                        else:
+                            self.tel.append(val)
+
+        # 2. Extract OpenGraph / Business Contact meta tags
+        for meta_node in tree.css('meta'):
+            ma = meta_node.attrs
+            prop = (ma.get('property') or ma.get('name') or '').lower()
+            content = (ma.get('content') or '').strip()
+            if content:
+                if prop in ('og:email', 'business:contact_data:email'):
+                    self.mail.append(content)
+                elif prop in ('og:phone_number', 'business:contact_data:phone_number'):
+                    self.tel.append(content)
+
+        # 3. Strip non-visible containers completely so inline JS/CSS never pollutes emails/phones
+        tree.strip_tags(['script', 'style', 'template', 'noscript'])
+
+        t_node = tree.css_first('title')
+        if t_node is not None:
+            t_str = t_node.text(separator=' ', strip=True)
+            if t_str:
+                self.title.append(t_str[:200])
+
+        # 4. Extract Cloudflare data-cfemail and explicit data-email / data-phone attributes
+        for cf_node in tree.css('[data-cfemail]'):
+            cf_hex = cf_node.attrs.get('data-cfemail') or ''
+            if dec := decode_cfemail(cf_hex):
+                self.mail.append(dec)
+        for de_node in tree.css('[data-email]'):
+            if de_val := (de_node.attrs.get('data-email') or '').strip():
+                self.mail.append(de_val)
+        for dp_node in tree.css('[data-phone]'):
+            if dp_val := (dp_node.attrs.get('data-phone') or '').strip():
+                self.tel.append(dp_val)
+
+        # 5. Extract anchors, mailto:, tel:, WhatsApp links
+        for a_node in tree.css('a[href]'):
+            href = (a_node.attrs.get('href') or '').strip()
+            if not href:
+                continue
+            label = a_node.text(separator=' ', strip=True)[:160]
+            self.links.append([href, label])
+            low = href.lower()
+            if low.startswith('mailto:'):
+                self.mail.append(unquote(href[7:].split('?')[0]))
+            elif '/cdn-cgi/l/email-protection' in low:
+                if dec := decode_cfemail(href):
+                    self.mail.append(dec)
+            elif low.startswith('tel:'):
+                self.tel.append(href[4:])
+            elif 'wa.me/' in low or 'whatsapp' in low:
+                if wp := _whatsapp_phone(href):
+                    self.tel.append(wp)
+
+        root_node = tree.body or tree.root
+        self._visible_text = root_node.text(separator=' ', strip=True) if root_node is not None else ''
+
     def phones(self) -> list[str]:
         explicit = {v for raw in self.tel if (v := phone_normalize(raw))}
-        visible = ' '.join(self.text)
-        from_text = extract_text_phones(visible)
+        from_text = extract_text_phones(self._visible_text)
         return sorted(explicit | from_text)[:50]
 
     def emails(self, scope: str = '') -> list[str]:
-        alltext = deobfuscate_emails(' '.join(self.text + self.mail))
+        alltext = deobfuscate_emails(self._visible_text + ' ' + ' '.join(self.mail))
         stem = brand_stem(scope)
         result: set[str] = set()
         for m in EMAIL.finditer(alltext):
@@ -853,7 +992,7 @@ class Page(HTMLParser):
             if len(e) > 254 or local.startswith('.') or '..' in local:
                 continue
             tld = domain.rsplit('.', 1)[-1]
-            if tld in BAD_EMAIL_TLDS or domain in BAD_EMAIL_DOMAINS:
+            if tld in BAD_EMAIL_TLDS or domain in BAD_EMAIL_DOMAINS or any(domain.endswith('.' + bd) for bd in BAD_EMAIL_DOMAINS):
                 continue
             clean_local = re.sub(r'[^a-z0-9]', '', local)
             is_brand_box = bool(stem and (clean_local == stem or (clean_local.startswith(stem) and len(clean_local) <= len(stem) + 4)))
@@ -1081,6 +1220,14 @@ async def async_crawl(
 
     await record_emails(p0.emails(scope), r0.url)
     todo = _rank_contact_links(p0.links, r0.url, scope, visited, set())
+    if not todo and not found:
+        for fallback_slug in ('/iletisim', '/contact'):
+            try:
+                cand_u = normalize(urljoin(r0.url, fallback_slug))
+                if domain_key(cand_u) == scope and cand_u not in visited:
+                    todo.append(cand_u)
+            except ScanError:
+                pass
 
     # Smart fast-path: if homepage already yielded same-domain email + phone, inspect at most 2 top contact pages.
     has_strong = any(c['same_domain'] for c in found.values()) and bool(phones)

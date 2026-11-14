@@ -398,5 +398,111 @@ class V3GeospatialAndBatchTests(unittest.TestCase):
             self.assertFalse(ET.fromstring(sh_xml.encode('utf-8')).findall('.//m:f', ns))
 
 
+class V4CleanlinessAndLexborTests(unittest.TestCase):
+    def test_nextjs_hydration_rsc_opengraph_and_junk_hygiene(self) -> None:
+        from engine import HAS_LEXBOR, phone_normalize
+
+        self.assertTrue(HAS_LEXBOR)
+        next_payload = json.dumps({
+            'props': {
+                'pageProps': {
+                    'company': {
+                        'contactEmail': 'satis@inegolmobilya.com.tr',
+                        'phone': '+90 224 715 20 30',
+                    }
+                }
+            }
+        })
+        html = (
+            '<meta property="og:email" content="ihracat@inegolmobilya.com.tr">'
+            f'<script id="__NEXT_DATA__" type="application/json">{next_payload}</script>'
+            '<script>self.__next_f.push([1,"{\\"email\\":\\"proje@inegolmobilya.com.tr\\",\\"telephone\\":\\"+905324445566\\"}"])</script>'
+            '<p>Font: info@latofonts.com | Tracker: info@sentry.io | Sahte Tel: 0212 000 00 00 ve 0555 555 55 55</p>'
+        )
+        p = Page(html)
+        self.assertEqual(
+            p.emails('inegolmobilya.com.tr'),
+            ['ihracat@inegolmobilya.com.tr', 'proje@inegolmobilya.com.tr', 'satis@inegolmobilya.com.tr'],
+        )
+        self.assertEqual(p.phones(), ['+902247152030', '+905324445566'])
+        self.assertEqual(phone_normalize('0212 000 00 00'), '')
+        self.assertEqual(phone_normalize('+90 555 555 55 55'), '')
+
+    def test_poi_sme_email_unlock_freeform_province_and_spatial_dedup(self) -> None:
+        from scripts.build_shards import build_shards
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db_file = Path(tmp) / 'v4.sqlite3'
+            st = Store(db_file)
+            try:
+                features = {
+                    'type': 'FeatureCollection',
+                    'features': [
+                        {
+                            'type': 'Feature',
+                            'id': 'bursa_1',
+                            'geometry': {'type': 'Point', 'coordinates': [29.51000, 40.07800]},
+                            'properties': {
+                                'names': {'primary': 'İnegöl Prestij Koltuk'},
+                                'taxonomy': {'primary': 'furniture_store'},
+                                'websites': ['https://inegolprestij.com.tr'],
+                                'emails': ['inegol.prestij@hotmail.com'],
+                                'phones': ['+90 224 711 22 33'],
+                                'addresses': [{'freeform': 'Ertuğrulgazi Mah. İnegöl/BURSA', 'locality': 'İnegöl', 'country': 'TR'}],
+                                'confidence': 0.94,
+                            },
+                        },
+                        {
+                            'type': 'Feature',
+                            'id': 'bursa_1_shadow',
+                            'geometry': {'type': 'Point', 'coordinates': [29.51010, 40.07808]},
+                            'properties': {
+                                'names': {'primary': 'İnegöl Prestij Koltuk'},
+                                'taxonomy': {'primary': 'furniture_store'},
+                                'emails': ['satis@inegolprestij.com.tr'],
+                                'phones': ['+90 532 711 22 34'],
+                                'addresses': [{'freeform': 'Ertuğrulgazi Mah. Mobilya Cad. No:8 İnegöl/BURSA', 'locality': 'İnegöl', 'country': 'TR'}],
+                                'confidence': 0.72,
+                            },
+                        },
+                        {
+                            'type': 'Feature',
+                            'id': 'closed_shop',
+                            'geometry': {'type': 'Point', 'coordinates': [29.52, 40.08]},
+                            'properties': {
+                                'names': {'primary': 'Kapanmış Mobilya'},
+                                'taxonomy': {'primary': 'furniture_store'},
+                                'operating_status': 'temporarily_closed',
+                                'confidence': 0.85,
+                            },
+                        },
+                    ],
+                }
+                catalog.ingest(st, features, 'Bursa, Türkiye')
+                self.assertEqual(catalog._infer_province_from_freeform('Organize Sanayi Cad. No: 12 / '), '')
+                self.assertEqual(catalog._infer_province_from_freeform('Yeşilköy Mah. / İSTANBUL'), 'İstanbul')
+                merged_cnt = catalog.deduplicate_region(st, 'Bursa, Türkiye')
+                self.assertEqual(merged_cnt, 1)
+
+                port = catalog.portfolio_listing(st, 'Mobilya', 'Bursa, Türkiye')
+                self.assertEqual(port['total'], 1)
+                row = port['rows'][0]
+                self.assertEqual(row['city'], 'Bursa')
+                self.assertEqual(row['district'], 'İnegöl')
+                self.assertEqual(row['emails'], ['inegol.prestij@hotmail.com', 'satis@inegolprestij.com.tr'])
+                self.assertEqual(row['phones'], ['+902247112233', '+905327112234'])
+
+                import gzip as gz_mod
+                out_shards = Path(tmp) / 'shards'
+                manifest = build_shards(db_file, out_shards)
+                self.assertEqual(manifest['version'], 4)
+                bursa_shard = json.loads(gz_mod.decompress((out_shards / 'bursa.json.gz').read_bytes()).decode('utf-8'))
+                self.assertEqual(bursa_shard['v'], 4)
+                self.assertEqual(len(bursa_shard['rows']), 1)
+                self.assertIn('İnegöl', bursa_shard['dists'])
+            finally:
+                st.close()
+
+
 if __name__ == '__main__':
     unittest.main()

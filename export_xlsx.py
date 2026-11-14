@@ -40,7 +40,8 @@ def generate(
             # Preload linked website contacts, phones, and extracted JSON-LD address metadata in bulk (0 N+1 queries).
             place_emails: dict[str, set[str]] = defaultdict(set)
             for pid, em in c.execute(
-                'SELECT l.place_id, t.email FROM place_jobs l JOIN contacts t ON t.job_id = l.job_id'
+                "SELECT l.place_id, t.email FROM place_jobs l JOIN contacts t ON t.job_id = l.job_id "
+                "WHERE t.mx NOT IN ('nxdomain', 'null_mx')"
             ):
                 place_emails[pid].add(em)
 

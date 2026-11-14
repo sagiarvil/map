@@ -1,14 +1,26 @@
-LEAD INTELLIGENCE PRO V3 INDUSTRIAL — DOĞRULAMA RAPORU
+LEAD INTELLIGENCE PRO V4 — DOĞRULAMA VE KALİTE KAPILARI RAPORU
+==============================================================
 Tarih: 2026-11-14
 Hedef Canlı Arayüz: https://haritalar.web.app/
-GitHub Depo: https://github.com/sagiarvil/map
+Yerel Turbo Köprü: http://127.0.0.1:8765 (128 HTTP/2 Korutin + C99 selectolax Lexbor)
 
-KALİTE KAPILARI:
-1. Sözdizim (Syntax): Python py_compile (app, engine, catalog, export_xlsx, scripts/build_shards) + Node --check (static/app.js, hosting/app.js, hosting/xlsx-engine.js) -> PASS
-2. BOM Kontrolü: Tüm kaynak dosyalarda 0xEF,0xBB,0xBF = 0 -> PASS
-3. OWASP & PNA Güvenliği: Parametrik SQLite/FTS5 sorguları, formül enjeksiyonu korumalı OOXML inlineStr .xlsx, sıkı Origin beyaz listesi (127.0.0.1 + https://haritalar.web.app) -> PASS
-4. Birim & Entegrasyon Testleri: 56 / 56 test OK (3.99s) -> PASS
+1. 4 KALİTE KAPISI SONUÇLARI
+----------------------------
+[PASS] Kapı 1 — Sözdizim (Syntax):
+       python -m py_compile app.py engine.py catalog.py export_xlsx.py scripts/*.py tests/*.py -> 0 hata
+       node --check static/app.js hosting/app.js hosting/xlsx-engine.js -> 0 hata
+[PASS] Kapı 2 — Saf UTF-8 (BOM-Free):
+       0xEF,0xBB,0xBF içeren kaynak dosyası sayısı: 0
+[PASS] Kapı 3 — OWASP Güvenlik & Veri Etiği:
+       SSRF özel ağ blokajı, robots.txt uyumu, CAPTCHA/403/429 durdurma, CSV/XLSX formül enjeksiyon koruması aktif.
+[PASS] Kapı 4 — Birim ve Entegrasyon Test Kanıtı:
+       Ran 58 tests in 3.832s -> OK (58/58 PASS)
 
-CANLI İZMİR VERİ KANITI:
-- Toplam İzmir İşletmesi (CDN Shard & SQLite): 173.385 firma (60.733 web siteli, 116.888 telefonlu, 16.017 e-postalı)
-- İzmir "Mobilya" Sektör Eşleşmesi: 4.422 firma | 1.921 web sitesi | 3.876 doğrulanmış telefon | 843 kurumsal e-posta (471 MX + aynı domain)
+2. V4 VERİ HİJYENİ, TAZELİK VE KAPSAM KANITI (12 SANAYİ MERKEZİ)
+----------------------------------------------------------------
+- Toplam Tekilleştirilmiş Aktif Firma : 1,026,580 (5,927 mükerrer harita pini birleştirildi)
+- Kurumsal Web Sitesi Olan Firma      : 449,637 (%43.8)
+- Doğrudan E-postası Olan Firma       : 365,090 (%35.6 — ölü MX ve tracker/webfont çöpleri elendi)
+- Standart E.164 Telefonlu Firma      : 735,972 (%71.7 — sahte tekrarlı numaralar elendi)
+- Hazır Sıkıştırılmış CDN Paketleri   : İstanbul, İzmir, Ankara, Bursa, Antalya, Kocaeli,
+                                        Konya, Adana, Gaziantep, Kayseri, Denizli, Manisa (.json.gz)
