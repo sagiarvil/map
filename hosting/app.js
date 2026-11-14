@@ -110,6 +110,60 @@
   let turboPageData = null;     // Server-side page response when using Turbo DB directly
   let currentOffset = 0;
   let activeMode = 'cloud';     // 'cloud' | 'turbo-db'
+  let hasStartedSearch = false; // Never auto-populate results before user clicks "Firmaları Bul & Getir"
+  let searchInFlight = false;
+
+  const CATEGORY_TR = {
+    'furniture store': 'Mobilya Mağazası',
+    'furniture manufacturer': 'Mobilya Üreticisi',
+    'furniture wholesaler': 'Toptan Mobilya',
+    'furniture assembly': 'Mobilya Montaj & Uygulama',
+    'office furniture store': 'Ofis Mobilyaları',
+    'mattress store': 'Yatak & Baza Mağazası',
+    'home goods store': 'Ev & Dekorasyon',
+    'carpet store': 'Halı & Zemin Mağazası',
+    'rug store': 'Halı & Kilim Mağazası',
+    'lighting store': 'Aydınlatma & Avize',
+    'interior design': 'İç Mimarlık & Tasarım',
+    'kitchen remodeling': 'Mutfak & Dolap Tasarım',
+    'cabinet maker': 'Mutfak & Mobilya İmalatı',
+    'carpenter': 'Marangoz & Ahşap Atölyesi',
+    'upholstery service': 'Koltuk Döşeme & İmalat',
+    'woodworking': 'Ahşap İşleme & Doğrama',
+    'hardware store': 'Yapı Market & Hırdavat',
+    'building supply store': 'İnşaat & Yapı Malzemeleri',
+    'general contractor': 'Müteahhitlik & İnşaat',
+    'construction company': 'İnşaat Firması',
+    'architectural designer': 'Mimarlık Ofisi',
+    'metal fabricator': 'Metal & Çelik İmalat',
+    'machine shop': 'Makina & Torna Sanayi',
+    'industrial equipment': 'Endüstriyel Ekipman'
+  };
+
+  function formatCategoryLabel(cat, fallbackSector) {
+    const raw = String(cat || '').trim();
+    if (!raw) return fallbackSector || 'İşletme';
+    const key = raw.toLowerCase();
+    return CATEGORY_TR[key] || raw;
+  }
+
+  function resetResultsView(bannerMsg = '') {
+    activeRecords = [];
+    turboPageData = null;
+    $('resultsSection').hidden = true;
+    $('emptyPrompt').hidden = false;
+    $('enrichBtn').disabled = true;
+    $('exportXlsxBtn').disabled = true;
+    $('exportCsvBtn').disabled = true;
+    $('districtStrip').replaceChildren();
+    $('resultsBody').replaceChildren();
+
+    if (bannerMsg) {
+      setStatus(bannerMsg, 'Hazır', false, null);
+    } else {
+      $('statusBanner').hidden = true;
+    }
+  }
 
   // Helpers
   function fold(s) {
@@ -138,9 +192,15 @@
 
   function setStatus(msg, badgeText = '', isError = false, progress = null) {
     const banner = $('statusBanner');
+    if (!msg) {
+      banner.hidden = true;
+      return;
+    }
+    banner.hidden = false;
     banner.classList.toggle('error', Boolean(isError));
     $('statusText').textContent = msg;
-    if (badgeText) $('statusSub').textContent = badgeText;
+    $('statusSub').textContent = badgeText || '';
+    $('statusSub').hidden = !badgeText;
     const track = $('progressTrack');
     const bar = $('progressBar');
     if (progress === null) {
@@ -238,9 +298,7 @@
     const prev = sel.value || 'İzmir';
     sel.replaceChildren();
     for (const prov of TR_PROVINCES) {
-      const slug = slugify(prov);
-      const hasShard = Boolean(manifest.shards && manifest.shards[slug]);
-      const opt = el('option', hasShard ? `${prov} ⚡ (Hazır CDN)` : prov);
+      const opt = el('option', prov);
       opt.value = prov;
       if (prov === prev) opt.selected = true;
       sel.append(opt);
@@ -251,7 +309,7 @@
     const sel = $('districtSelect');
     const prev = sel.value;
     sel.replaceChildren();
-    const allOpt = el('option', 'Tüm İlçeler (Tam İl Kapsamı)');
+    const allOpt = el('option', 'Tüm İlçeler');
     allOpt.value = '';
     sel.append(allOpt);
 
@@ -282,9 +340,8 @@
         turboToken = data.token;
         const badge = $('engineBadge');
         badge.className = 'engine-badge turbo';
-        $('engineText').textContent = 'Yerel Turbo Motor Aktif (128 HTTP/2 Korutin)';
-        $('enrichBtn').textContent = 'Web Sitelerini Derin Tara (128 Korutin)';
-        $('kpiEngineMode').textContent = 'Turbo SQLite + HTTP/2 Aktif';
+        $('engineText').textContent = 'Hızlı Tarama Aktif';
+        $('enrichBtn').textContent = 'Web Sitelerinden E-posta Tara';
         return true;
       }
     } catch {
@@ -294,9 +351,8 @@
     turboToken = '';
     const badge = $('engineBadge');
     badge.className = 'engine-badge cloud';
-    $('engineText').textContent = 'Bulut & CDN Motoru Aktif (Web Modu)';
-    $('enrichBtn').textContent = 'E-posta DNS MX Doğrula (Canlı)';
-    $('kpiEngineMode').textContent = 'Bulut CDN + Overpass Aktif';
+    $('engineText').textContent = 'Hazır';
+    $('enrichBtn').textContent = 'E-posta Kayıtlarını Doğrula';
     return false;
   }
 
@@ -354,15 +410,9 @@
     if (shardCache.has(slug)) return shardCache.get(slug);
     const meta = manifest.shards && manifest.shards[slug];
     if (!meta) return null;
-    setStatus(
-      `${meta.city} endüstriyel CDN veri paketi indiriliyor (${fmt(meta.count)} işletme)…`,
-      'CDN Akışı',
-      false,
-      35
-    );
+    setStatus(`${meta.city} firma rehberi yükleniyor…`, 'Yükleniyor', false, 45);
     const res = await fetch(meta.file);
-    if (!res.ok) throw new Error('CDN veri paketi okunamadı');
-    setStatus(`${meta.city} indeks belleğe açılıyor…`, 'FTS İndeks', false, 75);
+    if (!res.ok) throw new Error('Veri paketi okunamadı');
     const buf = await res.arrayBuffer();
     const u8 = new Uint8Array(buf);
     let raw;
@@ -573,21 +623,23 @@
     renderDistrictCounts(top, records.length, selectedDistrict);
   }
 
-  // Render Table & KPIs
+  // Render Table & Summary Strip
   function renderTableRows(rows, totalCount, stats) {
+    $('emptyPrompt').hidden = true;
+    $('resultsSection').hidden = false;
+    $('enrichBtn').disabled = totalCount <= 0;
+    $('exportXlsxBtn').disabled = totalCount <= 0;
+    $('exportCsvBtn').disabled = totalCount <= 0;
+
     $('kpiTotal').textContent = fmt(stats.total);
     $('kpiWebsites').textContent = fmt(stats.websites);
-    $('kpiWebRate').textContent = stats.total
-      ? `%${((100 * stats.websites) / stats.total).toFixed(1)} site kapsaması`
-      : 'Kurumsal domain';
     $('kpiEmails').textContent = fmt(stats.with_email);
     $('kpiPhones').textContent = fmt(stats.with_phone);
     $('kpiBoth').textContent = fmt(stats.with_both);
 
     const f = currentFilters();
-    $('kpiRegionSub').textContent = `${f.city}${f.district ? ' / ' + f.district : ''} · ${f.sector || 'Tüm Sektörler'}`;
     $('activeFilterSummary').textContent =
-      `${f.sector || 'Tüm Sektörler'} · ${f.city}${f.district ? ' (' + f.district + ')' : ''} · Toplam ${fmt(totalCount)} firma`;
+      `${f.city}${f.district ? ' / ' + f.district : ''} · ${f.sector || 'Tüm Sektörler'}`;
 
     const start = totalCount ? currentOffset + 1 : 0;
     const end = Math.min(currentOffset + PAGE_SIZE, totalCount);
@@ -617,7 +669,7 @@
 
       // 2. Sektör
       const tdCat = el('td');
-      tdCat.append(el('span', r.category || f.sector || 'İşletme', 'badge'));
+      tdCat.append(el('span', formatCategoryLabel(r.category, f.sector), 'badge'));
 
       // 3. İl / İlçe
       const tdLoc = el('td');
@@ -779,13 +831,25 @@
     );
   }
 
-  // Execute Search (Dual Engine)
-  async function executeSearch(allowRemoteFetch = true) {
+  // Execute Search (Dual Engine — strictly user-initiated)
+  async function executeSearch(allowRemoteFetch = false) {
+    if (!hasStartedSearch && !allowRemoteFetch) {
+      resetResultsView();
+      return;
+    }
+    if (searchInFlight) return;
+    searchInFlight = true;
+    $('searchBtn').disabled = true;
+
     const f = currentFilters();
     const slug = slugify(f.city);
 
     try {
-      // 1. If Turbo Local Server is connected and no inline quick-search text is typed, check Turbo DB first!
+      if (allowRemoteFetch) {
+        hasStartedSearch = true;
+        $('districtStrip').replaceChildren();
+      }
+
       if (turboConnected && !f.quick) {
         const params = new URLSearchParams({
           sector: f.sector,
@@ -801,28 +865,19 @@
           activeMode = 'turbo-db';
           turboPageData = pData;
           renderTableRows(pData.rows, pData.total, pData);
-          setStatus(
-            `Yerel Turbo Veritabanından ${fmt(pData.total)} firma yüklendi (${fmt(pData.with_email)} e-postalı, ${fmt(pData.with_phone)} telefonlu).`,
-            'Turbo SQLite',
-            false,
-            null
-          );
-          // Render district chips directly from Turbo SQLite district aggregation
+          setStatus('', '', false, null);
           if (Array.isArray(pData.districts) && pData.districts.length) {
             populateDistricts(f.city, pData.districts.map(d => d[0]));
             renderDistrictCounts(pData.districts, pData.total, f.district);
+          } else {
+            $('districtStrip').replaceChildren();
           }
           return;
         }
 
-        // If Turbo DB doesn't have this city yet and user clicked "Firmaları Bul & Getir", download via PyArrow S3 + Overpass!
-        if (allowRemoteFetch && $('consentCheck').checked) {
-          setStatus(
-            `${f.city} için C++ PyArrow S3 GeoParquet + OpenStreetMap tam il taraması başlatıldı (yaklaşık 15–25 sn)…`,
-            'PyArrow S3 Akışı',
-            false,
-            40
-          );
+        if (allowRemoteFetch) {
+          resetResultsView();
+          setStatus(`${f.city} bölgesi taranıyor, lütfen bekleyin (yaklaşık 15–20 sn)…`, 'Taranıyor', false, 45);
           const [w, s, e, n] = await resolveCityBbox(f.city, f.country);
           await turboApi('places/download', {
             region: f.region,
@@ -835,47 +890,55 @@
           activeMode = 'turbo-db';
           turboPageData = pAfter;
           renderTableRows(pAfter.rows, pAfter.total, pAfter);
-          setStatus(
-            `${f.city} başarıyla indirildi: ${fmt(pAfter.total)} eşleşen firma hazır!`,
-            'Tamamlandı',
-            false,
-            null
-          );
+          if (Array.isArray(pAfter.districts) && pAfter.districts.length) {
+            populateDistricts(f.city, pAfter.districts.map(d => d[0]));
+            renderDistrictCounts(pAfter.districts, pAfter.total, f.district);
+          }
+          setStatus('', '', false, null);
+          return;
+        }
+
+        if (!allowRemoteFetch) {
+          renderTableRows([], 0, { total: 0, websites: 0, with_email: 0, with_phone: 0, with_both: 0 });
+          setStatus('', '', false, null);
           return;
         }
       }
 
-      // 2. Cloud / Browser Engine: Use pre-indexed CDN shard if available!
       if (f.country === 'Türkiye' && manifest.shards && manifest.shards[slug]) {
         const shard = await loadCdnShard(slug);
         if (shard) {
           filterShardRecords(shard);
+          setStatus('', '', false, null);
           return;
         }
       }
 
-      // 3. Cloud Live Overpass Discovery for any other city/country
       if (allowRemoteFetch) {
+        resetResultsView();
         const liveDataset = await fetchLiveOverpassCity(f.city, f.country, f.sector);
         filterShardRecords(liveDataset);
+        setStatus('', '', false, null);
+      } else {
+        resetResultsView();
       }
     } catch (err) {
+      resetResultsView();
       setStatus(err.message || 'Arama sırasında bir hata oluştu.', 'Hata', true, null);
+    } finally {
+      searchInFlight = false;
+      $('searchBtn').disabled = false;
     }
   }
 
-  // Enrich Action: Turbo 128-Worker Deep Website Crawl OR Cloud Live Google DoH MX Verification
+  // Enrich Action
   async function handleEnrich() {
-    if (!$('consentCheck').checked) {
-      setStatus('Lütfen veri ve tarama kuralları onay kutusunu işaretleyin.', 'Onay Gerekli', true, null);
-      return;
-    }
     const f = currentFilters();
 
     if (turboConnected) {
       try {
         $('enrichBtn').disabled = true;
-        setStatus(`${f.city} · ${f.sector} web siteleri 128 HTTP/2 korutin kuyruğuna alınıyor…`, 'Turbo Kuyruk', false, 20);
+        setStatus(`${f.city} web siteleri taranmaya hazırlanıyor…`, 'Hazırlanıyor', false, 20);
         const qRes = await turboApi('places/queue', {
           sector: f.sector || 'İşletme',
           region: f.region,
@@ -885,8 +948,8 @@
         });
         await turboApi('pause', { paused: false });
         setStatus(
-          `${fmt(qRes.added)} yeni kurumsal site kuyruğa eklendi (${fmt(qRes.linked)} işletme bağlantısı). 128 korutin canlı tarıyor…`,
-          'Canlı Tarama',
+          `${fmt(qRes.added)} yeni web sitesi taranıyor…`,
+          'Taranıyor',
           false,
           35
         );
@@ -1102,56 +1165,69 @@
 
   // Wire Event Listeners
   function bindEvents() {
-    $('sectorChips').addEventListener('click', e => {
-      const chip = e.target.closest('.chip');
-      if (!chip) return;
-      document.querySelectorAll('#sectorChips .chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-      $('sectorInput').value = chip.dataset.sector || '';
-      currentOffset = 0;
-      executeSearch(false);
-    });
-
     $('countrySelect').addEventListener('change', () => {
       const isTr = $('countrySelect').value === 'Türkiye';
       $('citySelect').hidden = !isTr;
       $('cityCustomInput').hidden = isTr;
       populateDistricts(isTr ? $('citySelect').value : '');
       currentOffset = 0;
+      hasStartedSearch = false;
+      resetResultsView();
     });
 
     $('citySelect').addEventListener('change', () => {
       populateDistricts($('citySelect').value);
       $('districtSelect').value = '';
       currentOffset = 0;
-      executeSearch(true);
+      hasStartedSearch = false;
+      resetResultsView();
+    });
+
+    $('cityCustomInput').addEventListener('input', () => {
+      currentOffset = 0;
+      hasStartedSearch = false;
+      resetResultsView();
+    });
+
+    $('cityCustomInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        currentOffset = 0;
+        executeSearch(true);
+      }
     });
 
     $('districtSelect').addEventListener('change', () => {
       currentOffset = 0;
-      executeSearch(false);
+      if (hasStartedSearch) executeSearch(false);
     });
 
     $('contactModeSelect').addEventListener('change', () => {
       currentOffset = 0;
-      executeSearch(false);
+      if (hasStartedSearch) executeSearch(false);
     });
 
     let sectorDebounce = null;
     $('sectorInput').addEventListener('input', () => {
-      const v = $('sectorInput').value.trim();
-      document.querySelectorAll('#sectorChips .chip').forEach(c => {
-        c.classList.toggle('active', c.dataset.sector === v);
-      });
+      if (!hasStartedSearch) return;
       clearTimeout(sectorDebounce);
       sectorDebounce = setTimeout(() => {
         currentOffset = 0;
         executeSearch(false);
-      }, 220);
+      }, 250);
+    });
+
+    $('sectorInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        currentOffset = 0;
+        executeSearch(true);
+      }
     });
 
     let quickDebounce = null;
     $('quickSearchInput').addEventListener('input', () => {
+      if (!hasStartedSearch) return;
       clearTimeout(quickDebounce);
       quickDebounce = setTimeout(() => {
         currentOffset = 0;
@@ -1168,12 +1244,6 @@
     $('exportXlsxBtn').addEventListener('click', handleExportXlsx);
     $('exportCsvBtn').addEventListener('click', handleExportCsv);
 
-    $('openMapsBtn').addEventListener('click', () => {
-      const f = currentFilters();
-      const q = `${f.sector} ${f.district} ${f.city} ${f.country}`.trim();
-      window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q), '_blank', 'noopener,noreferrer');
-    });
-
     $('prevPageBtn').addEventListener('click', () => {
       currentOffset = Math.max(0, currentOffset - PAGE_SIZE);
       executeSearch(false);
@@ -1182,19 +1252,6 @@
     $('nextPageBtn').addEventListener('click', () => {
       currentOffset += PAGE_SIZE;
       executeSearch(false);
-    });
-
-    $('reconnectBtn').addEventListener('click', async () => {
-      const ok = await probeTurboBridge();
-      setStatus(
-        ok
-          ? 'Yerel 128-Korutin Mac Turbo Motoru bağlandı!'
-          : 'Yerel Mac servisi algılanmadı; Bulut & CDN motoru ile tam kapasite çalışmaya devam ediliyor.',
-        ok ? 'Turbo Aktif' : 'Bulut Modu',
-        false,
-        null
-      );
-      await executeSearch(false);
     });
   }
 
@@ -1205,12 +1262,6 @@
       const res = await fetch('/data/manifest.json');
       if (res.ok) {
         manifest = await res.json();
-        const shardEntries = Object.values(manifest.shards || {});
-        if (shardEntries.length) {
-          const totalCdnFirms = shardEntries.reduce((acc, s) => acc + (s.count || 0), 0);
-          $('shardHint').textContent =
-            `${shardEntries.length} Büyük İl Anlık CDN (${fmt(totalCdnFirms)} Temiz Firma) · 81 İl & Uluslararası Canlı Keşif`;
-        }
       }
     } catch {
       // Fallback defaults remain active
@@ -1219,22 +1270,8 @@
     populateCities();
     populateDistricts($('citySelect').value);
     bindEvents();
-
+    resetResultsView();
     await probeTurboBridge();
-    await executeSearch(true);
-
-    // If Turbo engine already has active crawl jobs running in background, attach live progress monitor automatically!
-    if (turboConnected) {
-      try {
-        const st = await turboApi('status');
-        const c = st.counts || {};
-        if ((c.queued || 0) + (c.running || 0) > 0) {
-          startTurboLiveMonitor();
-        }
-      } catch {
-        // ignore
-      }
-    }
   }
 
   if (document.readyState === 'loading') {

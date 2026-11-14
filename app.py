@@ -718,8 +718,8 @@ class Handler(BaseHTTPRequestHandler):
                         )
                     )
                     return
-                if not self.server.discovery.acquire(blocking=False):  # type: ignore[attr-defined]
-                    self.out({'error': 'Bir keşif işlemi zaten çalışıyor'}, 409)
+                if not self.server.discovery.acquire(timeout=45.0):  # type: ignore[attr-defined]
+                    self.out({'error': 'Önceki bölge taraması tamamlanıyor, birkaç saniye sonra tekrar deneyin'}, 409)
                     return
                 try:
                     if p == '/api/places/import':

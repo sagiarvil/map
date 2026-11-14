@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Haritalar &amp; Lead Intelligence Pro V3 — Endüstriyel Firma İstihbaratı</title>
-  <meta name="description" content="Sektör, ülke, il, ilçe ve iletişim filtreleriyle endüstriyel B2B firma keşfi ve tek sayfa Excel (.xlsx) dışa aktarım platformu.">
+  <title>Haritalar — Kurumsal Firma &amp; İletişim Rehberi</title>
+  <meta name="description" content="Sektör, il, ilçe ve iletişim filtreleriyle kurumsal firma listeleme ve tek sayfa Excel (.xlsx) indirme sistemi.">
   <link rel="stylesheet" href="/style.css">
   <script src="/xlsx-engine.js" defer></script>
   <script src="/app.js" defer></script>
@@ -13,62 +13,44 @@
   <div class="shell">
     <header class="topbar reveal">
       <div class="brand-wrap">
-        <div class="brand-mark" aria-hidden="true">V3</div>
+        <div class="brand-mark" aria-hidden="true">H</div>
         <div>
-          <h1 class="brand-title">Lead Intelligence Pro — Haritalar İstihbarat Merkezi</h1>
-          <p class="brand-sub">Overture GeoParquet CDN + OpenStreetMap Füzyonu + HTTP/2 Kurumsal İletişim Madenciliği</p>
+          <h1 class="brand-title">Haritalar</h1>
+          <p class="brand-sub">Kurumsal Firma Arama &amp; Doğrulanmış İletişim Rehberi</p>
         </div>
       </div>
       <div class="top-actions">
         <span id="engineBadge" class="engine-badge cloud" role="status">
           <span class="dot"></span>
-          <span id="engineText">Motor kontrol ediliyor…</span>
+          <span id="engineText">Hazır</span>
         </span>
-        <button id="reconnectBtn" class="sm" type="button" title="Yerel Mac 128-Korutin Turbo Motorunu kontrol et">Turbo Köprü Yenile</button>
-        <a href="/downloads/lead-intelligence-pro.zip" class="btn-link sm" download>Mac Turbo Paketi (.zip)</a>
       </div>
     </header>
 
-    <section id="statusBanner" class="status-banner reveal" aria-live="polite">
-      <div class="status-row">
-        <span id="statusText">Veri motoru hazırlanıyor…</span>
-        <span id="statusSub" class="badge">Hazır</span>
-      </div>
-      <div class="progress-track" id="progressTrack" hidden>
-        <div class="progress-bar" id="progressBar"></div>
-      </div>
-    </section>
-
     <main>
-      <section class="card reveal" aria-labelledby="filterHeading">
-        <div class="card-head">
-          <h2 id="filterHeading">Sektörel &amp; Coğrafi Hedefleme Filtreleri</h2>
-          <span id="shardHint">120+ Türkçe B2B Sektör Taksonomisi · 81 İl &amp; Uluslararası Arama</span>
-        </div>
-
-        <div class="chip-bar" id="sectorChips" role="group" aria-label="Hızlı sektör seçimi">
-          <button type="button" class="chip active" data-sector="Mobilya">Mobilya</button>
-          <button type="button" class="chip" data-sector="Mutfak">Mutfak</button>
-          <button type="button" class="chip" data-sector="Ahşap">Ahşap &amp; Marangoz</button>
-          <button type="button" class="chip" data-sector="Dekorasyon">Dekorasyon &amp; İç Mimar</button>
-          <button type="button" class="chip" data-sector="İnşaat">İnşaat &amp; Yapı</button>
-          <button type="button" class="chip" data-sector="Müteahhit">Müteahhit</button>
-          <button type="button" class="chip" data-sector="Mimar">Mimarlık</button>
-          <button type="button" class="chip" data-sector="Metal">Metal &amp; Çelik</button>
-          <button type="button" class="chip" data-sector="Makina">Makina &amp; Otomasyon</button>
-          <button type="button" class="chip" data-sector="Plastik">Plastik &amp; Kalıp</button>
-          <button type="button" class="chip" data-sector="Tekstil">Tekstil &amp; Konfeksiyon</button>
-          <button type="button" class="chip" data-sector="Lojistik">Lojistik &amp; Nakliyat</button>
-          <button type="button" class="chip" data-sector="Otomotiv">Otomotiv</button>
-          <button type="button" class="chip" data-sector="Gıda">Gıda Üretim &amp; Toptan</button>
-          <button type="button" class="chip" data-sector="Elektrik">Elektrik &amp; Enerji</button>
-          <button type="button" class="chip" data-sector="Medikal">Sağlık &amp; Medikal</button>
-        </div>
-
+      <section class="card search-card reveal" aria-label="Firma arama filtreleri">
         <div class="form-grid">
           <div class="field">
-            <label for="sectorInput">Sektör / Anahtar Kelime</label>
-            <input id="sectorInput" type="text" value="Mobilya" placeholder="Örn: Mobilya, Mutfak | Koltuk">
+            <label for="sectorInput">Sektör / Faaliyet Alanı</label>
+            <input id="sectorInput" type="text" list="sectorSuggestions" value="Mobilya" placeholder="Örn: Mobilya, İnşaat, Makina…" autocomplete="off">
+            <datalist id="sectorSuggestions">
+              <option value="Mobilya"></option>
+              <option value="Mutfak"></option>
+              <option value="Ahşap"></option>
+              <option value="Dekorasyon"></option>
+              <option value="İnşaat"></option>
+              <option value="Müteahhit"></option>
+              <option value="Mimarlık"></option>
+              <option value="Metal &amp; Çelik"></option>
+              <option value="Makina"></option>
+              <option value="Plastik"></option>
+              <option value="Tekstil"></option>
+              <option value="Lojistik"></option>
+              <option value="Otomotiv"></option>
+              <option value="Gıda"></option>
+              <option value="Elektrik"></option>
+              <option value="Medikal"></option>
+            </datalist>
           </div>
 
           <div class="field">
@@ -80,90 +62,84 @@
               <option value="İngiltere">İngiltere</option>
               <option value="Fransa">Fransa</option>
               <option value="İtalya">İtalya</option>
+              <option value="İspanya">İspanya</option>
               <option value="ABD">ABD</option>
               <option value="BAE">Birleşik Arap Emirlikleri</option>
+              <option value="Azerbaycan">Azerbaycan</option>
             </select>
           </div>
 
           <div class="field">
-            <label for="citySelect">Şehir / İl</label>
+            <label for="citySelect">İl / Şehir</label>
             <select id="citySelect"></select>
-            <input id="cityCustomInput" type="text" placeholder="Şehir yazın (örn. Berlin, Münih)" hidden>
+            <input id="cityCustomInput" type="text" placeholder="Şehir yazın (Örn: Berlin, Dubai)" hidden>
           </div>
 
           <div class="field">
-            <label for="districtSelect">İlçe / Sanayi Bölgesi</label>
+            <label for="districtSelect">İlçe</label>
             <select id="districtSelect">
-              <option value="">Tüm İlçeler (Tam İl Kapsamı)</option>
+              <option value="">Tüm İlçeler</option>
             </select>
           </div>
 
           <div class="field">
-            <label for="contactModeSelect">Arama Türü (İletişim Filtresi)</label>
+            <label for="contactModeSelect">İletişim Filtresi</label>
             <select id="contactModeSelect">
-              <option value="all" selected>Tüm Firmalar (Maksimum Kapsam)</option>
-              <option value="has_email">E-postası Olanlar (Tel Dahil)</option>
-              <option value="has_phone">Telefonu Olanlar (E-posta Dahil)</option>
+              <option value="all" selected>Tüm Firmalar</option>
+              <option value="has_email">E-postası Olanlar</option>
+              <option value="has_phone">Telefonu Olanlar</option>
               <option value="both">E-posta + Telefon Olanlar</option>
-              <option value="email_only">Sadece E-posta (Telefonsuz)</option>
-              <option value="phone_only">Sadece Telefon (E-postasız)</option>
+              <option value="email_only">Sadece E-posta</option>
+              <option value="phone_only">Sadece Telefon</option>
             </select>
           </div>
         </div>
+
+        <input id="consentCheck" type="checkbox" checked hidden>
 
         <div class="action-bar">
-          <label class="consent-label">
-            <input id="consentCheck" type="checkbox" checked>
-            Açık coğrafi veri (Overture / OpenStreetMap ODbL) ve bağımsız kurumsal site tarama kurallarına uygun kullanıyorum.
-          </label>
           <div class="action-group">
-            <button id="searchBtn" type="button" class="primary">Firmaları Bul &amp; Getir</button>
-            <button id="enrichBtn" type="button">Web Sitelerini Derin Tara</button>
-            <button id="exportXlsxBtn" type="button" class="accent">Excel İndir (.xlsx)</button>
-            <button id="exportCsvBtn" type="button">CSV İndir</button>
-            <button id="openMapsBtn" type="button">Google Maps'te Gör ↗</button>
+            <button id="searchBtn" type="button" class="primary">Firmaları Listele</button>
+            <button id="enrichBtn" type="button" disabled>Web Sitelerinden E-posta Tara</button>
+          </div>
+          <div class="action-group">
+            <button id="exportXlsxBtn" type="button" class="accent" disabled>Excel İndir (.xlsx)</button>
+            <button id="exportCsvBtn" type="button" disabled>CSV İndir</button>
           </div>
         </div>
       </section>
 
-      <section class="kpi-grid" aria-label="Özet metrikler">
-        <article class="kpi reveal">
-          <small>Eşleşen Toplam Firma</small>
-          <strong id="kpiTotal">—</strong>
-          <span id="kpiRegionSub">Seçili bölge ve sektör</span>
-        </article>
-        <article class="kpi reveal">
-          <small>Web Sitesi Bulunan</small>
-          <strong id="kpiWebsites">—</strong>
-          <span id="kpiWebRate">Kurumsal domain</span>
-        </article>
-        <article class="kpi reveal">
-          <small>E-postası Bulunan</small>
-          <strong id="kpiEmails">—</strong>
-          <span>Kurumsal e-posta kaydı</span>
-        </article>
-        <article class="kpi reveal">
-          <small>Telefonu Bulunan</small>
-          <strong id="kpiPhones">—</strong>
-          <span>Doğrulanmış telefon hattı</span>
-        </article>
-        <article class="kpi reveal">
-          <small>Tam İletişim (E-posta + Tel)</small>
-          <strong id="kpiBoth">—</strong>
-          <span id="kpiEngineMode">Çift kanallı erişim</span>
-        </article>
+      <section id="statusBanner" class="status-banner" aria-live="polite" hidden>
+        <div class="status-row">
+          <span id="statusText"></span>
+          <span id="statusSub" class="badge"></span>
+        </div>
+        <div class="progress-track" id="progressTrack" hidden>
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
       </section>
 
-      <section class="card reveal" aria-labelledby="resultsHeading">
-        <div class="card-head">
-          <h2 id="resultsHeading">Firma Portföy Listesi</h2>
-          <span id="activeFilterSummary">Hazırlanıyor…</span>
+      <section id="emptyPrompt" class="empty-hero reveal">
+        <p class="empty-title">Aramaya Başlayın</p>
+        <p class="empty-desc">Yukarıdan <strong>Sektör</strong> ve <strong>İl / Şehir</strong> seçip <strong>Firmaları Listele</strong> butonuna basın.</p>
+      </section>
+
+      <section id="resultsSection" class="card results-card" aria-label="Firma sonuç listesi" hidden>
+        <div class="summary-bar">
+          <div class="summary-metrics">
+            <span class="metric-pill primary-metric"><strong id="kpiTotal">0</strong> Firma</span>
+            <span class="metric-pill">E-posta: <strong id="kpiEmails">0</strong></span>
+            <span class="metric-pill">Telefon: <strong id="kpiPhones">0</strong></span>
+            <span class="metric-pill">Web Sitesi: <strong id="kpiWebsites">0</strong></span>
+            <span class="metric-pill subtle-hide">E-posta + Tel: <strong id="kpiBoth">0</strong></span>
+          </div>
+          <span id="activeFilterSummary" class="filter-tag"></span>
         </div>
 
         <div id="districtStrip" class="district-strip" aria-label="İlçe dağılımı"></div>
 
         <div class="table-toolbar">
-          <input id="quickSearchInput" class="search-inline" type="search" placeholder="Sonuçlarda ara: firma adı, ilçe, web sitesi, e-posta veya telefon…">
+          <input id="quickSearchInput" class="search-inline" type="search" placeholder="Listede ara (firma adı, ilçe, e-posta, telefon)…">
           <div class="pager">
             <button id="prevPageBtn" type="button" class="sm" disabled>← Önceki</button>
             <span id="pageInfoText">0–0 / 0</span>
@@ -176,26 +152,22 @@
             <thead>
               <tr>
                 <th>Firma Adı &amp; Adres</th>
-                <th>Sektör / Kategori</th>
+                <th>Sektör</th>
                 <th>İl / İlçe</th>
-                <th>Kurumsal E-posta</th>
+                <th>E-posta</th>
                 <th>Telefon</th>
-                <th>Web Sitesi &amp; Harita</th>
+                <th>Web &amp; Harita</th>
               </tr>
             </thead>
-            <tbody id="resultsBody">
-              <tr>
-                <td colspan="6" class="empty-state">Veriler yükleniyor…</td>
-              </tr>
-            </tbody>
+            <tbody id="resultsBody"></tbody>
           </table>
         </div>
       </section>
     </main>
 
     <footer class="footer">
-      <span>Lead Intelligence Pro V3 Industrial · Overture Maps Foundation &amp; OpenStreetMap (ODbL)</span>
-      <span>Doğrudan Google Maps kazıma yapılmaz · robots.txt uyumlu ve formül-enjeksiyon korumalı (.xlsx) mimari</span>
+      <span>Haritalar Kurumsal Firma Rehberi · Açık Coğrafi Veri (Overture &amp; OpenStreetMap)</span>
+      <a href="/downloads/lead-intelligence-pro.zip" class="footer-link" download>Masaüstü Hızlandırıcı (.zip)</a>
     </footer>
   </div>
 </body>

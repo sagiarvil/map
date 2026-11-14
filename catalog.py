@@ -248,9 +248,24 @@ PROVINCE_DISTRICTS: dict[str, list[str]] = {
     'Gaziantep': ['Şahinbey', 'Şehitkamil', 'Nizip', 'İslahiye', 'Oğuzeli'],
     'Adana': ['Seyhan', 'Yüreğir', 'Çukurova', 'Sarıçam', 'Ceyhan', 'Kozan'],
     'Kocaeli': ['İzmit', 'Gebze', 'Darıca', 'Çayırova', 'Dilovası', 'Körfez', 'Gölcük', 'Kartepe', 'Başiskele', 'Derince'],
-    'Mersin': ['Akdeniz', 'Mezitli', 'Toroslar', 'Yenişehir', 'Tarsus', 'Erdemli', 'Silifke'],
-    'Denizli': ['Pamukkale', 'Merkezefendi', 'Çivril', 'Acıpayam', 'Tavas', 'Honaz', 'Sarayköy'],
-    'Manisa': ['Yunusemre', 'Şehzadeler', 'Akhisar', 'Turgutlu', 'Salihli', 'Soma', 'Alaşehir'],
+    'Mersin': ['Akdeniz', 'Mezitli', 'Toroslar', 'Yenişehir', 'Tarsus', 'Erdemli', 'Silifke', 'Anamur', 'Mut'],
+    'Denizli': ['Pamukkale', 'Merkezefendi', 'Çivril', 'Acıpayam', 'Tavas', 'Honaz', 'Sarayköy', 'Buldan', 'Çal'],
+    'Manisa': [
+        'Yunusemre', 'Şehzadeler', 'Akhisar', 'Turgutlu', 'Salihli', 'Soma', 'Alaşehir',
+        'Saruhanlı', 'Kula', 'Kırkağaç', 'Demirci', 'Sarıgöl', 'Gördes', 'Selendi', 'Ahmetli', 'Gölmarmara', 'Köprübaşı',
+    ],
+    'Aydın': [
+        'Efeler', 'Nazilli', 'Söke', 'Kuşadası', 'Didim', 'Çine', 'İncirliova', 'Germencik',
+        'Bozdoğan', 'Köşk', 'Kuyucak', 'Sultanhisar', 'Karacasu', 'Yenipazar', 'Buharkent', 'Karpuzlu',
+    ],
+    'Balıkesir': [
+        'Altıeylül', 'Karesi', 'Edremit', 'Bandırma', 'Gönen', 'Ayvalık', 'Burhaniye',
+        'Bigadiç', 'Susurluk', 'Dursunbey', 'Sındırgı', 'İvrindi', 'Erdek', 'Havran',
+    ],
+    'Muğla': ['Bodrum', 'Fethiye', 'Milas', 'Menteşe', 'Marmaris', 'Seydikemer', 'Ortaca', 'Yatağan', 'Dalaman', 'Datça', 'Köyceğiz', 'Ula'],
+    'Sakarya': ['Adapazarı', 'Serdivan', 'Akyazı', 'Erenler', 'Hendek', 'Karasu', 'Geyve', 'Arifiye', 'Sapanca', 'Pamukova'],
+    'Tekirdağ': ['Çorlu', 'Süleymanpaşa', 'Çerkezköy', 'Kapaklı', 'Ergene', 'Malkara', 'Saray', 'Hayrabolu', 'Şarköy', 'Muratlı'],
+    'Eskişehir': ['Odunpazarı', 'Tepebaşı', 'Sivrihisar', 'Çifteler', 'Seyitgazi', 'Alpu', 'İnönü'],
 }
 
 
@@ -263,6 +278,15 @@ def fold(s: Any) -> str:
 PROVINCE_NAMES = {fold(x): x for x in PROVINCES}
 DISTRICT_LOOKUP: dict[str, list[tuple[str, str]]] = {
     prov: [(fold(d), d) for d in dists] for prov, dists in PROVINCE_DISTRICTS.items()
+}
+_dist_owners: dict[str, list[str]] = {}
+for _prov, _dists in PROVINCE_DISTRICTS.items():
+    for _d in _dists:
+        _fd = fold(_d)
+        if _fd not in PROVINCE_NAMES:
+            _dist_owners.setdefault(_fd, []).append(_prov)
+UNIQUE_DISTRICT_PROVINCE: dict[str, str] = {
+    fd: owners[0] for fd, owners in _dist_owners.items() if len(owners) == 1
 }
 FOLDED_ALIASES = {fold(k): v for k, v in ALIASES.items()}
 
@@ -314,10 +338,17 @@ def province_of(raw: Any) -> str:
     raw_s = text(raw, 200)
     if not raw_s:
         return ''
-    m = re.fullmatch(r'TR-(\d{2})', raw_s.upper())
+    m = re.fullmatch(r'(?:TR[-_\s]?)?(\d{2})', raw_s.upper())
     if m and 1 <= int(m[1]) <= 81:
         return PROVINCES[int(m[1]) - 1]
     return PROVINCE_NAMES.get(fold(raw_s), '')
+
+
+def _province_from_postcode(postcode: str) -> str:
+    m = re.fullmatch(r'(\d{2})\d{3}', postcode.strip())
+    if m and 1 <= int(m[1]) <= 81:
+        return PROVINCES[int(m[1]) - 1]
+    return ''
 
 
 def _infer_province_from_freeform(freeform: str) -> str:
@@ -453,9 +484,12 @@ def meta(f: dict[str, Any], key: str, fallback_region: str = '') -> tuple[str, s
             continue
         locality = text(a.get('locality'), 200)
         freeform = text(a.get('freeform'), 400)
+        postcode = text(a.get('postcode'), 20)
         province = (
             province_of(a.get('region'))
+            or _province_from_postcode(postcode)
             or province_of(locality)
+            or UNIQUE_DISTRICT_PROVINCE.get(fold(locality), '')
             or _infer_province_from_freeform(freeform)
             or fallback_prov
         )
