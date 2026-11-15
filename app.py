@@ -28,6 +28,10 @@ from urllib.parse import parse_qs, urlsplit
 import catalog
 import engine
 import industrial_engine
+try:
+    import orjson as _orjson
+except ImportError:  # pragma: no cover
+    _orjson = None  # type: ignore[assignment]
 from engine import (
     AsyncCrawlSession,
     Fetcher,
@@ -543,8 +547,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header(
             'Content-Security-Policy',
-            "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; "
-            "object-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "connect-src 'self' https://dns.google https://crt.sh https://nominatim.openstreetmap.org "
+            "https://maps.mail.ru https://overpass-api.de https://overpass.private.coffee; "
+            "img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'",
         )
         for k, v in self._cors_headers().items():
             self.send_header(k, v)
@@ -554,7 +560,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def out(self, value: Any, code: int = 200) -> None:
-        self.send_data(json.dumps(value, ensure_ascii=False).encode(), code=code)
+        raw = _orjson.dumps(value) if _orjson is not None else json.dumps(value, ensure_ascii=False).encode()
+        self.send_data(raw, code=code)
 
     def check(self, api: bool = False) -> bool:
         port = self.server.server_port  # type: ignore[attr-defined]
@@ -594,7 +601,7 @@ class Handler(BaseHTTPRequestHandler):
         s: Store = self.server.store  # type: ignore[attr-defined]
         try:
             if p.path == '/api/session':
-                self.out({'token': TOKEN, 'engine': 'v3-turbo'})
+                self.out({'token': TOKEN, 'engine': 'v6-pro'})
                 return
             if p.path == '/api/status':
                 self.out(s.status())
@@ -648,6 +655,18 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if p.path == '/api/industrial/analytics':
                 self.out(industrial_engine.get_database_analytics(DATA / 'leads.sqlite3'))
+                return
+            if p.path == '/api/industrial/h3_clusters':
+                reg = q.get('region', ['İstanbul, Türkiye'])[0]
+                sec = q.get('sector', [''])[0]
+                res_lvl = int(q.get('resolution', ['7'])[0])
+                self.out(industrial_engine.get_city_h3_clusters(DATA / 'leads.sqlite3', reg, sec, res_lvl))
+                return
+            if p.path == '/api/industrial/domain_intel':
+                dom = q.get('domain', [''])[0].strip()
+                if not dom:
+                    raise ValueError('Alan adı gerekli')
+                self.out(industrial_engine.inspect_domain_infrastructure(dom))
                 return
             if p.path == '/api/ct_logs':
                 query_str = q.get('query', [''])[0]
@@ -703,13 +722,25 @@ class Handler(BaseHTTPRequestHandler):
                 return
             files = {
                 '/': ('index.html', 'text/html; charset=utf-8'),
+                '/index.html': ('index.html', 'text/html; charset=utf-8'),
                 '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
+                '/xlsx-engine.js': ('xlsx-engine.js', 'text/javascript; charset=utf-8'),
                 '/style.css': ('style.css', 'text/css; charset=utf-8'),
+                '/data/manifest.json': ('data/manifest.json', 'application/json; charset=utf-8'),
+                '/downloads/lead-intelligence-pro.zip': ('downloads/lead-intelligence-pro.zip', 'application/zip'),
             }
             if p.path in files:
                 f_name, typ = files[p.path]
-                self.send_data((ROOT / 'static' / f_name).read_bytes(), typ)
-                return
+                f_path = ROOT / 'hosting' / f_name
+                if f_path.is_file():
+                    self.send_data(f_path.read_bytes(), typ)
+                    return
+            if p.path.startswith('/data/') and p.path.endswith('.json.gz'):
+                safe_name = Path(p.path).name
+                gz_path = (ROOT / 'hosting' / 'data' / safe_name).resolve()
+                if gz_path.parent == (ROOT / 'hosting' / 'data').resolve() and gz_path.is_file():
+                    self.send_data(gz_path.read_bytes(), 'application/gzip')
+                    return
             self.out({'error': 'Bulunamadı'}, 404)
         except (ValueError, KeyError):
             self.out({'error': 'Geçersiz parametre'}, 400)
@@ -733,6 +764,15 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(records, list) or len(records) > 50000:
                     raise ValueError('En çok 50.000 kayıt')
                 self.out({'records': industrial_engine.deduplicate_records_splink(records)})
+                return
+            if p == '/api/industrial/fuzzy_match':
+                records = d.get('records', [])
+                query_str = str(d.get('query', '')).strip()
+                if not isinstance(records, list) or len(records) > 50000:
+                    raise ValueError('En çok 50.000 kayıt')
+                limit_int = min(1000, max(1, int(d.get('limit', 200))))
+                ranked = industrial_engine.fuzzy_rank_records(records, query_str, limit=limit_int)
+                self.out({'count': len(ranked), 'records': ranked})
                 return
             if p == '/api/industrial/crawl':
                 url = d.get('url', '')

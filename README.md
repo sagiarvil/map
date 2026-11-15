@@ -1,40 +1,36 @@
-# Lead Intelligence Pro V4 — Industrial Geospatial, C99 Lexbor & Cloud/Local Hybrid B2B Engine
+# Lead Intelligence Pro V6 — 9-Engine Pure C / C++ / Rust Industrial B2B Stack
 
-Yüksek hacimli, tekilleştirilmiş ve doğrulanmış B2B işletme keşif & kurumsal iletişim madenciliği platformu. Hem bulut kenar ağında (**https://haritalar.web.app/**) hem de yerel **128-Korutin Async HTTP/2 + C99 Lexbor Turbo Köprüsü** (`http://127.0.0.1:8765`) ile çift motorlu (Dual-Engine) çalışır.
+Yüksek hacimli, tekilleştirilmiş ve doğrulanmış B2B işletme keşif & kurumsal iletişim istihbaratı platformu. Hem bulut kenar ağında (**https://haritalar.web.app/**) hem de yerel **128-Korutin Async HTTP/2 + 9 Endüstriyel C/C++/Rust Motoru** (`http://127.0.0.1:8765`) ile çift motorlu (Dual-Engine) çalışır.
 
-## V4 Mimari Yetenekler
+## V6 Pro 9-Motorlu Endüstriyel Mimari
 
-1. **Bulut & Edge CDN Motoru (`https://haritalar.web.app/`):**
-   - Türkiye'nin önde gelen sanayi ve ticaret merkezleri (İstanbul, Ankara, İzmir, Bursa, Kayseri, Konya, Kocaeli, Gaziantep, Antalya, Adana, Denizli, Manisa) için sözlük-kodlu (`v4` tuple) hazır CDN veri paketleri ve `O(1)` kategori bitmask tarayıcısı (<5ms filtreleme).
-   - 81 il + uluslararası şehirler için canlı OpenStreetMap Nominatim/Overpass keşfi, 120+ Türkçe B2B sektör taksonomisi, ilçe ve 6'lı iletişim filtresi (`Tüm Firmalar`, `E-postası Olanlar`, `Telefonu Olanlar`, `E-posta + Telefon`, `Sadece E-posta`, `Sadece Telefon`).
-   - Tarayıcı-içi Google DNS-over-HTTPS (`dns.google`) canlı MX doğrulaması ve sıfır bağımlılıklı saf JavaScript OOXML tek sayfa `Firmalar` **Excel (`.xlsx`)** üreteci (`hosting/xlsx-engine.js`).
-2. **Yerel Mac Turbo Köprüsü (`127.0.0.1:8765` — Private Network Access):**
-   - **C99 `selectolax` (`Lexbor`) HTML5 Ayrıştırıcı:** Standart Python ayrıştırıcısına göre 15–30x hızlı DOM analizi; `Schema.org JSON-LD`, Next.js/Nuxt (`__NEXT_DATA__`, `__NUXT_DATA__`, RSC `self.__next_f.push`), OpenGraph iletişim etiketleri ve Cloudflare `data-cfemail` çözümü.
-   - **Veri Hijyeni ve Mekansal Tekilleştirme:** ~55m yarıçapta mükerrer harita pinlerini ve ortak telefon+marka kayıtlarını birleştirir (`deduplicate_region`), kapanmış (`closed` / `temporarily_closed`) işletmeleri, sahte tekrarlı telefonları (`0000000`, `5555555`), ölü MX (`nxdomain`, `null_mx`) ve webfont/tracker (`sentry.io`, `wixpress.com`, `latofonts.com`) e-postalarını eler.
+1. **DuckDB Spatial v2.0:** C++ vektörize bellek-içi OLAP analitik motoru (`1.02M+` kayıt üzerinde anlık istatistik + 60s TTL önbellek).
+2. **Overture Maps v2.1 + PyArrow v26:** AWS S3 GeoParquet veri kümelerinden sıfır-kopya (zero-copy) sütunsal POI akışı.
+3. **Splink v5.0:** DuckDB üzerinde kalibre edilmiş Fellegi-Sunter Bayesyen şube ve mükerrer işletme tekilleştirme.
+4. **RapidFuzz v3.14:** C++ SIMD `WRatio` & `token_set_ratio` ile bulanık kurumsal ünvan ve sektör sıralama.
+5. **Uber H3 v4.5:** Altıgen (Hexagonal Res-7) mekansal indeksleme ile OSB, sanayi sitesi ve ticaret yoğunluk radarı.
+6. **Selectolax v1.0 (`Lexbor` C HTML5) + Trafilatura v2.3:** Işık hızında kurumsal DOM, JSON-LD ve temiz metin/metadata çıkarımı.
+7. **`curl_cffi` v0.17 + `httpx[http2]`:** Yerel C `libcurl` HTTP/2 istemcisi (`robots.txt` ve SSRF korumalı).
+8. **Google `phonenumbers` v9.0 (`libphonenumber`):** ITU-T E.164 onarım, mobil/sabit hat ayrımı ve WhatsApp uygunluk doğrulaması.
+9. **`orjson` v3.13 + `email-validator` v2.4 + `dnspython` v2.9:** Rust SIMD JSON serileştirme, RFC 5322 IDNA e-posta hijyeni ve canlı MX/SPF/DMARC posta altyapı tespiti.
 
 ## Kurulum ve Arka Plan Servisi (macOS / Linux)
 
 ```sh
 bash setup.command
-bash install-mac-service.command   # macOS LaunchAgent (128 korutin, haritalar.web.app köprüsü)
+bash install-mac-service.command   # macOS LaunchAgent (127.0.0.1:8765)
 ```
 
-Çoklu sanayi merkezi senkronizasyonu ve Firebase CDN dağıtımı:
+Firebase Hosting CDN dağıtımı (`https://haritalar.web.app`):
 
 ```sh
-.venv/bin/python scripts/sync_industrial_hubs.py
 bash deploy-firebase.command
 ```
 
 ## Doğrulama ve 4 Kalite Kapısı
 
 ```sh
+.venv/bin/python -m py_compile app.py catalog.py engine.py export_xlsx.py industrial_engine.py
+node --check hosting/app.js && node --check hosting/xlsx-engine.js
 .venv/bin/python -m unittest discover -s tests -v
-node --check static/app.js && node --check hosting/app.js && node --check hosting/xlsx-engine.js
 ```
-
-## Güvenlik ve Veri Etiği
-
-- Google Maps üzerinde otomatik kazıma yapılmaz; yalnızca resmi araştırma bağlantıları üretilir.
-- Web sitesi taramalarında `robots.txt` kuralları, SSRF özel ağ koruması, HTTPS düşürme engeli ve CAPTCHA/403/429 erişim sınırları katı biçimde uygulanır.
-- Veri atfı: [Overture Maps Attribution](https://docs.overturemaps.org/attribution/) & OpenStreetMap katkıcıları (ODbL).

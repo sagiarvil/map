@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Haritalar — AppFlow V10.2 B2B İstihbarat &amp; ERP Keşif Fabrikası</title>
   <meta name="description" content="HTMLANDHTML V10.2 AppFlow mimarisiyle 81 ilde kurumsal firma arama, NACE Rev. 2, WhatsApp, e-Fatura istihbaratı ve ERP cari oluşturma merkezi.">
-  <link rel="stylesheet" href="/style.css">
-  <script src="/xlsx-engine.js" defer></script>
-  <script src="/app.js" defer></script>
+  <link rel="stylesheet" href="/style.css?v=6.0.0">
+  <script src="/xlsx-engine.js?v=6.0.0" defer></script>
+  <script src="/app.js?v=6.0.0" defer></script>
 </head>
 <body class="flow-home">
   <!-- AppFlow Header Bar -->
@@ -25,9 +25,9 @@
         <span class="dot"></span>
         <span id="engineText">Hazır</span>
       </span>
-      <span id="industrialBadge" class="engine-badge turbo" style="display:none" title="5/5 Endüstriyel Motor Aktif">
+      <span id="industrialBadge" class="engine-badge turbo" style="display:none" title="9/9 Endüstriyel C/C++/Rust Motoru Aktif">
         <span class="dot"></span>
-        <span>5/5 Motor (DuckDB · Splink · Camoufox)</span>
+        <span id="industrialBadgeText">9/9 Pro Motor (DuckDB · H3 · Splink · RapidFuzz)</span>
       </span>
       <button id="headerSearchJumpBtn" type="button" class="btn btn-secondary am-global-search">
         <span aria-hidden="true">⌕</span>
@@ -309,7 +309,8 @@
           <div class="action-group">
             <button id="searchBtn" type="button" class="primary">Firmaları Listele</button>
             <button id="enrichBtn" type="button" disabled>Web Sitelerinden E-posta Tara</button>
-            <button id="splinkDedupBtn" type="button" class="btn btn-secondary" disabled title="DuckDB üzerinde Splink 5.0 ile şube ve yazım varyasyonlarını kümele">🔗 AI Tekilleştir (Splink 5.0)</button>
+            <button id="splinkDedupBtn" type="button" class="btn btn-secondary" disabled title="DuckDB üzerinde Splink 5.0 Fellegi-Sunter ile şube ve yazım varyasyonlarını kümele">🔗 AI Tekilleştir (Splink 5.0)</button>
+            <button id="rapidFuzzBtn" type="button" class="btn btn-secondary" disabled title="RapidFuzz C++ SIMD WRatio ile arama terimine en yakın firmaları en üste sırala">⚡ RapidFuzz Sırala</button>
           </div>
           <div class="action-group">
             <button id="exportXlsxBtn" type="button" class="accent" disabled>Excel İndir (.xlsx)</button>
@@ -395,9 +396,22 @@
             <span>NACE, WhatsApp, e-Fatura, E-posta, Tel, Adres</span>
           </div>
         </div>
+        <div class="form-grid" style="margin-top:16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))">
+          <div class="field">
+            <label for="exportSectorInput">İhraç Edilecek Sektör / Faaliyet Alanı</label>
+            <input id="exportSectorInput" type="text" list="sectorSuggestions" value="Mobilya" placeholder="Örn: İnşaat, Mutfak, Mobilya…">
+          </div>
+          <div class="field">
+            <label for="exportCitySelect">İhraç Edilecek İl / Şehir</label>
+            <select id="exportCitySelect">
+              <option value="İstanbul" selected>İstanbul</option>
+            </select>
+          </div>
+        </div>
+
         <div id="exportStatusBox" style="margin: 18px 0; padding: 14px 18px; background: var(--brand-soft); border: 1px solid #BFDBFE; border-radius: 8px;">
           <div style="font-weight: 700; color: #1E40AF; font-size: 14px;" id="exportStatusTitle">Hazır Portföy Durumu</div>
-          <div style="margin-top: 4px; color: var(--muted); font-size: 13px;" id="exportStatusDesc">Arama ekranında listelediğiniz tüm doğrulanmış kurumsal veriler tek tıkla Excel veya CSV olarak indirilir.</div>
+          <div style="margin-top: 4px; color: var(--muted); font-size: 13px;" id="exportStatusDesc">Yukarıdan sektör ve il seçip doğrudan tek tıkla Excel (.xlsx) veya CSV olarak indirebilirsiniz.</div>
         </div>
 
         <div class="action-bar" style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap">
@@ -430,6 +444,21 @@
         <div id="enrichLiveStatus" style="margin-top:14px; font-weight:550; color:var(--text-muted)">
           Durum: Yerel turbo motor beklemede.
         </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>🔍 Canlı Kurumsal Web &amp; MX/SPF/DMARC İstihbarat Denetçisi</h3>
+        <p class="text-muted">Tekil şirket web sitesini veya alan adını <code>curl_cffi</code> HTTP/2 + <code>Lexbor C</code> + <code>Trafilatura</code> + <code>dnspython</code> ile canlı analiz edin (robots.txt ve güvenlik uyumlu).</p>
+        <div class="form-grid" style="margin-top:12px; grid-template-columns: 2fr auto">
+          <div class="field">
+            <label for="singleCrawlUrlInput">Şirket Web Sitesi veya Alan Adı</label>
+            <input id="singleCrawlUrlInput" type="text" placeholder="Örn: https://sirket.com.tr veya arcelik.com.tr">
+          </div>
+          <div class="field" style="justify-content:flex-end">
+            <button id="singleCrawlBtn" type="button" class="btn btn-primary" style="height:42px">Canlı İstihbarat Çıkar</button>
+          </div>
+        </div>
+        <div id="singleCrawlResultBox" style="margin-top:16px; padding:14px 16px; background:var(--surface-alt); border:1px solid var(--line); border-radius:8px" hidden></div>
       </div>
     </section>
 
@@ -527,10 +556,52 @@
         </div>
       </div>
 
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px">
+          <div>
+            <h3 style="margin:0">⬡ Uber H3 OSB &amp; Sanayi Yoğunluk Radarı</h3>
+            <p class="text-muted" style="margin:4px 0 0">Altıgen (Hexagonal Res-7, ~5.16 km²) mekansal indeksleme ile il bazında en yoğun sanayi siteleri, OSB ve ticaret kümelerini tespit edin.</p>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:14px; grid-template-columns: 1fr 1fr auto">
+          <div class="field">
+            <label for="h3CitySelect">Analiz Edilecek İl</label>
+            <select id="h3CitySelect">
+              <option value="İstanbul" selected>İstanbul</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="h3SectorInput">Sektör Filtresi (İsteğe Bağlı)</label>
+            <input id="h3SectorInput" type="text" list="sectorSuggestions" placeholder="Örn: Mobilya, Metal, İnşaat (Boş = Tüm Sanayi)">
+          </div>
+          <div class="field" style="justify-content:flex-end">
+            <button id="h3ScanBtn" type="button" class="btn btn-primary" style="height:42px">⬡ H3 Sanayi Kümelerini Tara</button>
+          </div>
+        </div>
+        <div id="h3StatusText" style="margin-top:10px; font-size:13px; color:var(--muted)"></div>
+        <div id="h3ResultsWrap" style="margin-top:14px" hidden>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>H3 Altıgen &amp; Bölge</th>
+                  <th>Firma Yoğunluğu</th>
+                  <th>Baskın Sektör</th>
+                  <th>İletişim Zenginliği</th>
+                  <th>Öncü İşletmeler</th>
+                  <th>Harita</th>
+                </tr>
+              </thead>
+              <tbody id="h3ResultsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
-        <h3>81 İl &amp; 1.021.465 Kurumsal Firma Havuzu Dağılımı</h3>
+        <h3>81 İl &amp; 1.021.993 Kurumsal Firma Havuzu Dağılımı</h3>
         <div class="db-stats-grid" id="dbStatsGrid" style="margin-top:16px">
-          <!-- Populated dynamically via manifest -->
+          <!-- Populated dynamically via TR_PROVINCES + manifest -->
         </div>
       </div>
     </section>
@@ -565,33 +636,53 @@
       </div>
 
       <div class="card" style="margin-top:16px">
-        <h3>Endüstriyel Motor Matrisi &amp; Çift-Katmanlı Yapay Zeka Hattı</h3>
-        <p class="text-muted">Yerel makinede fiziksel olarak çalışan 5 enterprise motor:</p>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-top:14px">
+        <h3>Endüstriyel Motor Matrisi — V6 Pro Saf C / C++ / Rust Çekirdeği (9/9 Aktif)</h3>
+        <p class="text-muted">Ağır ve hantal tarayıcı/LLM yükleri tamamen temizlendi; sıfır maliyetli, yüksek hızlı 9 endüstriyel açık kaynak motor devrede:</p>
+        <div id="engineMatrixGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:12px; margin-top:14px">
           <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">🦆 DuckDB Spatial v2.0</strong>
-            <small style="color:var(--muted)">C++ Vectorized In-Memory OLAP · Sıfır Bellek Maliyeti</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● Fiziksel Aktif</span></div>
+            <small style="color:var(--muted)">C++ Vektörize Bellek-İçi OLAP Analitik + TTL Önbellek</small>
+            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C++ Aktif</span></div>
           </div>
           <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
-            <strong style="color:var(--ink); display:block; font-size:13px">🔗 Splink v5.0 Deduplication</strong>
-            <small style="color:var(--muted)">Fellegi-Sunter Olasılıksal Çift Kümeleme</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● Fiziksel Aktif</span></div>
+            <strong style="color:var(--ink); display:block; font-size:13px">🗺️ Overture Maps + PyArrow v26</strong>
+            <small style="color:var(--muted)">AWS S3 GeoParquet Doğrudan Sütunsal Akış (2.3B+ POI)</small>
+            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C++ S3 Aktif</span></div>
           </div>
           <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
-            <strong style="color:var(--ink); display:block; font-size:13px">🦊 Camoufox Anti-Detect</strong>
-            <small style="color:var(--muted)">C++ Yamalı Firefox · Turnstile &amp; Cloudflare Atlama</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● Fiziksel Aktif</span></div>
+            <strong style="color:var(--ink); display:block; font-size:13px">🔗 Splink v5.0 Bayesian</strong>
+            <small style="color:var(--muted)">Kalibre Fellegi-Sunter Olasılıksal Şube/Firma Tekilleştirme</small>
+            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● DuckDB Aktif</span></div>
           </div>
           <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
-            <strong style="color:var(--ink); display:block; font-size:13px">🕷️ Crawl4AI Async v0.9.5</strong>
-            <small style="color:var(--muted)">Yüksek Hızlı LLM/DOM Markdown Damıtma</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● Fiziksel Aktif</span></div>
+            <strong style="color:var(--ink); display:block; font-size:13px">⚡ RapidFuzz v3.14 C++ SIMD</strong>
+            <small style="color:var(--muted)">WRatio &amp; Token-Set Bulanık Kurumsal Ünvan Eşleştirme</small>
+            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C++ SIMD Aktif</span></div>
           </div>
           <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
-            <strong style="color:var(--ink); display:block; font-size:13px">🗺️ Overture Maps GeoParquet</strong>
-            <small style="color:var(--muted)">2.3 Milyar Global POI Haritası</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● Fiziksel Aktif</span></div>
+            <strong style="color:var(--ink); display:block; font-size:13px">⬡ Uber H3 v4.5 Spatial</strong>
+            <small style="color:var(--muted)">Altıgen (Hexagonal) OSB, Sanayi Sitesi ve Küme Yoğunluk Radarı</small>
+            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C Çekirdek Aktif</span></div>
+          </div>
+          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+            <strong style="color:var(--ink); display:block; font-size:13px">📄 Lexbor C + Trafilatura v2.3</strong>
+            <small style="color:var(--muted)">Selectolax C HTML5 DOM + Kurumsal Metin ve Metadata Çıkarımı</small>
+            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C HTML5 Aktif</span></div>
+          </div>
+          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+            <strong style="color:var(--ink); display:block; font-size:13px">🌐 curl_cffi v0.17 + HTTP/2</strong>
+            <small style="color:var(--muted)">Yerel libcurl HTTP/2 + robots.txt &amp; SSRF Korumalı İletişim</small>
+            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C libcurl Aktif</span></div>
+          </div>
+          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+            <strong style="color:var(--ink); display:block; font-size:13px">📞 Google libphonenumber v9</strong>
+            <small style="color:var(--muted)">ITU-T E.164 Onarım, Mobil/Sabit Hat Ayrımı &amp; WhatsApp Doğrulama</small>
+            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● ITU-T Aktif</span></div>
+          </div>
+          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+            <strong style="color:var(--ink); display:block; font-size:13px">🦀 orjson + MX/SPF/DMARC</strong>
+            <small style="color:var(--muted)">Rust SIMD JSON + RFC 5322 IDNA Hijyen + Canlı DNS Altyapı</small>
+            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● Rust SIMD Aktif</span></div>
           </div>
         </div>
       </div>

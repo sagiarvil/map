@@ -90,7 +90,13 @@ def build_shards(db_path: Path, out_dir: Path, min_rows: int = 0) -> dict[str, o
                     cats.append(cat_clean)
 
                 dist_clean = (r['district'] or '').strip()
-                if dist_clean and len(dist_clean) <= 45:
+                if (
+                    dist_clean
+                    and city_name not in catalog.PROVINCE_DISTRICTS
+                    and 3 <= len(dist_clean) <= 26
+                    and dist_clean.isalpha()
+                    and dist_clean != dist_clean.upper()
+                ):
                     discovered_districts.setdefault(city_name, set()).add(dist_clean)
                 d_idx = dist_map.get(dist_clean)
                 if d_idx is None:

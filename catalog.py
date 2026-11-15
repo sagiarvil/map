@@ -10,6 +10,7 @@ No automated access to Google Maps. Uses:
 from __future__ import annotations
 
 import concurrent.futures
+import heapq
 import json
 import math
 import re
@@ -38,6 +39,14 @@ from engine import (
     phone_normalize,
     whatsapp_url,
 )
+
+try:
+    import orjson as _fast_json
+    def _loads_list(raw: str | None) -> list[str]:
+        return _fast_json.loads(raw) if (raw and raw != '[]') else []
+except ImportError:  # pragma: no cover
+    def _loads_list(raw: str | None) -> list[str]:
+        return json.loads(raw) if (raw and raw != '[]') else []
 
 try:
     import httpx
@@ -1092,110 +1101,131 @@ def portfolio_listing(
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
 
+    target_k = offset + limit
     with store.db() as c:
-        excluded = {r[0] for r in c.execute('SELECT email FROM suppression')}
-        place_emails: dict[str, set[str]] = {}
-        for pid, em in c.execute(
-            "SELECT l.place_id, t.email FROM place_jobs l JOIN contacts t ON t.job_id=l.job_id "
-            "WHERE t.mx NOT IN ('nxdomain', 'null_mx')"
-        ):
-            if em not in excluded:
-                place_emails.setdefault(pid, set()).add(em)
-        place_phones: dict[str, set[str]] = {}
-        for pid, ph in c.execute(
-            'SELECT l.place_id, t.phone FROM place_jobs l JOIN job_phones t ON t.job_id=l.job_id'
-        ):
-            place_phones.setdefault(pid, set()).add(ph)
-
-        total = websites = with_email = with_phone = with_both = with_whatsapp = with_efatura = with_tech = 0
-        matched_rows: list[tuple[tuple[int, int, int, int, int, float], sqlite3.Row, set[str], set[str], dict[str, Any]]] = []
-        dist_counts: dict[str, int] = {}
-        cur = c.execute(
-            '''SELECT p.id, p.name, p.category, p.region, p.address, p.lat, p.lon,
-                      p.website, p.confidence, p.source,
-                      m.province, m.district, m.emails, m.phones
-               FROM places p LEFT JOIN place_meta m ON m.place_id = p.id'''
-            + where,
-            args,
-        )
-        for r in cur:
-            pid = r['id']
-            ems = (set(json.loads(r['emails'] or '[]')) - excluded) | place_emails.get(pid, set())
-            phs = set(json.loads(r['phones'] or '[]')) | place_phones.get(pid, set())
-
-            wa_num = next((p for p in phs if is_whatsapp_phone(p)), '')
-            wa_url = whatsapp_url(wa_num) if wa_num else ''
-            has_wa = bool(wa_num)
-            is_efat = is_efatura_company(r['name'], ems)
-
-            first_em = next((e for e in ems if '@' in e), '')
-            em_dom = first_em.split('@')[1].lower() if first_em else ''
-            tech = detect_tech_stack(email_domain=em_dom)
-            has_ent_mail = bool(tech and tech in ('Microsoft 365', 'Google Workspace', 'Özel Kurumsal Sunucu'))
-            nace_code, nace_title = resolve_nace(r['category'], r['name'])
-
-            he, hp = bool(ems), bool(phs)
-            if not contact_match(
-                he, hp, contact_mode,
-                has_whatsapp=has_wa,
-                has_efatura=is_efat,
-                has_enterprise_mail=has_ent_mail,
+        prev_rf = c.row_factory
+        c.row_factory = None
+        try:
+            excluded = {r[0] for r in c.execute('SELECT email FROM suppression')}
+            place_emails: dict[str, set[str]] = {}
+            for pid, em in c.execute(
+                "SELECT l.place_id, t.email FROM place_jobs l JOIN contacts t ON t.job_id=l.job_id "
+                "WHERE t.mx NOT IN ('nxdomain', 'null_mx')"
             ):
-                continue
-            hw = bool(r['website'])
-            total += 1
-            if hw:
-                websites += 1
-            if he:
-                with_email += 1
-            if hp:
-                with_phone += 1
-            if he and hp:
-                with_both += 1
-            if has_wa:
-                with_whatsapp += 1
-            if is_efat:
-                with_efatura += 1
-            if tech:
-                with_tech += 1
-            d_name = r['district'] or ''
-            if d_name:
-                dist_counts[d_name] = dist_counts.get(d_name, 0) + 1
-            q_score = (int(he and hp), int(he), int(hw and hp), int(hw), int(hp), float(r['confidence'] or 0.0))
-            intel = {
+                if em not in excluded:
+                    place_emails.setdefault(pid, set()).add(em)
+            place_phones: dict[str, set[str]] = {}
+            for pid, ph in c.execute(
+                'SELECT l.place_id, t.phone FROM place_jobs l JOIN job_phones t ON t.job_id=l.job_id'
+            ):
+                place_phones.setdefault(pid, set()).add(ph)
+
+            total = websites = with_email = with_phone = with_both = with_whatsapp = with_efatura = with_tech = 0
+            top_heap: list[tuple[Any, ...]] = []
+            dist_counts: dict[str, int] = {}
+            cur = c.execute(
+                '''SELECT p.id, p.name, p.category, p.region, p.address, p.lat, p.lon,
+                          p.website, p.confidence, p.source,
+                          m.province, m.district, m.emails, m.phones
+                   FROM places p LEFT JOIN place_meta m ON m.place_id = p.id'''
+                + where,
+                args,
+            )
+            for idx, r in enumerate(cur):
+                pid, name, cat, reg, addr, lat, lon, web, conf, src, prov, dist, raw_em, raw_ph = r
+
+                extra_em = place_emails.get(pid)
+                if raw_em and raw_em != '[]':
+                    ems = (set(_loads_list(raw_em)) - excluded) if excluded else set(_loads_list(raw_em))
+                    if extra_em:
+                        ems |= extra_em
+                else:
+                    ems = set(extra_em) if extra_em else set()
+
+                extra_ph = place_phones.get(pid)
+                if raw_ph and raw_ph != '[]':
+                    phs = set(_loads_list(raw_ph))
+                    if extra_ph:
+                        phs |= extra_ph
+                else:
+                    phs = set(extra_ph) if extra_ph else set()
+
+                he, hp = bool(ems), bool(phs)
+                wa_num = next((p for p in phs if is_whatsapp_phone(p)), '') if hp else ''
+                has_wa = bool(wa_num)
+                is_efat = is_efatura_company(name, ems)
+
+                tech = ''
+                has_ent_mail = False
+                if he:
+                    first_em = next((e for e in ems if '@' in e), '')
+                    if first_em:
+                        em_dom = first_em.split('@', 1)[1].lower()
+                        tech = detect_tech_stack(email_domain=em_dom)
+                        has_ent_mail = tech in ('Microsoft 365', 'Google Workspace', 'Özel Kurumsal Sunucu')
+
+                if contact_mode != 'all' and contact_mode and not contact_match(
+                    he, hp, contact_mode,
+                    has_whatsapp=has_wa,
+                    has_efatura=is_efat,
+                    has_enterprise_mail=has_ent_mail,
+                ):
+                    continue
+
+                hw = bool(web)
+                total += 1
+                if hw:
+                    websites += 1
+                if he:
+                    with_email += 1
+                if hp:
+                    with_phone += 1
+                if he and hp:
+                    with_both += 1
+                if has_wa:
+                    with_whatsapp += 1
+                if is_efat:
+                    with_efatura += 1
+                if tech:
+                    with_tech += 1
+                if dist:
+                    dist_counts[dist] = dist_counts.get(dist, 0) + 1
+
+                q_score = (int(he and hp), int(he), int(hw and hp), int(hw), int(hp), float(conf or 0.0))
+                entry = (q_score, -idx, r, ems, phs, wa_num, is_efat, tech)
+                if len(top_heap) < target_k:
+                    heapq.heappush(top_heap, entry)
+                elif entry > top_heap[0]:
+                    heapq.heapreplace(top_heap, entry)
+        finally:
+            c.row_factory = prev_rf
+
+        top_heap.sort(reverse=True)
+        page_rows: list[dict[str, Any]] = []
+        for _, _, r, ems, phs, wa_num, is_efat, tech in top_heap[offset:target_k]:
+            pid, name, cat, reg, addr, lat, lon, web, conf, src, prov, dist, _, _ = r
+            city = prov or province_of(reg.split(',')[0])
+            nace_code, nace_title = resolve_nace(cat, name)
+            page_rows.append({
+                'id': pid,
+                'name': name,
+                'category': cat.replace('_', ' '),
+                'city': city,
+                'district': dist or '',
+                'website': web,
+                'emails': sorted(ems),
+                'phones': sorted(phs),
+                'address': addr,
+                'lat': lat,
+                'lon': lon,
+                'confidence': conf,
+                'source': src,
                 'nace_code': nace_code,
                 'nace_title': nace_title,
                 'efatura': is_efat,
-                'whatsapp': wa_url,
+                'whatsapp': whatsapp_url(wa_num) if wa_num else '',
                 'whatsapp_num': wa_num,
                 'tech': tech,
-            }
-            matched_rows.append((q_score, r, ems, phs, intel))
-
-        matched_rows.sort(key=lambda item: item[0], reverse=True)
-        page_rows: list[dict[str, Any]] = []
-        for _, r, ems, phs, intel in matched_rows[offset:offset + limit]:
-            city = r['province'] or province_of(r['region'].split(',')[0])
-            page_rows.append({
-                'id': r['id'],
-                'name': r['name'],
-                'category': r['category'].replace('_', ' '),
-                'city': city,
-                'district': r['district'] or '',
-                'website': r['website'],
-                'emails': sorted(ems),
-                'phones': sorted(phs),
-                'address': r['address'],
-                'lat': r['lat'],
-                'lon': r['lon'],
-                'confidence': r['confidence'],
-                'source': r['source'],
-                'nace_code': intel['nace_code'],
-                'nace_title': intel['nace_title'],
-                'efatura': intel['efatura'],
-                'whatsapp': intel['whatsapp'],
-                'whatsapp_num': intel['whatsapp_num'],
-                'tech': intel['tech'],
             })
 
     return {

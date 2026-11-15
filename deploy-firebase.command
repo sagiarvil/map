@@ -8,10 +8,12 @@ if [[ ! -x "$PYBIN" ]]; then
   PYBIN="python3"
 fi
 
-# 1. Yerel SQLite kataloğundan sıkıştırılmış CDN shard paketlerini üret
-"$PYBIN" scripts/build_shards.py
+# 1. Yerel SQLite kataloğundan sıkıştırılmış CDN shard paketlerini üret (--rebuild-shards verilirse)
+if [[ "${1:-}" == "--rebuild-shards" ]]; then
+  "$PYBIN" scripts/build_shards.py
+fi
 
-# 2. Yalnızca dağıtılabilir kaynak kodlarını paketle (müşteri verisi ve .venv hariç)
+# 2. Yalnızca dağıtılabilir V6 Pro kaynak kodlarını paketle (müşteri verisi ve .venv hariç)
 "$PYBIN" - <<'PY'
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -20,13 +22,14 @@ out = Path('hosting/downloads/lead-intelligence-pro.zip')
 out.parent.mkdir(parents=True, exist_ok=True)
 files = [
     Path(x) for x in [
-        'app.py', 'engine.py', 'catalog.py', 'export_xlsx.py',
+        'app.py', 'engine.py', 'catalog.py', 'export_xlsx.py', 'industrial_engine.py',
         'requirements.txt', 'setup.command', 'start.command',
         'install-mac-service.command', 'README.md', 'TEST_REPORT.txt',
         'import_template.csv',
+        'hosting/index.html', 'hosting/app.js', 'hosting/style.css', 'hosting/xlsx-engine.js',
     ]
 ]
-files += list(Path('static').glob('*')) + list(Path('tests').glob('*.py')) + list(Path('scripts').glob('*.py'))
+files += list(Path('tests').glob('*.py')) + list(Path('scripts').glob('*.py'))
 with ZipFile(out, 'w', ZIP_DEFLATED) as z:
     for p in files:
         if p.is_file():
