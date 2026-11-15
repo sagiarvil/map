@@ -155,6 +155,7 @@
     $('enrichBtn').disabled = true;
     $('exportXlsxBtn').disabled = true;
     $('exportCsvBtn').disabled = true;
+    if ($('splinkDedupBtn')) $('splinkDedupBtn').disabled = true;
     $('districtStrip').replaceChildren();
     $('resultsBody').replaceChildren();
 
@@ -789,6 +790,7 @@
     $('enrichBtn').disabled = totalCount <= 0;
     $('exportXlsxBtn').disabled = totalCount <= 0;
     $('exportCsvBtn').disabled = totalCount <= 0;
+    if ($('splinkDedupBtn')) $('splinkDedupBtn').disabled = rows.length < 2 || !turboConnected;
 
     $('kpiTotal').textContent = fmt(stats.total);
     if ($('kpiWhatsapp')) $('kpiWhatsapp').textContent = fmt(stats.with_whatsapp || 0);
@@ -827,6 +829,9 @@
       const tdName = el('td');
       const nameRow = el('div', null, 'firm-name-row');
       nameRow.append(el('span', r.name, 'firm-name'));
+      if (r.cluster_id) {
+        nameRow.append(el('span', `🔗 Küme #${r.cluster_id}`, 'badge splink'));
+      }
       if (r.isEfatura || r.efatura) {
         nameRow.append(el('span', '🏢 e-Fatura', 'badge efatura'));
       }
@@ -1412,6 +1417,73 @@
     setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
+  // Splink 5.0 Probabilistic Entity Clustering on DuckDB
+  async function handleSplinkDedup() {
+    if (!turboConnected) {
+      alert('AI Tekilleştirme için yerel masaüstü motorunun bağlı olması gerekir.');
+      return;
+    }
+    const currentRows = activeMode === 'turbo-db' ? (turboPageData && turboPageData.rows ? turboPageData.rows : []) : activeRecords;
+    if (!currentRows || currentRows.length < 2) return;
+
+    setStatus('DuckDB üzerinde Splink 5.0 ile şubeler ve olasılıksal eşleşmeler kümeleniyor…', 'AI Tekilleştirme', false, 50);
+    try {
+      const res = await turboApi('industrial/dedup', { records: currentRows });
+      if (res && Array.isArray(res.records)) {
+        if (activeMode === 'turbo-db') {
+          turboPageData.rows = res.records;
+          renderTableRows(turboPageData.rows, turboPageData.total, turboPageData);
+        } else {
+          activeRecords = res.records;
+          renderTableRows(activeRecords.slice(currentOffset, currentOffset + PAGE_SIZE), activeRecords.length, { total: activeRecords.length, websites: 0, with_email: 0, with_phone: 0 });
+        }
+        const uniqueClusters = new Set(res.records.map(r => r.cluster_id)).size;
+        setStatus(`Splink 5.0 ile ${fmt(res.records.length)} kayıt başarıyla kümelendi: ${fmt(uniqueClusters)} tekil ana işletme doğrulandı.`, 'Tekilleştirildi', false, null);
+      }
+    } catch (err) {
+      setStatus('Tekilleştirme sırasında hata: ' + (err.message || err), 'Hata', true, null);
+    }
+  }
+
+  // DuckDB Vectorized Columnar Analytics
+  async function loadDuckDbAnalytics() {
+    if (!turboConnected) return;
+    try {
+      const data = await turboApi('industrial/analytics');
+      if (data && data.total_places) {
+        if ($('duckdbTotalPlaces')) $('duckdbTotalPlaces').textContent = fmt(data.total_places);
+        if ($('duckdbTotalWebsites')) $('duckdbTotalWebsites').textContent = fmt(data.with_website);
+        if ($('duckdbTotalPhones')) $('duckdbTotalPhones').textContent = fmt(data.with_phones);
+        if ($('duckdbTotalEmails')) $('duckdbTotalEmails').textContent = fmt(data.with_emails);
+      }
+    } catch (e) {
+      console.warn('DuckDB analytics error:', e);
+    }
+  }
+
+  // Overture Maps AWS S3 Live Stream Test
+  async function handleOvertureTestSync() {
+    if (!turboConnected) {
+      alert('Overture Maps canlı testi için masaüstü motoru bağlı olmalıdır.');
+      return;
+    }
+    const txt = $('overtureStatusText');
+    if (txt) txt.textContent = 'AWS S3 GeoParquet akışı başlatılıyor (Kadıköy BBox)…';
+    try {
+      const res = await turboApi('industrial/overture/sync', {
+        bbox: [29.02, 40.98, 29.04, 41.00],
+        limit: 10
+      });
+      if (res && res.count) {
+        if (txt) txt.textContent = `✓ AWS S3 üzerinden ${res.count} POI kaydı PyArrow ile anında çekildi (Sıfır Maliyet)!`;
+      } else {
+        if (txt) txt.textContent = 'Kayıt bulunamadı.';
+      }
+    } catch (err) {
+      if (txt) txt.textContent = 'Bağlantı hatası: ' + (err.message || err);
+    }
+  }
+
   // =========================================================================
   // AppFlow V10.2 Navigation & Workspace Controller
   // =========================================================================
@@ -1455,6 +1527,7 @@
 
     if (key === 'database') {
       renderDatabaseStats();
+      loadDuckDbAnalytics();
     }
 
     if (key === 'export') {
@@ -1846,6 +1919,13 @@
     $('enrichBtn').addEventListener('click', handleEnrich);
     $('exportXlsxBtn').addEventListener('click', handleExportXlsx);
     $('exportCsvBtn').addEventListener('click', handleExportCsv);
+
+    const splinkBtn = $('splinkDedupBtn');
+    if (splinkBtn) splinkBtn.addEventListener('click', handleSplinkDedup);
+    const refDuckDb = $('refreshDuckDbBtn');
+    if (refDuckDb) refDuckDb.addEventListener('click', loadDuckDbAnalytics);
+    const testOverture = $('testOvertureBtn');
+    if (testOverture) testOverture.addEventListener('click', handleOvertureTestSync);
 
     $('prevPageBtn').addEventListener('click', () => {
       currentOffset = Math.max(0, currentOffset - PAGE_SIZE);

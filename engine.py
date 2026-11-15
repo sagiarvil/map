@@ -515,6 +515,18 @@ class Fetcher:
                     raise ScanError('HTTPS güvenlik düşürme engellendi')
                 url = dest
                 continue
+            if r.status in (403, 503) or CHALLENGE_RE.search(r.text):
+                try:
+                    import industrial_engine
+                    import inspect
+                    cam = industrial_engine.tiered_crawl_intelligence(url, prefer_stealth=True)
+                    if inspect.isawaitable(cam):
+                        import asyncio
+                        cam = asyncio.run(cam)
+                    if cam and cam.get('success') and cam.get('html'):
+                        return Response(url, 200, 'text/html', cam['html'])
+                except Exception:
+                    pass
             if r.status != 200:
                 raise ScanError(f'HTTP {r.status}')
             if CHALLENGE_RE.search(r.text):
@@ -665,6 +677,18 @@ class AsyncCrawlSession:
                     raise ScanError('HTTPS güvenlik düşürme engellendi')
                 url = dest
                 continue
+            if r.status in (403, 503) or CHALLENGE_RE.search(r.text):
+                try:
+                    import industrial_engine
+                    import inspect
+                    cam = industrial_engine.tiered_crawl_intelligence(url, prefer_stealth=True)
+                    if inspect.isawaitable(cam):
+                        import asyncio
+                        cam = asyncio.run(cam)
+                    if cam and cam.get('success') and cam.get('html'):
+                        return Response(url, 200, 'text/html', cam['html'])
+                except Exception:
+                    pass
             if r.status != 200:
                 raise ScanError(f'HTTP {r.status}')
             if CHALLENGE_RE.search(r.text):

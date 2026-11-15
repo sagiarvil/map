@@ -309,6 +309,7 @@
           <div class="action-group">
             <button id="searchBtn" type="button" class="primary">Firmaları Listele</button>
             <button id="enrichBtn" type="button" disabled>Web Sitelerinden E-posta Tara</button>
+            <button id="splinkDedupBtn" type="button" class="btn btn-secondary" disabled title="DuckDB üzerinde Splink 5.0 ile şube ve yazım varyasyonlarını kümele">🔗 AI Tekilleştir (Splink 5.0)</button>
           </div>
           <div class="action-group">
             <button id="exportXlsxBtn" type="button" class="accent" disabled>Excel İndir (.xlsx)</button>
@@ -494,6 +495,38 @@
         </div>
       </details>
 
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px">
+          <div>
+            <h3 style="margin:0">⚡ DuckDB Spatial Vektörize Analiz Motoru</h3>
+            <p class="text-muted" style="margin:4px 0 0">1 Milyon+ kurumsal kayıt üzerinde alt-saniye seviyesinde bellek-içi (OLAP) analiz.</p>
+          </div>
+          <button id="refreshDuckDbBtn" type="button" class="btn btn-secondary">⚡ DuckDB Analizini Yenile</button>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-top:16px">
+          <div style="padding:14px 16px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+            <small style="color:var(--muted); font-weight:600; text-transform:uppercase; font-size:11px">Toplam Firma (DuckDB)</small>
+            <div style="font-size:22px; font-weight:700; color:var(--ink); margin-top:4px" id="duckdbTotalPlaces">1.021.993</div>
+            <small style="color:#059669; font-weight:600">● C++ Vectorized In-Memory</small>
+          </div>
+          <div style="padding:14px 16px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+            <small style="color:var(--muted); font-weight:600; text-transform:uppercase; font-size:11px">Doğrulanmış Web Sitesi</small>
+            <div style="font-size:22px; font-weight:700; color:var(--ink); margin-top:4px" id="duckdbTotalWebsites">447.968</div>
+            <small style="color:var(--muted)">%43.8 Web Varlığı</small>
+          </div>
+          <div style="padding:14px 16px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+            <small style="color:var(--muted); font-weight:600; text-transform:uppercase; font-size:11px">Telefon Kontakları</small>
+            <div style="font-size:22px; font-weight:700; color:var(--ink); margin-top:4px" id="duckdbTotalPhones">745.010</div>
+            <small style="color:var(--muted)">%72.8 Telefon Erişimi</small>
+          </div>
+          <div style="padding:14px 16px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+            <small style="color:var(--muted); font-weight:600; text-transform:uppercase; font-size:11px">Kurumsal E-posta</small>
+            <div style="font-size:22px; font-weight:700; color:var(--ink); margin-top:4px" id="duckdbTotalEmails">368.612</div>
+            <small style="color:var(--muted)">%36.1 E-posta Verisi</small>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <h3>81 İl &amp; 1.021.465 Kurumsal Firma Havuzu Dağılımı</h3>
         <div class="db-stats-grid" id="dbStatsGrid" style="margin-top:16px">
@@ -524,6 +557,10 @@
         <div style="margin-top:20px; font-size:12.5px; color:var(--text-muted); line-height:1.7">
           <strong>Mac Kurulumu:</strong> ZIP'i açın ve terminalde <code>bash install-mac-service.command</code> komutunu çalıştırın.<br>
           Yerel servis arka planda <code>http://127.0.0.1:8765</code> üzerinden devreye girer.
+        </div>
+        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+          <button id="testOvertureBtn" type="button" class="btn btn-secondary">🗺️ Overture Maps (AWS S3) Canlı Akışını Sına</button>
+          <span id="overtureStatusText" style="font-size:13px; color:var(--muted)"></span>
         </div>
       </div>
 

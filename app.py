@@ -646,6 +646,9 @@ class Handler(BaseHTTPRequestHandler):
             if p.path == '/api/industrial/status':
                 self.out(industrial_engine.get_engine_status())
                 return
+            if p.path == '/api/industrial/analytics':
+                self.out(industrial_engine.get_database_analytics(DATA / 'leads.sqlite3'))
+                return
             if p.path == '/api/ct_logs':
                 query_str = q.get('query', [''])[0]
                 try:
@@ -738,6 +741,15 @@ class Handler(BaseHTTPRequestHandler):
                 stealth = bool(d.get('stealth', False))
                 res = asyncio.run(industrial_engine.tiered_crawl_intelligence(url, stealth))
                 self.out(res)
+                return
+            if p == '/api/industrial/overture/sync':
+                raw_bbox = d.get('bbox', [28.9, 41.0, 29.1, 41.2])
+                if not isinstance(raw_bbox, (list, tuple)) or len(raw_bbox) != 4:
+                    raise ValueError('Geçersiz BBox formatı [minx, miny, maxx, maxy]')
+                bbox_tuple = (float(raw_bbox[0]), float(raw_bbox[1]), float(raw_bbox[2]), float(raw_bbox[3]))
+                limit = min(2000, max(1, int(d.get('limit', 500))))
+                places = industrial_engine.fetch_overture_places(bbox_tuple, limit=limit)
+                self.out({'count': len(places), 'places': places})
                 return
             if p in ('/api/places/import', '/api/places/download', '/api/places/queue'):
                 if d.get('authorized') is not True:

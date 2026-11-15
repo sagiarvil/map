@@ -37,6 +37,16 @@ class IndustrialEngineTests(unittest.TestCase):
         self.assertEqual(c1, c2, "Firms with identical phone and similar name must cluster together")
         self.assertNotEqual(c1, c3, "Distinct firms must not share cluster_id")
 
+    def test_duckdb_database_analytics(self):
+        db_path = Path("data/leads.sqlite3")
+        if not db_path.exists():
+            self.skipTest("leads.sqlite3 not found")
+        analytics = industrial_engine.get_database_analytics(db_path)
+        self.assertIn("total_places", analytics)
+        self.assertGreater(analytics["total_places"], 500000)
+        self.assertIn("top_categories", analytics)
+        self.assertIn("speed_ms", analytics)
+
 
 if __name__ == "__main__":
     unittest.main()
