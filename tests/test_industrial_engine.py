@@ -7,6 +7,8 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 from app import Handler, Store
+import catalog
+import engine
 import industrial_engine
 
 
@@ -14,7 +16,7 @@ class IndustrialEngineTests(unittest.TestCase):
     def test_get_engine_status_all_nine_active(self):
         st = industrial_engine.get_engine_status()
         self.assertEqual(st.get("status"), "active")
-        self.assertEqual(st.get("version"), "6.0-pro")
+        self.assertEqual(st.get("version"), "7.0-pro")
         self.assertEqual(st.get("active_engines"), 9)
         self.assertEqual(st.get("total_engines"), 9)
         engines = st.get("engines", {})
@@ -102,6 +104,63 @@ class IndustrialEngineTests(unittest.TestCase):
         self.assertEqual(clusters[0]["firm_count"], 8)
         self.assertEqual(clusters[0]["district"], "Tuzla")
         self.assertEqual(clusters[0]["with_email"], 8)
+        self.assertGreaterEqual(len(clusters[0].get("boundary", [])), 6)
+
+    def test_v7_gib_vkn_mersis_execs_and_global_catalog(self):
+        self.assertTrue(industrial_engine.validate_gib_vkn("1234567890"))
+        self.assertFalse(industrial_engine.validate_gib_vkn("1234567891"))
+        self.assertFalse(industrial_engine.validate_gib_vkn("0000000000"))
+
+        self.assertTrue(industrial_engine.validate_mersis("0123456789000015"))
+        self.assertFalse(industrial_engine.validate_mersis("9999999999999999"))
+
+        sample_html = """
+        <html><head>
+        <script type="application/ld+json">
+        {"@type": "Organization", "founder": {"@type": "Person", "name": "Ahmet Yilmaz", "jobTitle": "Kurucu Genel Müdür"}}
+        </script>
+        </head><body>
+        <p>Vergi No: 1234567890 | MERSİS: 0123456789000015 | KEP: ornekas@hs01.kep.tr | USt-IdNr: DE123456789</p>
+        </body></html>
+        """
+        ids = industrial_engine.extract_corporate_identifiers(sample_html)
+        self.assertEqual("1234567890", ids["vkn"])
+        self.assertIn("1234567890", ids["all_vkns"])
+        self.assertEqual("0123456789000015", ids["mersis"])
+        self.assertIn("ornekas@hs01.kep.tr", ids["kep_addresses"])
+        self.assertIn("DE123456789", ids["international_reg_ids"])
+
+        execs = industrial_engine.extract_decision_makers(sample_html)
+        self.assertGreaterEqual(len(execs), 1)
+        self.assertEqual(execs[0]["name"], "Ahmet Yilmaz")
+
+        pat = industrial_engine.infer_email_pattern(["ahmet.yilmaz@ornek.com.tr"], "ornek.com.tr")
+        self.assertEqual(pat["pattern"], "{ad}.{soyad}@ornek.com.tr")
+
+        # International Phone & WhatsApp + Foreign Region Meta
+        de_mob = engine.phone_normalize("0171 2345678", "DE")
+        self.assertEqual(de_mob, "+491712345678")
+        self.assertTrue(engine.is_whatsapp_phone(de_mob))
+        de_land = engine.phone_normalize("030 1234567", "DE")
+        self.assertEqual(de_land, "+49301234567")
+        self.assertFalse(engine.is_whatsapp_phone(de_land))
+
+        f_berlin = {
+            "properties": {
+                "addresses": [{"country": "DE", "locality": "Berlin", "sublocality": "Mitte"}],
+                "emails": ["info@kuechen-berlin.de"],
+                "phones": ["0171 2345678"],
+            }
+        }
+        _, prov, dist, em_json, ph_json = catalog.meta(f_berlin, "p1", "Berlin, Almanya")
+        self.assertEqual(prov, "Berlin")
+        self.assertEqual(dist, "Mitte")
+        self.assertIn("info@kuechen-berlin.de", json.loads(em_json))
+        self.assertIn("+491712345678", json.loads(ph_json))
+
+        # SSRF protection on ERP webhook
+        with self.assertRaises(ValueError):
+            industrial_engine.dispatch_erp_webhook("http://127.0.0.1:8765/api/status", {"test": 1})
 
     def test_duckdb_database_analytics(self):
         db_path = Path("data/leads.sqlite3")
@@ -125,7 +184,7 @@ class IndustrialEngineTests(unittest.TestCase):
                 base = f"http://127.0.0.1:{server.server_port}/"
                 with urllib.request.urlopen(base + "api/session", timeout=5) as r:
                     sess = json.loads(r.read())
-                self.assertEqual(sess["engine"], "v6-pro")
+                self.assertEqual(sess["engine"], "v7-pro")
                 headers = {"X-Local-Token": sess["token"], "Content-Type": "application/json"}
 
                 req_st = urllib.request.Request(base + "api/industrial/status", headers=headers)

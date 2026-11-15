@@ -547,10 +547,14 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header(
             'Content-Security-Policy',
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "default-src 'self'; script-src 'self' https://unpkg.com blob:; worker-src 'self' blob:; child-src blob:; "
+            "style-src 'self' 'unsafe-inline' https://unpkg.com; "
             "connect-src 'self' https://dns.google https://crt.sh https://nominatim.openstreetmap.org "
-            "https://maps.mail.ru https://overpass-api.de https://overpass.private.coffee; "
-            "img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+            "https://maps.mail.ru https://overpass-api.de https://overpass.private.coffee https://unpkg.com "
+            "https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://tiles.openfreemap.org; "
+            "img-src 'self' data: blob: https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com; "
+            "font-src 'self' data: https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://tiles.openfreemap.org; "
+            "object-src 'none'; frame-ancestors 'none'; base-uri 'none'",
         )
         for k, v in self._cors_headers().items():
             self.send_header(k, v)
@@ -601,7 +605,7 @@ class Handler(BaseHTTPRequestHandler):
         s: Store = self.server.store  # type: ignore[attr-defined]
         try:
             if p.path == '/api/session':
-                self.out({'token': TOKEN, 'engine': 'v6-pro'})
+                self.out({'token': TOKEN, 'engine': 'v7-pro'})
                 return
             if p.path == '/api/status':
                 self.out(s.status())
@@ -790,6 +794,40 @@ class Handler(BaseHTTPRequestHandler):
                 limit = min(2000, max(1, int(d.get('limit', 500))))
                 places = industrial_engine.fetch_overture_places(bbox_tuple, limit=limit)
                 self.out({'count': len(places), 'places': places})
+                return
+            if p == '/api/industrial/global_search':
+                city_str = str(d.get('city', '')).strip()[:100]
+                country_str = str(d.get('country', 'Türkiye')).strip()[:100] or 'Türkiye'
+                sector_str = str(d.get('sector', '')).strip()[:200]
+                if not city_str:
+                    raise ValueError('Şehir adı gerekli')
+                if not self.server.discovery.acquire(timeout=45.0):  # type: ignore[attr-defined]
+                    self.out({'error': 'Önceki küresel tarama tamamlanıyor, birkaç saniye sonra tekrar deneyin'}, 409)
+                    return
+                try:
+                    res = industrial_engine.global_sector_city_search(
+                        s,
+                        city=city_str,
+                        country=country_str,
+                        sector=sector_str,
+                        box=d.get('box'),
+                        contact_mode=str(d.get('contact_mode', 'all'))[:40],
+                        district=str(d.get('district', ''))[:100],
+                        offset=max(0, int(d.get('offset', 0))),
+                        limit=min(500, max(1, int(d.get('limit', 100)))),
+                        force_refresh=bool(d.get('force_refresh', False)),
+                    )
+                    self.out(res)
+                finally:
+                    self.server.discovery.release()  # type: ignore[attr-defined]
+                return
+            if p == '/api/erp/webhook':
+                webhook_url = str(d.get('webhook_url', '')).strip()
+                payload = d.get('payload')
+                if not isinstance(payload, dict):
+                    raise ValueError('Geçersiz ERP payload')
+                res = industrial_engine.dispatch_erp_webhook(webhook_url, payload)
+                self.out(res)
                 return
             if p in ('/api/places/import', '/api/places/download', '/api/places/queue'):
                 if d.get('authorized') is not True:

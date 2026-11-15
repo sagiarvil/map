@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Haritalar — AppFlow V10.2 B2B İstihbarat &amp; ERP Keşif Fabrikası</title>
   <meta name="description" content="HTMLANDHTML V10.2 AppFlow mimarisiyle 81 ilde kurumsal firma arama, NACE Rev. 2, WhatsApp, e-Fatura istihbaratı ve ERP cari oluşturma merkezi.">
-  <link rel="stylesheet" href="/style.css?v=6.0.0">
-  <script src="/xlsx-engine.js?v=6.0.0" defer></script>
-  <script src="/app.js?v=6.0.0" defer></script>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="/style.css?v=7.0.1">
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer></script>
+  <script src="/xlsx-engine.js?v=7.0.1" defer></script>
+  <script src="/app.js?v=7.0.1" defer></script>
 </head>
 <body class="flow-home">
   <!-- AppFlow Header Bar -->
@@ -71,7 +73,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M3 7v14M21 7v14M6 10h2M11 10h2M16 10h2M6 14h2M11 14h2M16 14h2M6 18h2M11 18h2M16 18h2M3 7l9-4 9 4"/></svg>
           </span>
           <span class="flow-tile-name">Firma &amp; İstihbarat Arama</span>
-          <small>81 İl, NACE Rev. 2, WhatsApp, e-Fatura ve kurumsal e-posta filtreleri</small>
+          <small>Türkiye 81 İl + 46 Ülke Yurtdışı Keşif, NACE, WhatsApp, VKN &amp; Harita</small>
           <span class="flow-number">01</span>
         </button>
 
@@ -116,7 +118,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           </span>
           <span class="flow-tile-name">Bölgesel Veri Havuzu</span>
-          <small>81 İl, 1.021.465 temiz firma harita dağılımı ve arındırılmış sınırlar</small>
+          <small>81 İl Tam CDN Kapsam · 1.708.585 temiz firma + Uber H3 Vektör Harita</small>
           <span class="flow-number">05</span>
         </button>
 
@@ -139,10 +141,9 @@
       <details class="flow-help">
         <summary>Bu Ekran Nasıl Kullanılır?</summary>
         <div class="flow-help-body">
-          <p><strong>Ne için:</strong> 81 il genelinde sektör, ilçe, kurumsal düzey ve iletişim kanalına göre doğrulanmış firma listesi hazırlamak ve anında ERP cari kartına dönüştürmek için.</p>
-          <p><strong>Gereken:</strong> Sektör adı ve İl/Şehir seçin. İsteğe bağlı olarak ilçe ve iletişim türü belirleyin.</p>
-          <p><strong>İstihbarat Rozetleri:</strong> Tabloda <span class="badge efatura">🏢 e-Fatura</span> kurumsal ciro büyüklüğünü, <span class="badge nace">NACE</span> resmi faaliyet kodunu, <span class="badge m365">Kurumsal Mail</span> şirket posta altyapısını ve <a class="wa-btn" href="#">💬 WhatsApp</a> doğrudan canlı sohbet hattını ifade eder.</p>
-          <p><strong>Hızlı Cari:</strong> Tablodaki her firmanın yanındaki <strong>+ Cari Kart Oluştur</strong> butonu, bilgileri ERP standardında cari karta dönüştürür.</p>
+          <p><strong>Ne için:</strong> Türkiye'nin 81 ili ve 46 ihracat ülkesinde sektör, şehir, ilçe ve iletişim kanalına göre doğrulanmış firma listesi hazırlamak, interaktif vektör haritada görmek ve ERP cari kartına dönüştürmek için.</p>
+          <p><strong>Yurtdışı Tarama:</strong> <strong>Ülke</strong> menüsünden hedef ülkeyi (Almanya, İngiltere, BAE, ABD, Hollanda vb.) ve <strong>İl / Şehir</strong> menüsünden ticaret şehrini seçip (veya <em>Başka Şehir Yaz…</em> ile özel şehir girip) <strong>Firmaları Listele</strong> butonuna basın.</p>
+          <p><strong>İstihbarat Rozetleri:</strong> Tabloda <span class="badge efatura">🏢 e-Fatura</span> kurumsal ciro büyüklüğünü, <span class="badge nace">NACE</span> resmi faaliyet kodunu, <span class="badge m365">Kurumsal Mail</span> şirket posta altyapısını ve <a class="wa-btn" href="#">💬 WhatsApp</a> doğrudan uluslararası/yerel canlı sohbet hattını ifade eder.</p>
         </div>
       </details>
 
@@ -150,7 +151,7 @@
         <div class="form-grid">
           <div class="field">
             <label for="sectorInput">Sektör / Faaliyet Alanı</label>
-            <input id="sectorInput" type="text" list="sectorSuggestions" value="Mobilya" placeholder="Örn: Mobilya, İnşaat, Makina…" autocomplete="off">
+            <input id="sectorInput" type="text" list="sectorSuggestions" value="Mobilya" placeholder="Örn: Mobilya, Mutfak, İnşaat, Makina…" autocomplete="off">
             <datalist id="sectorSuggestions">
               <option value="Mobilya"></option>
               <option value="Mutfak"></option>
@@ -163,11 +164,23 @@
               <option value="Makina"></option>
               <option value="Plastik"></option>
               <option value="Tekstil"></option>
+              <option value="Giyim"></option>
               <option value="Lojistik"></option>
               <option value="Otomotiv"></option>
               <option value="Gıda"></option>
+              <option value="Restoran"></option>
+              <option value="Otel"></option>
               <option value="Elektrik"></option>
               <option value="Medikal"></option>
+              <option value="Kozmetik"></option>
+              <option value="Kuyumcu"></option>
+              <option value="Kimya"></option>
+              <option value="Mermer"></option>
+              <option value="Cam"></option>
+              <option value="Boya"></option>
+              <option value="Isıtma &amp; Klima"></option>
+              <option value="Asansör"></option>
+              <option value="Yazılım"></option>
               <option value="Banka &amp; Finans"></option>
               <option value="Tütün &amp; Tobacco (Tekel)"></option>
               <option value="Avukat &amp; Hukuk"></option>
@@ -177,18 +190,66 @@
           </div>
 
           <div class="field">
-            <label for="countrySelect">Ülke</label>
+            <label for="countrySelect">Ülke (Yurtiçi &amp; Yurtdışı)</label>
             <select id="countrySelect">
-              <option value="Türkiye" selected>Türkiye</option>
-              <option value="Almanya">Almanya</option>
-              <option value="Hollanda">Hollanda</option>
-              <option value="İngiltere">İngiltere</option>
-              <option value="Fransa">Fransa</option>
-              <option value="İtalya">İtalya</option>
-              <option value="İspanya">İspanya</option>
-              <option value="ABD">ABD</option>
-              <option value="BAE">Birleşik Arap Emirlikleri</option>
-              <option value="Azerbaycan">Azerbaycan</option>
+              <optgroup label="Yurtiçi (81 İl Tam Kapsam)">
+                <option value="Türkiye" selected>🇹🇷 Türkiye (81 İl)</option>
+              </optgroup>
+              <optgroup label="Avrupa İhracat Pazarları">
+                <option value="Almanya">🇩🇪 Almanya</option>
+                <option value="İngiltere">🇬🇧 İngiltere (BK)</option>
+                <option value="Hollanda">🇳🇱 Hollanda</option>
+                <option value="Fransa">🇫🇷 Fransa</option>
+                <option value="İtalya">🇮🇹 İtalya</option>
+                <option value="İspanya">🇪🇸 İspanya</option>
+                <option value="Belçika">🇧🇪 Belçika</option>
+                <option value="Avusturya">🇦🇹 Avusturya</option>
+                <option value="İsviçre">🇨🇭 İsviçre</option>
+                <option value="Polonya">🇵🇱 Polonya</option>
+                <option value="Romanya">🇷🇴 Romanya</option>
+                <option value="Bulgaristan">🇧🇬 Bulgaristan</option>
+                <option value="Yunanistan">🇬🇷 Yunanistan</option>
+                <option value="Çekya">🇨🇿 Çekya</option>
+                <option value="Macaristan">🇭🇺 Macaristan</option>
+                <option value="İsveç">🇸🇪 İsveç</option>
+                <option value="Danimarka">🇩🇰 Danimarka</option>
+                <option value="Norveç">🇳🇴 Norveç</option>
+                <option value="Portekiz">🇵🇹 Portekiz</option>
+                <option value="İrlanda">🇮🇪 İrlanda</option>
+                <option value="Sırbistan">🇷🇸 Sırbistan</option>
+                <option value="Bosna Hersek">🇧🇦 Bosna Hersek</option>
+                <option value="Arnavutluk">🇦🇱 Arnavutluk</option>
+                <option value="Hırvatistan">🇭🇷 Hırvatistan</option>
+              </optgroup>
+              <optgroup label="Orta Doğu &amp; Körfez">
+                <option value="BAE">🇦🇪 Birleşik Arap Emirlikleri</option>
+                <option value="Suudi Arabistan">🇸🇦 Suudi Arabistan</option>
+                <option value="Katar">🇶🇦 Katar</option>
+                <option value="Kuveyt">🇰🇼 Kuveyt</option>
+                <option value="Umman">🇴🇲 Umman</option>
+                <option value="Bahreyn">🇧🇭 Bahreyn</option>
+                <option value="Irak">🇮🇶 Irak</option>
+                <option value="Ürdün">🇯🇴 Ürdün</option>
+              </optgroup>
+              <optgroup label="Türk Devletleri &amp; Avrasya">
+                <option value="Azerbaycan">🇦🇿 Azerbaycan</option>
+                <option value="KKTC">🏛️ KKTC</option>
+                <option value="Kazakistan">🇰🇿 Kazakistan</option>
+                <option value="Özbekistan">🇺🇿 Özbekistan</option>
+                <option value="Gürcistan">🇬🇪 Gürcistan</option>
+                <option value="Rusya">🇷🇺 Rusya</option>
+              </optgroup>
+              <optgroup label="Amerika, Asya &amp; Kuzey Afrika">
+                <option value="ABD">🇺🇸 ABD</option>
+                <option value="Kanada">🇨🇦 Kanada</option>
+                <option value="Çin">🇨🇳 Çin</option>
+                <option value="Japonya">🇯🇵 Japonya</option>
+                <option value="Güney Kore">🇰🇷 Güney Kore</option>
+                <option value="Hindistan">🇮🇳 Hindistan</option>
+                <option value="Mısır">🇪🇬 Mısır</option>
+                <option value="Fas">🇲🇦 Fas</option>
+                <option value="Cezayir">🇩🇿 Cezayir</option>
+              </optgroup>
             </select>
           </div>
 
@@ -277,7 +338,7 @@
               <option value="Yozgat">Yozgat</option>
               <option value="Zonguldak">Zonguldak</option>
             </select>
-            <input id="cityCustomInput" type="text" placeholder="Şehir yazın (Örn: Berlin, Dubai)" hidden>
+            <input id="cityCustomInput" type="text" placeholder="Özel şehir adı yazın (Örn: Mannheim, Sharjah, Graz)…" style="margin-top:6px" hidden>
           </div>
 
           <div class="field">
@@ -308,6 +369,7 @@
         <div class="action-bar">
           <div class="action-group">
             <button id="searchBtn" type="button" class="primary">Firmaları Listele</button>
+            <button id="toggleSearchMapBtn" type="button" class="btn btn-secondary" disabled title="Bulunan firmaları interaktif açık tema vektör haritada incele">🗺️ Haritada Göster</button>
             <button id="enrichBtn" type="button" disabled>Web Sitelerinden E-posta Tara</button>
             <button id="splinkDedupBtn" type="button" class="btn btn-secondary" disabled title="DuckDB üzerinde Splink 5.0 Fellegi-Sunter ile şube ve yazım varyasyonlarını kümele">🔗 AI Tekilleştir (Splink 5.0)</button>
             <button id="rapidFuzzBtn" type="button" class="btn btn-secondary" disabled title="RapidFuzz C++ SIMD WRatio ile arama terimine en yakın firmaları en üste sırala">⚡ RapidFuzz Sırala</button>
@@ -318,6 +380,14 @@
           </div>
         </div>
       </div>
+
+      <section id="searchMapWrap" class="card map-panel" hidden>
+        <div class="map-panel-head">
+          <strong id="searchMapTitle">🗺️ Kurumsal Konum &amp; Dağılım Haritası (Açık Tema Vektör)</strong>
+          <small class="text-muted">Pinlere tıklayarak firma iletişim bilgilerini görebilir ve tek tıkla ERP cari kartı açabilirsiniz.</small>
+        </div>
+        <div id="searchMapCanvas" class="map-canvas"></div>
+      </section>
 
       <section id="emptyPrompt" class="empty-hero">
         <p class="empty-title">Aramaya Başlayın</p>
@@ -402,10 +472,17 @@
             <input id="exportSectorInput" type="text" list="sectorSuggestions" value="Mobilya" placeholder="Örn: İnşaat, Mutfak, Mobilya…">
           </div>
           <div class="field">
+            <label for="exportCountrySelect">İhraç Edilecek Ülke</label>
+            <select id="exportCountrySelect">
+              <option value="Türkiye" selected>🇹🇷 Türkiye (81 İl)</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="exportCitySelect">İhraç Edilecek İl / Şehir</label>
             <select id="exportCitySelect">
               <option value="İstanbul" selected>İstanbul</option>
             </select>
+            <input id="exportCityCustomInput" type="text" placeholder="Özel şehir adı yazın…" style="margin-top:6px" hidden>
           </div>
         </div>
 
@@ -535,8 +612,8 @@
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-top:16px">
           <div style="padding:14px 16px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <small style="color:var(--muted); font-weight:600; text-transform:uppercase; font-size:11px">Toplam Firma (DuckDB)</small>
-            <div style="font-size:22px; font-weight:700; color:var(--ink); margin-top:4px" id="duckdbTotalPlaces">1.021.993</div>
-            <small style="color:#059669; font-weight:600">● C++ Vectorized In-Memory</small>
+            <div style="font-size:22px; font-weight:700; color:var(--ink); margin-top:4px" id="duckdbTotalPlaces">1.708.585</div>
+            <small style="color:#059669; font-weight:600">● 81/81 İl Tam Kapsam</small>
           </div>
           <div style="padding:14px 16px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <small style="color:var(--muted); font-weight:600; text-transform:uppercase; font-size:11px">Doğrulanmış Web Sitesi</small>
@@ -579,6 +656,9 @@
           </div>
         </div>
         <div id="h3StatusText" style="margin-top:10px; font-size:13px; color:var(--muted)"></div>
+        <div id="h3MapWrap" class="map-panel" style="margin-top:14px" hidden>
+          <div id="h3MapCanvas" class="map-canvas"></div>
+        </div>
         <div id="h3ResultsWrap" style="margin-top:14px" hidden>
           <div class="table-wrap">
             <table>
@@ -599,7 +679,7 @@
       </div>
 
       <div class="card">
-        <h3>81 İl &amp; 1.021.993 Kurumsal Firma Havuzu Dağılımı</h3>
+        <h3>81 İl &amp; 1.708.585 Kurumsal Firma Havuzu Dağılımı (81/81 İl Anında Hazır CDN)</h3>
         <div class="db-stats-grid" id="dbStatsGrid" style="margin-top:16px">
           <!-- Populated dynamically via TR_PROVINCES + manifest -->
         </div>
@@ -636,8 +716,8 @@
       </div>
 
       <div class="card" style="margin-top:16px">
-        <h3>Endüstriyel Motor Matrisi — V6 Pro Saf C / C++ / Rust Çekirdeği (9/9 Aktif)</h3>
-        <p class="text-muted">Ağır ve hantal tarayıcı/LLM yükleri tamamen temizlendi; sıfır maliyetli, yüksek hızlı 9 endüstriyel açık kaynak motor devrede:</p>
+        <h3>Endüstriyel Motor Matrisi — V7 Pro 100/100 Küresel Çekirdek (9/9 Aktif)</h3>
+        <p class="text-muted">Türkiye 81 İl CDN + 46 Ülke Yurtdışı Canlı Keşif + VKN/MERSİS/Yetkili İstihbaratı + İnteraktif H3 Vektör Harita:</p>
         <div id="engineMatrixGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:12px; margin-top:14px">
           <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">🦆 DuckDB Spatial v2.0</strong>
@@ -759,12 +839,24 @@
           <label for="partyEfaturaInput">e-Fatura Mükellefiyeti</label>
           <input id="partyEfaturaInput" type="text" readonly>
         </div>
+
+        <div class="field">
+          <label for="partyVknInput">VKN / Vergi No (GİB Modulo-10)</label>
+          <input id="partyVknInput" type="text" maxlength="16" placeholder="10 haneli VKN veya 11 haneli TCKN">
+        </div>
+
+        <div class="field" style="grid-column: span 2">
+          <label for="partyWebhookUrlInput">Canlı ERP / CRM Webhook URL (n8n, Odoo, Logo, Mikro, Özel REST)</label>
+          <input id="partyWebhookUrlInput" type="url" placeholder="https://erp.sirketiniz.com/api/webhook/lead">
+        </div>
       </div>
 
       <div class="action-bar" style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap">
-        <button id="partySaveBtn" type="button" class="btn btn-primary" style="flex:1">ERP Cari Kartı Olarak Kaydet</button>
+        <button id="partySaveBtn" type="button" class="btn btn-primary" style="flex:1">ERP Cari Kartı Kaydet</button>
+        <button id="partyWebhookBtn" type="button" class="btn btn-secondary" title="Cari kartı harici ERP/CRM sisteminize JSON POST olarak iletin">🔗 ERP Webhook Gönder</button>
+        <button id="partyVcardBtn" type="button" class="btn btn-secondary" title="Telefon ve Outlook rehberine tek tıkla eklemek için .vcf indir">📇 Rehbere İndir (.vcf)</button>
         <button id="partyExportJsonBtn" type="button" class="btn btn-secondary">JSON İndir</button>
-        <button id="partyCopyBtn" type="button" class="btn btn-secondary">Panoya Kopyala</button>
+        <button id="partyCopyBtn" type="button" class="btn btn-secondary">Kopyala</button>
       </div>
     </form>
   </dialog>

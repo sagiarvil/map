@@ -3,6 +3,7 @@
 }
 
 :root {
+  color-scheme: light;
   --bg: #F8FAFC;
   --surface: #FFFFFF;
   --surface-alt: #F1F5F9;
@@ -1098,3 +1099,71 @@ dialog.quick-dialog::backdrop {
   background: var(--surface-alt);
   color: var(--ink);
 }
+
+/* Interactive Light-Mode Vector Map & Uber H3 Panels (Strictly Light Theme) */
+.map-panel {
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.map-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.map-panel-head strong {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.map-canvas {
+  width: 100%;
+  height: 410px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #F8FAFC;
+  overflow: hidden;
+}
+
+.maplibregl-popup-content {
+  background: #FFFFFF !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12) !important;
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.intel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.intel-box {
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.intel-box small {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--subtle);
+  margin-bottom: 3px;
+}
+

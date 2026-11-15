@@ -73,23 +73,130 @@
     'Kayseri': ['Melikgazi', 'Kocasinan', 'Talas', 'İncesu', 'Develi']
   };
 
+  // 46 Global Trade Countries -> English Name, ISO-2 & Major Commercial Cities
+  const GLOBAL_COUNTRIES = {
+    'Türkiye': { en: 'Turkey', iso: 'TR', cities: TR_PROVINCES },
+    'Almanya': { en: 'Germany', iso: 'DE', cities: ['Berlin', 'München', 'Hamburg', 'Köln', 'Frankfurt', 'Stuttgart', 'Düsseldorf', 'Dortmund', 'Essen', 'Nürnberg', 'Hannover', 'Bremen', 'Leipzig'] },
+    'İngiltere': { en: 'United Kingdom', iso: 'GB', cities: ['London', 'Manchester', 'Birmingham', 'Leeds', 'Glasgow', 'Liverpool', 'Bristol', 'Sheffield', 'Edinburgh', 'Leicester'] },
+    'Hollanda': { en: 'Netherlands', iso: 'NL', cities: ['Amsterdam', 'Rotterdam', 'Den Haag', 'Utrecht', 'Eindhoven', 'Tilburg', 'Groningen', 'Breda', 'Arnhem'] },
+    'Fransa': { en: 'France', iso: 'FR', cities: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Bordeaux', 'Lille', 'Montpellier'] },
+    'İtalya': { en: 'Italy', iso: 'IT', cities: ['Milano', 'Roma', 'Torino', 'Napoli', 'Bologna', 'Firenze', 'Genova', 'Verona', 'Bari', 'Brescia'] },
+    'İspanya': { en: 'Spain', iso: 'ES', cities: ['Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Zaragoza', 'Málaga', 'Bilbao', 'Alicante', 'Murcia'] },
+    'Belçika': { en: 'Belgium', iso: 'BE', cities: ['Brussels', 'Antwerp', 'Ghent', 'Charleroi', 'Liège', 'Bruges', 'Leuven'] },
+    'Avusturya': { en: 'Austria', iso: 'AT', cities: ['Wien', 'Graz', 'Linz', 'Salzburg', 'Innsbruck', 'Klagenfurt'] },
+    'İsviçre': { en: 'Switzerland', iso: 'CH', cities: ['Zürich', 'Genève', 'Basel', 'Bern', 'Lausanne', 'Winterthur', 'Luzern'] },
+    'Polonya': { en: 'Poland', iso: 'PL', cities: ['Warszawa', 'Kraków', 'Wrocław', 'Poznań', 'Gdańsk', 'Łódź', 'Katowice'] },
+    'Romanya': { en: 'Romania', iso: 'RO', cities: ['București', 'Cluj-Napoca', 'Timișoara', 'Iași', 'Constanța', 'Brașov'] },
+    'Bulgaristan': { en: 'Bulgaria', iso: 'BG', cities: ['Sofia', 'Plovdiv', 'Varna', 'Burgas', 'Ruse', 'Stara Zagora'] },
+    'Yunanistan': { en: 'Greece', iso: 'GR', cities: ['Athens', 'Thessaloniki', 'Patras', 'Heraklion', 'Larissa'] },
+    'Çekya': { en: 'Czechia', iso: 'CZ', cities: ['Praha', 'Brno', 'Ostrava', 'Plzeň'] },
+    'Macaristan': { en: 'Hungary', iso: 'HU', cities: ['Budapest', 'Debrecen', 'Szeged', 'Győr'] },
+    'İsveç': { en: 'Sweden', iso: 'SE', cities: ['Stockholm', 'Göteborg', 'Malmö', 'Uppsala'] },
+    'Danimarka': { en: 'Denmark', iso: 'DK', cities: ['Copenhagen', 'Aarhus', 'Odense', 'Aalborg'] },
+    'Norveç': { en: 'Norway', iso: 'NO', cities: ['Oslo', 'Bergen', 'Stavanger', 'Trondheim'] },
+    'Portekiz': { en: 'Portugal', iso: 'PT', cities: ['Lisboa', 'Porto', 'Braga', 'Coimbra'] },
+    'İrlanda': { en: 'Ireland', iso: 'IE', cities: ['Dublin', 'Cork', 'Limerick', 'Galway'] },
+    'Sırbistan': { en: 'Serbia', iso: 'RS', cities: ['Belgrade', 'Novi Sad', 'Niš'] },
+    'Bosna Hersek': { en: 'Bosnia and Herzegovina', iso: 'BA', cities: ['Sarajevo', 'Banja Luka', 'Tuzla', 'Mostar'] },
+    'Arnavutluk': { en: 'Albania', iso: 'AL', cities: ['Tirana', 'Durrës', 'Vlorë'] },
+    'Hırvatistan': { en: 'Croatia', iso: 'HR', cities: ['Zagreb', 'Split', 'Rijeka', 'Osijek'] },
+    'BAE': { en: 'United Arab Emirates', iso: 'AE', cities: ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah'] },
+    'Suudi Arabistan': { en: 'Saudi Arabia', iso: 'SA', cities: ['Riyadh', 'Jeddah', 'Dammam', 'Mecca', 'Medina', 'Khobar'] },
+    'Katar': { en: 'Qatar', iso: 'QA', cities: ['Doha', 'Al Rayyan', 'Al Wakrah'] },
+    'Kuveyt': { en: 'Kuwait', iso: 'KW', cities: ['Kuwait City', 'Hawalli', 'Salmiya'] },
+    'Umman': { en: 'Oman', iso: 'OM', cities: ['Muscat', 'Salalah', 'Sohar'] },
+    'Bahreyn': { en: 'Bahrain', iso: 'BH', cities: ['Manama', 'Riffa', 'Muharraq'] },
+    'Irak': { en: 'Iraq', iso: 'IQ', cities: ['Erbil', 'Baghdad', 'Basra', 'Sulaymaniyah', 'Duhok', 'Mosul'] },
+    'Ürdün': { en: 'Jordan', iso: 'JO', cities: ['Amman', 'Zarqa', 'Irbid', 'Aqaba'] },
+    'Azerbaycan': { en: 'Azerbaijan', iso: 'AZ', cities: ['Bakü', 'Ganja', 'Sumqayit', 'Lankaran'] },
+    'KKTC': { en: 'Northern Cyprus', iso: 'CY', cities: ['Lefkoşa', 'Girne', 'Gazimağusa', 'Güzelyurt'] },
+    'Kazakistan': { en: 'Kazakhstan', iso: 'KZ', cities: ['Almaty', 'Astana', 'Shymkent', 'Atyrau'] },
+    'Özbekistan': { en: 'Uzbekistan', iso: 'UZ', cities: ['Tashkent', 'Samarkand', 'Bukhara', 'Namangan'] },
+    'Gürcistan': { en: 'Georgia', iso: 'GE', cities: ['Tbilisi', 'Batumi', 'Kutaisi'] },
+    'Rusya': { en: 'Russia', iso: 'RU', cities: ['Moscow', 'Saint Petersburg', 'Kazan', 'Novosibirsk', 'Yekaterinburg', 'Krasnodar'] },
+    'ABD': { en: 'United States', iso: 'US', cities: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Miami', 'Dallas', 'Atlanta', 'Boston', 'San Francisco', 'Seattle'] },
+    'Kanada': { en: 'Canada', iso: 'CA', cities: ['Toronto', 'Montreal', 'Vancouver', 'Calgary', 'Ottawa'] },
+    'Çin': { en: 'China', iso: 'CN', cities: ['Shanghai', 'Guangzhou', 'Shenzhen', 'Beijing', 'Yiwu', 'Hangzhou', 'Foshan'] },
+    'Japonya': { en: 'Japan', iso: 'JP', cities: ['Tokyo', 'Osaka', 'Yokohama', 'Nagoya'] },
+    'Güney Kore': { en: 'South Korea', iso: 'KR', cities: ['Seoul', 'Busan', 'Incheon'] },
+    'Hindistan': { en: 'India', iso: 'IN', cities: ['Mumbai', 'New Delhi', 'Bengaluru', 'Chennai', 'Ahmedabad'] },
+    'Mısır': { en: 'Egypt', iso: 'EG', cities: ['Cairo', 'Alexandria', 'Giza', 'New Cairo'] },
+    'Fas': { en: 'Morocco', iso: 'MA', cities: ['Casablanca', 'Rabat', 'Tanger', 'Marrakech'] },
+    'Cezayir': { en: 'Algeria', iso: 'DZ', cities: ['Algiers', 'Oran', 'Constantine'] }
+  };
+
+  // Zero-latency global city coordinates [lat, lon, halfSpan]
+  const GLOBAL_CITY_COORDS = {
+    'berlin': [52.5200, 13.4050, 0.16], 'munchen': [48.1351, 11.5820, 0.14], 'hamburg': [53.5511, 9.9937, 0.15],
+    'koln': [50.9375, 6.9603, 0.13], 'frankfurt': [50.1109, 8.6821, 0.13], 'stuttgart': [48.7758, 9.1829, 0.12],
+    'dusseldorf': [51.2277, 6.7735, 0.12], 'dortmund': [51.5136, 7.4653, 0.11], 'essen': [51.4556, 7.0116, 0.11],
+    'nurnberg': [49.4521, 11.0767, 0.11], 'hannover': [52.3759, 9.7320, 0.12], 'bremen': [53.0793, 8.8017, 0.11],
+    'leipzig': [51.3397, 12.3731, 0.11], 'london': [51.5074, -0.1278, 0.18], 'manchester': [53.4808, -2.2426, 0.13],
+    'birmingham': [52.4862, -1.8904, 0.13], 'leeds': [53.8008, -1.5491, 0.12], 'glasgow': [55.8642, -4.2518, 0.12],
+    'amsterdam': [52.3676, 4.9041, 0.13], 'rotterdam': [51.9244, 4.4777, 0.12], 'den haag': [52.0705, 4.3007, 0.10],
+    'utrecht': [52.0907, 5.1214, 0.10], 'eindhoven': [51.4416, 5.4697, 0.10], 'paris': [48.8566, 2.3522, 0.15],
+    'lyon': [45.7640, 4.8357, 0.12], 'marseille': [43.2965, 5.3698, 0.12], 'milano': [45.4642, 9.1900, 0.14],
+    'roma': [41.9028, 12.4964, 0.16], 'torino': [45.0703, 7.6869, 0.12], 'bologna': [44.4949, 11.3426, 0.11],
+    'madrid': [40.4168, -3.7038, 0.16], 'barcelona': [41.3874, 2.1686, 0.14], 'valencia': [39.4699, -0.3763, 0.11],
+    'brussels': [50.8503, 4.3517, 0.12], 'antwerp': [51.2194, 4.4025, 0.11], 'wien': [48.2082, 16.3738, 0.14],
+    'zurich': [47.3769, 8.5417, 0.11], 'geneve': [46.2044, 6.1432, 0.10], 'warszawa': [52.2297, 21.0122, 0.15],
+    'bucuresti': [44.4268, 26.1025, 0.14], 'sofia': [42.6977, 23.3219, 0.13], 'plovdiv': [42.1354, 24.7453, 0.10],
+    'athens': [37.9838, 23.7275, 0.14], 'thessaloniki': [40.6401, 22.9444, 0.11], 'praha': [50.0755, 14.4378, 0.14],
+    'budapest': [47.4979, 19.0402, 0.14], 'stockholm': [59.3293, 18.0686, 0.14], 'copenhagen': [55.6761, 12.5683, 0.13],
+    'oslo': [59.9139, 10.7522, 0.12], 'lisboa': [38.7223, -9.1393, 0.13], 'dublin': [53.3498, -6.2603, 0.13],
+    'belgrade': [44.7866, 20.4489, 0.13], 'sarajevo': [43.8563, 18.4131, 0.10], 'tirana': [41.3275, 19.8187, 0.10],
+    'zagreb': [45.8150, 15.9819, 0.12], 'dubai': [25.2048, 55.2708, 0.18], 'abu dhabi': [24.4539, 54.3773, 0.16],
+    'sharjah': [25.3463, 55.4209, 0.12], 'riyadh': [24.7136, 46.6753, 0.18], 'jeddah': [21.4858, 39.1925, 0.16],
+    'doha': [25.2854, 51.5310, 0.14], 'kuwait city': [29.3759, 47.9774, 0.14], 'muscat': [23.5880, 58.3829, 0.14],
+    'manama': [26.2285, 50.5860, 0.10], 'erbil': [36.1901, 44.0091, 0.13], 'baghdad': [33.3152, 44.3661, 0.16],
+    'amman': [31.9454, 35.9284, 0.14], 'baku': [40.4093, 49.8671, 0.15], 'lefkosa': [35.1856, 33.3823, 0.10],
+    'girne': [35.3364, 33.3199, 0.09], 'almaty': [43.2220, 76.8512, 0.15], 'astana': [51.1694, 71.4491, 0.14],
+    'tashkent': [41.2995, 69.2401, 0.15], 'tbilisi': [41.7151, 44.8271, 0.13], 'batumi': [41.6168, 41.6367, 0.09],
+    'moscow': [55.7558, 37.6173, 0.20], 'saint petersburg': [59.9311, 30.3609, 0.18],
+    'new york': [40.7128, -74.0060, 0.18], 'los angeles': [34.0522, -118.2437, 0.18], 'chicago': [41.8781, -87.6298, 0.16],
+    'houston': [29.7604, -95.3698, 0.16], 'miami': [25.7617, -80.1918, 0.15], 'toronto': [43.6532, -79.3832, 0.16],
+    'shanghai': [31.2304, 121.4737, 0.18], 'guangzhou': [23.1291, 113.2644, 0.16], 'shenzhen': [22.5431, 114.0579, 0.16],
+    'tokyo': [35.6762, 139.6503, 0.18], 'seoul': [37.5665, 126.9780, 0.16], 'mumbai': [19.0760, 72.8777, 0.16],
+    'cairo': [30.0444, 31.2357, 0.17], 'casablanca': [33.5731, -7.5898, 0.14], 'algiers': [36.7538, 3.0588, 0.13]
+  };
+
   const OSM_SECTOR_TAGS = {
     mobilya: ['["shop"="furniture"]', '["craft"="carpenter"]', '["craft"="upholsterer"]', '["shop"="kitchen"]', '["shop"="bed"]', '["shop"="interior_decoration"]'],
-    mutfak: ['["shop"="kitchen"]', '["craft"="cabinet_maker"]', '["shop"="appliance"]'],
-    ahsap: ['["craft"="carpenter"]', '["craft"="sawmill"]', '["shop"="Timber"]', '["shop"="doityourself"]'],
+    mutfak: ['["shop"="kitchen"]', '["craft"="cabinet_maker"]', '["shop"="appliance"]', '["shop"="furniture"]'],
+    ahsap: ['["craft"="carpenter"]', '["craft"="sawmill"]', '["shop"="timber"]', '["shop"="doityourself"]'],
     dekorasyon: ['["shop"="interior_decoration"]', '["shop"="curtain"]', '["shop"="carpet"]', '["shop"="lighting"]', '["office"="interior_design"]'],
     insaat: ['["office"="construction_company"]', '["shop"="trade"]', '["shop"="building_materials"]', '["shop"="hardware"]'],
     muteahhit: ['["office"="construction_company"]', '["office"="architect"]', '["office"="engineer"]'],
     mimar: ['["office"="architect"]', '["office"="interior_design"]'],
+    mimarlik: ['["office"="architect"]', '["office"="interior_design"]'],
     metal: ['["craft"="metal_construction"]', '["industrial"="metal"]', '["craft"="welder"]'],
     makina: ['["industrial"="machine_shop"]', '["craft"="machinist"]', '["industrial"="factory"]'],
     plastik: ['["industrial"="plastic"]', '["industrial"="packaging"]', '["industrial"="factory"]'],
     tekstil: ['["shop"="fabric"]', '["craft"="tailor"]', '["shop"="clothes"]', '["industrial"="textile"]'],
-    lojistik: ['["office"="logistics"]', '["office"="transport"]', '["building"="warehouse"]'],
+    giyim: ['["shop"="clothes"]', '["shop"="boutique"]', '["shop"="shoes"]'],
+    lojistik: ['["office"="logistics"]', '["office"="transport"]', '["building"="warehouse"]', '["industrial"="logistics"]'],
     otomotiv: ['["shop"="car_repair"]', '["shop"="car_parts"]', '["shop"="car"]', '["shop"="tyres"]'],
-    gida: ['["shop"="wholesale"]', '["shop"="supermarket"]', '["shop"="bakery"]', '["shop"="butcher"]'],
+    gida: ['["shop"="wholesale"]', '["shop"="supermarket"]', '["shop"="bakery"]', '["shop"="butcher"]', '["shop"="deli"]'],
+    restoran: ['["amenity"="restaurant"]', '["amenity"="fast_food"]', '["amenity"="cafe"]'],
+    otel: ['["tourism"="hotel"]', '["tourism"="guest_house"]', '["tourism"="apartment"]'],
+    turizm: ['["shop"="travel_agency"]', '["tourism"="hotel"]'],
     elektrik: ['["craft"="electrician"]', '["shop"="electronics"]', '["shop"="lighting"]', '["office"="energy_supplier"]'],
-    medikal: ['["shop"="medical_supply"]', '["amenity"="clinic"]', '["amenity"="doctors"]', '["amenity"="dentist"]']
+    medikal: ['["shop"="medical_supply"]', '["amenity"="clinic"]', '["amenity"="doctors"]', '["amenity"="dentist"]', '["amenity"="hospital"]'],
+    eczane: ['["amenity"="pharmacy"]', '["healthcare"="pharmacy"]'],
+    kozmetik: ['["shop"="cosmetics"]', '["shop"="perfumery"]', '["shop"="beauty"]'],
+    kuyumcu: ['["shop"="jewelry"]', '["craft"="jeweller"]'],
+    kimya: ['["industrial"="chemical"]', '["shop"="chemist"]'],
+    mermer: ['["craft"="stonemason"]', '["shop"="tiles"]'],
+    cam: ['["craft"="glaziery"]', '["craft"="window_construction"]'],
+    boya: ['["shop"="paint"]', '["craft"="painter"]'],
+    isitma: ['["craft"="hvac"]', '["craft"="plumber"]'],
+    asansor: ['["craft"="elevator"]', '["office"="company"]'],
+    yazilim: ['["office"="it"]', '["office"="software"]', '["office"="telecommunication"]'],
+    banka: ['["amenity"="bank"]', '["office"="financial"]'],
+    tutun: ['["shop"="tobacco"]', '["shop"="e-cigarette"]'],
+    avukat: ['["office"="lawyer"]', '["office"="notary"]'],
+    emlak: ['["office"="estate_agent"]', '["office"="property_management"]'],
+    sigorta: ['["office"="insurance"]']
   };
 
   const OVERPASS_MIRRORS = [
@@ -112,6 +219,9 @@
   let activeMode = 'cloud';     // 'cloud' | 'turbo-db'
   let hasStartedSearch = false; // Never auto-populate results before user clicks "Firmaları Bul & Getir"
   let searchInFlight = false;
+  let searchMapInstance = null;
+  let searchMapMarkers = [];
+  let h3MapInstance = null;
 
   const CATEGORY_TR = {
     'furniture store': 'Mobilya Mağazası',
@@ -151,10 +261,12 @@
     activeRecords = [];
     turboPageData = null;
     $('resultsSection').hidden = true;
+    if ($('searchMapWrap')) $('searchMapWrap').hidden = true;
     $('emptyPrompt').hidden = false;
     $('enrichBtn').disabled = true;
     $('exportXlsxBtn').disabled = true;
     $('exportCsvBtn').disabled = true;
+    if ($('toggleSearchMapBtn')) $('toggleSearchMapBtn').disabled = true;
     if ($('splinkDedupBtn')) $('splinkDedupBtn').disabled = true;
     if ($('rapidFuzzBtn')) $('rapidFuzzBtn').disabled = true;
     $('districtStrip').replaceChildren();
@@ -291,9 +403,14 @@
     for (const ph of phones) {
       const clean = String(ph).replace(/\D+/g, '');
       let mobile = '';
+      // Türkiye mobile (+90 5xx)
       if (clean.length === 10 && clean.startsWith('5')) mobile = '90' + clean;
       else if (clean.length === 11 && clean.startsWith('05')) mobile = '9' + clean;
       else if (clean.length === 12 && clean.startsWith('905')) mobile = clean;
+      // International mobile prefixes (DE, GB, NL, FR, IT, ES, BE, AT, CH, PL, RO, BG, GR, AE, SA, QA, KW, IQ, AZ, RU, KZ, UZ, GE, EG, MA, DZ)
+      else if (clean.length >= 10 && clean.length <= 15 && /^(491[567]|447\d|316\d|33[67]\d|393\d|34[67]\d|324\d|436\d|417\d|48[5678]\d|407\d|359[89]|3069|9715|9665|974[3567]|965[569]|9647|994[57]|79\d\d|77\d\d|9989|9955|201[0125]|212[67]|213[567])/.test(clean)) {
+        mobile = clean;
+      }
       if (mobile) {
         return {
           num: '+' + mobile,
@@ -335,12 +452,21 @@
     }
   }
 
+  function resolveSelectedCity(countryVal, selectEl, customEl) {
+    const meta = GLOBAL_COUNTRIES[countryVal] || GLOBAL_COUNTRIES['Türkiye'];
+    const defCity = (meta.cities && meta.cities[0]) || 'İstanbul';
+    if (!selectEl) return defCity;
+    const raw = selectEl.value;
+    if (raw === '__custom__') {
+      const typed = customEl ? customEl.value.trim() : '';
+      return typed || defCity;
+    }
+    return raw || defCity;
+  }
+
   function currentFilters() {
-    const country = $('countrySelect').value;
-    const cityRaw = $('citySelect').value;
-    const city = (country === 'Türkiye'
-      ? (cityRaw || 'İstanbul')
-      : ($('cityCustomInput').value.trim() || 'Berlin')) || 'İstanbul';
+    const country = $('countrySelect').value || 'Türkiye';
+    const city = resolveSelectedCity(country, $('citySelect'), $('cityCustomInput'));
     const district = $('districtSelect').value.trim();
     const sector = $('sectorInput').value.trim();
     const contactMode = $('contactModeSelect').value;
@@ -379,25 +505,49 @@
     nodes.forEach(n => io.observe(n));
   }
 
-  // Populate UI Selects
+  // Populate UI Selects (Supports both Türkiye 81 Provinces & 45+ Global Export Countries)
+  function populateCitiesForCountry(countryVal, sel, customInput) {
+    if (!sel) return;
+    const isTr = countryVal === 'Türkiye';
+    const meta = GLOBAL_COUNTRIES[countryVal] || { cities: ['Berlin'] };
+    const cityList = isTr ? TR_PROVINCES : (meta.cities || []);
+    let prev = sel.value;
+    if (!prev || (!cityList.includes(prev) && prev !== '__custom__')) {
+      prev = isTr ? 'İstanbul' : (cityList[0] || '__custom__');
+    }
+    sel.replaceChildren();
+    for (const cName of cityList) {
+      const opt = el('option', cName);
+      opt.value = cName;
+      if (cName === prev) opt.selected = true;
+      sel.append(opt);
+    }
+    if (!isTr) {
+      const customOpt = el('option', '✏️ Başka Şehir Yaz…');
+      customOpt.value = '__custom__';
+      if (prev === '__custom__') customOpt.selected = true;
+      sel.append(customOpt);
+    }
+    sel.value = prev;
+    if (sel.selectedIndex < 0 && sel.options.length > 0) {
+      sel.selectedIndex = 0;
+    }
+    sel.hidden = false;
+    if (customInput) {
+      customInput.hidden = (sel.value !== '__custom__');
+    }
+  }
+
   function populateCities() {
-    for (const id of ['citySelect', 'exportCitySelect', 'h3CitySelect']) {
-      const sel = $(id);
-      if (!sel) continue;
-      let prev = sel.value;
-      if (!prev || !TR_PROVINCES.includes(prev)) {
-        prev = 'İstanbul';
-      }
-      if (sel.options.length < TR_PROVINCES.length) {
-        sel.replaceChildren();
-        for (const prov of TR_PROVINCES) {
-          const opt = el('option', prov);
-          opt.value = prov;
-          if (prov === prev) opt.selected = true;
-          sel.append(opt);
-        }
-      }
-      sel.value = prev;
+    if ($('exportCountrySelect') && $('countrySelect') && $('exportCountrySelect').options.length <= 2) {
+      $('exportCountrySelect').innerHTML = $('countrySelect').innerHTML;
+      $('exportCountrySelect').value = 'Türkiye';
+    }
+    populateCitiesForCountry($('countrySelect') ? $('countrySelect').value : 'Türkiye', $('citySelect'), $('cityCustomInput'));
+    populateCitiesForCountry($('exportCountrySelect') ? $('exportCountrySelect').value : 'Türkiye', $('exportCitySelect'), $('exportCityCustomInput'));
+    const h3Sel = $('h3CitySelect');
+    if (h3Sel) {
+      populateCitiesForCountry('Türkiye', h3Sel, null);
     }
   }
 
@@ -589,34 +739,182 @@
     return unpacked;
   }
 
-  // Live OpenStreetMap Nominatim + Overpass Discovery for any un-sharded city in the world
+  // Live OpenStreetMap Nominatim + Zero-Latency City Lookup for any city in the world
   async function resolveCityBbox(city, country) {
     if (country === 'Türkiye' && CITY_BOXES[city]) {
       const [w, s, e, n] = CITY_BOXES[city].split(',').map(Number);
       return [w, s, e, n];
     }
+    const cFold = fold(city);
+    if (GLOBAL_CITY_COORDS[cFold]) {
+      const [lat, lon, span] = GLOBAL_CITY_COORDS[cFold];
+      return [lon - span * 1.35, lat - span, lon + span * 1.35, lat + span];
+    }
+    const cMeta = GLOBAL_COUNTRIES[country];
+    const qCountry = (cMeta && cMeta.en) || country;
     const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' +
-      encodeURIComponent(`${city}, ${country}`);
-    const res = await fetch(url, { headers: { 'Accept-Language': 'tr,en' } });
+      encodeURIComponent(`${city}, ${qCountry}`);
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en,tr' } });
     if (!res.ok) throw new Error('Bölge koordinatı çözümlenemedi');
     const arr = await res.json();
     if (!arr.length || !arr[0].boundingbox) {
       throw new Error(`"${city}, ${country}" için harita sınırı bulunamadı`);
     }
-    // Nominatim boundingbox is [south, north, west, east]
     const [south, north, west, east] = arr[0].boundingbox.map(Number);
-    return [west, south, east, north];
+    const cLat = Number(arr[0].lat || (south + north) / 2);
+    const cLon = Number(arr[0].lon || (west + east) / 2);
+    // Clamp metropolitan core to max ±0.18° so Overpass never times out on wide regions
+    return [
+      Math.max(west, cLon - 0.22),
+      Math.max(south, cLat - 0.16),
+      Math.min(east, cLon + 0.22),
+      Math.min(north, cLat + 0.16)
+    ];
   }
 
-  function normalizePhoneClient(raw) {
+  const COUNTRY_DIAL_PREFIX = {
+    'TR': '90', 'DE': '49', 'GB': '44', 'NL': '31', 'FR': '33', 'IT': '39', 'ES': '34',
+    'BE': '32', 'AT': '43', 'CH': '41', 'PL': '48', 'RO': '40', 'BG': '359', 'GR': '30',
+    'CZ': '420', 'HU': '36', 'SE': '46', 'DK': '45', 'NO': '47', 'PT': '351', 'IE': '353',
+    'RS': '381', 'BA': '387', 'AL': '355', 'HR': '385', 'AE': '971', 'SA': '966', 'QA': '974',
+    'KW': '965', 'OM': '968', 'BH': '973', 'IQ': '964', 'JO': '962', 'AZ': '994', 'CY': '90',
+    'KZ': '7', 'UZ': '998', 'GE': '995', 'RU': '7', 'US': '1', 'CA': '1', 'CN': '86',
+    'JP': '81', 'KR': '82', 'IN': '91', 'EG': '20', 'MA': '212', 'DZ': '213'
+  };
+
+  function normalizePhoneClient(raw, country = 'Türkiye') {
     if (!raw) return '';
-    const digits = String(raw).replace(/\D+/g, '');
-    if (digits.length === 10 && digits.startsWith('5')) return '+90' + digits;
-    if (digits.length === 10 && /^[2348]/.test(digits)) return '+90' + digits;
-    if (digits.length === 11 && digits.startsWith('0')) return '+90' + digits.slice(1);
-    if (digits.length === 12 && digits.startsWith('90')) return '+' + digits;
+    const str = String(raw).trim();
+    const digits = str.replace(/\D+/g, '');
+    if (!digits || digits.length < 7) return '';
+    if (str.startsWith('+') && digits.length >= 9 && digits.length <= 15) return '+' + digits;
+    if (str.startsWith('00') && digits.length >= 11 && digits.length <= 17) return '+' + digits.slice(2);
+    const iso = (GLOBAL_COUNTRIES[country] && GLOBAL_COUNTRIES[country].iso) || 'TR';
+    const dial = COUNTRY_DIAL_PREFIX[iso] || '90';
+    if (iso === 'TR') {
+      if (digits.length === 10 && /^[23458]/.test(digits)) return '+90' + digits;
+      if (digits.length === 11 && digits.startsWith('0')) return '+90' + digits.slice(1);
+      if (digits.length === 12 && digits.startsWith('90')) return '+' + digits;
+    } else {
+      if (digits.startsWith(dial) && digits.length >= dial.length + 7 && digits.length <= 15) return '+' + digits;
+      if (digits.startsWith('0') && digits.length >= 8 && digits.length <= 13) return '+' + dial + digits.slice(1);
+      if (digits.length >= 8 && digits.length <= 11) return '+' + dial + digits;
+    }
     if (digits.length >= 10 && digits.length <= 15) return '+' + digits;
     return '';
+  }
+
+  async function fetchPhotonOsmFallback(city, country, sector, bbox, tagClauses) {
+    const [w, s, e, n] = bbox;
+    const bbParam = `${w.toFixed(4)},${s.toFixed(4)},${e.toFixed(4)},${n.toFixed(4)}`;
+    const kvTags = [];
+    for (const c of tagClauses) {
+      const m = c.match(/^\["([^"]+)"="([^"]+)"\]$/);
+      if (m) kvTags.push(`${m[1]}:${m[2]}`);
+    }
+    const expanded = expandSectorTerms(sector || '');
+    const intlTerm = expanded.find(t => /^[a-z ]+$/.test(t) && t.length >= 4 && t !== fold(sector || '')) || sector || 'company';
+
+    const queries = kvTags.slice(0, 4).map(kv => {
+      const u = new URL('https://photon.komoot.io/api/');
+      u.searchParams.set('q', city);
+      u.searchParams.set('bbox', bbParam);
+      u.searchParams.set('osm_tag', kv);
+      u.searchParams.set('limit', '50');
+      return u.toString();
+    });
+    const kwUrl = new URL('https://photon.komoot.io/api/');
+    kwUrl.searchParams.set('q', `${intlTerm} ${city}`);
+    kwUrl.searchParams.set('bbox', bbParam);
+    kwUrl.searchParams.set('limit', '50');
+    queries.push(kwUrl.toString());
+
+    const settled = await Promise.allSettled(queries.map(async u => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 7000);
+      try {
+        const r = await fetch(u, { signal: ctrl.signal });
+        if (!r.ok) return [];
+        const j = await r.json();
+        return Array.isArray(j.features) ? j.features : [];
+      } finally {
+        clearTimeout(timer);
+      }
+    }));
+
+    const featMap = new Map();
+    for (const item of settled) {
+      if (item.status !== 'fulfilled') continue;
+      for (const f of item.value) {
+        const p = f && f.properties;
+        const coords = f && f.geometry && f.geometry.coordinates;
+        if (!p || !p.name || !Array.isArray(coords) || coords.length < 2) continue;
+        const osmType = p.osm_type;
+        const osmId = p.osm_id;
+        if (!osmId || (osmType !== 'N' && osmType !== 'W')) continue;
+        // Skip residential/highway noise when keyword query runs
+        if (p.osm_key === 'highway' || p.osm_key === 'place' || p.osm_key === 'boundary' || p.osm_key === 'railway') continue;
+        const key = `${osmType}:${osmId}`;
+        if (!featMap.has(key)) featMap.set(key, { p, lon: Number(coords[0]), lat: Number(coords[1]) });
+      }
+    }
+    if (!featMap.size) return null;
+
+    const nodeIds = [];
+    const wayIds = [];
+    for (const k of featMap.keys()) {
+      const [t, id] = k.split(':');
+      if (t === 'N') nodeIds.push(id);
+      else if (t === 'W') wayIds.push(id);
+    }
+
+    const richTags = new Map();
+    const fetchOsmBatch = async (kind, ids) => {
+      for (let i = 0; i < ids.length; i += 80) {
+        const chunk = ids.slice(i, i + 80).join(',');
+        const paramName = kind === 'nodes' ? 'nodes' : 'ways';
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 6500);
+        try {
+          const r = await fetch(`https://api.openstreetmap.org/api/0.6/${kind}.json?${paramName}=${chunk}`, { signal: ctrl.signal });
+          if (r.ok) {
+            const j = await r.json();
+            for (const el of (j.elements || [])) {
+              const prefix = kind === 'nodes' ? 'N' : 'W';
+              if (el.tags) richTags.set(`${prefix}:${el.id}`, el.tags);
+            }
+          }
+        } catch {
+          // Best-effort contact enrichment
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+    };
+    await Promise.all([
+      nodeIds.length ? fetchOsmBatch('nodes', nodeIds) : Promise.resolve(),
+      wayIds.length ? fetchOsmBatch('ways', wayIds) : Promise.resolve()
+    ]);
+
+    const out = [];
+    for (const [k, info] of featMap.entries()) {
+      const p = info.p;
+      const osmTags = richTags.get(k) || {};
+      const mergedTags = {
+        name: p.name,
+        ...(p.osm_key && p.osm_value ? { [p.osm_key]: p.osm_value } : {}),
+        ...(p.street ? { 'addr:street': p.street } : {}),
+        ...(p.housenumber ? { 'addr:housenumber': String(p.housenumber) } : {}),
+        ...(p.district || p.locality ? { 'addr:district': p.district || p.locality } : {}),
+        ...osmTags
+      };
+      out.push({
+        lat: info.lat,
+        lon: info.lon,
+        tags: mergedTags
+      });
+    }
+    return out;
   }
 
   async function fetchLiveOverpassCity(city, country, sector) {
@@ -628,7 +926,10 @@
     const bb = `(${s},${w},${n},${e})`;
     const area = Math.abs((e - w) * (n - s));
     const fsec = fold((sector || '').split('|')[0]);
-    let tagClauses = OSM_SECTOR_TAGS[fsec] ? [...OSM_SECTOR_TAGS[fsec]] : [];
+    const stemSec = fsec.replace(/(?:lar[ıi]|ler[iı]|lar|ler|c[ıiuü]|lik|luk)$/, '').trim();
+    const exactTags = OSM_SECTOR_TAGS[fsec] || OSM_SECTOR_TAGS[stemSec];
+    const hasExactSectorTags = Boolean(exactTags && exactTags.length);
+    let tagClauses = hasExactSectorTags ? [...exactTags] : [];
 
     if (!tagClauses.length && sector) {
       const safeTok = sector.replace(/[^A-Za-z0-9ÇĞİÖŞÜçğıöşü ]/g, '').trim();
@@ -641,27 +942,34 @@
       tagClauses = ['["shop"]', '["craft"]', '["office"]', '["industrial"]'];
     }
 
-    const body = `[out:json][timeout:28];(${tagClauses.slice(0, 6).map(t => `nwr${t}${bb};`).join('')});out center tags;`;
-    setStatus(`${city} için canlı OpenStreetMap veri kümeleri taranıyor…`, 'Overpass API', false, 55);
+    const body = `[out:json][timeout:12];(${tagClauses.slice(0, 5).map(t => `nw${t}${bb};`).join('')});out center tags 400;`;
+    setStatus(`${city} (${country}) için küresel harita kümeleri taranıyor…`, 'Küresel Keşif', false, 55);
 
     let elements = null;
-    for (const endpoint of OVERPASS_MIRRORS) {
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-          body: 'data=' + encodeURIComponent(body)
-        });
-        if (res.ok) {
+    const controllers = OVERPASS_MIRRORS.map(() => new AbortController());
+    try {
+      elements = await Promise.any(OVERPASS_MIRRORS.map(async (endpoint, idx) => {
+        const timer = setTimeout(() => controllers[idx].abort(), 6500);
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: 'data=' + encodeURIComponent(body),
+            signal: controllers[idx].signal
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
           const json = await res.json();
-          if (Array.isArray(json.elements)) {
-            elements = json.elements;
-            break;
-          }
+          if (!Array.isArray(json.elements)) throw new Error('Invalid payload');
+          return json.elements;
+        } finally {
+          clearTimeout(timer);
         }
-      } catch {
-        // Try next mirror
-      }
+      }));
+      controllers.forEach(c => c.abort());
+    } catch {
+      // All Overpass mirrors busy/502 -> instant Photon + Official OSM API v0.6 failover!
+      setStatus(`${city} için yedek küresel dizin (Photon + OSM API v0.6) devreye alındı…`, 'Yedek Motor', false, 72);
+      elements = await fetchPhotonOsmFallback(city, country, sector, [w, s, e, n], tagClauses);
     }
     if (!elements) {
       throw new Error('Canlı harita sunucuları şu an yoğun; lütfen birkaç saniye sonra tekrar deneyin.');
@@ -699,17 +1007,17 @@
       for (const phRaw of [tags.phone, tags['contact:phone'], tags.mobile, tags['contact:mobile'], tags['contact:whatsapp']]) {
         if (phRaw) {
           for (const part of String(phRaw).split(/[;,|/]+/)) {
-            const np = normalizePhoneClient(part);
+            const np = normalizePhoneClient(part, country);
             if (np && !phones.includes(np)) phones.push(np);
           }
         }
       }
 
-      const district = String(tags['addr:district'] || tags['addr:city_district'] || tags['addr:town'] || tags['addr:suburb'] || '').trim();
+      const district = String(tags['addr:district'] || tags['addr:city_district'] || tags['addr:suburb'] || tags['addr:borough'] || tags['addr:town'] || '').trim();
       if (district) distSet.add(district);
       const street = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(' ');
-      const address = [street, tags['addr:neighbourhood'], district, city].filter(Boolean).join(', ');
-      const category = String(tags.shop || tags.craft || tags.industrial || tags.office || tags.amenity || sector || 'İşletme').replace(/_/g, ' ');
+      const address = [street, tags['addr:neighbourhood'], district, city, country !== 'Türkiye' ? country : ''].filter(Boolean).join(', ');
+      const category = String(tags.shop || tags.craft || tags.industrial || tags.office || tags.amenity || tags.tourism || tags.healthcare || sector || 'İşletme').replace(/_/g, ' ');
 
       const search = ` ${fold(name)} ${fold(category)} ${fold(sector)} `;
       const quickBlob = fold(`${name} ${district} ${website} ${emails.join(' ')} ${phones.join(' ')} ${address}`);
@@ -732,6 +1040,7 @@
         lon,
         conf: 85,
         search,
+        sectorTagMatched: hasExactSectorTags,
         quickBlob,
         hasWhatsapp: Boolean(wa),
         whatsappUrl: wa ? wa.url : '',
@@ -808,6 +1117,7 @@
     $('enrichBtn').disabled = totalCount <= 0;
     $('exportXlsxBtn').disabled = totalCount <= 0;
     $('exportCsvBtn').disabled = totalCount <= 0;
+    if ($('toggleSearchMapBtn')) $('toggleSearchMapBtn').disabled = rows.length <= 0;
     if ($('splinkDedupBtn')) $('splinkDedupBtn').disabled = rows.length < 2 || !turboConnected;
     if ($('rapidFuzzBtn')) $('rapidFuzzBtn').disabled = rows.length < 2;
 
@@ -820,8 +1130,13 @@
     if ($('kpiBoth')) $('kpiBoth').textContent = fmt(stats.with_both || 0);
 
     const f = currentFilters();
+    const locLabel = f.country === 'Türkiye' ? f.city : `${f.city} (${f.country})`;
     $('activeFilterSummary').textContent =
-      `${f.city}${f.district ? ' / ' + f.district : ''} · ${f.sector || 'Tüm Sektörler'}`;
+      `${locLabel}${f.district ? ' / ' + f.district : ''} · ${f.sector || 'Tüm Sektörler'}`;
+
+    if ($('searchMapWrap') && !$('searchMapWrap').hidden) {
+      renderSearchVectorMap(rows, f);
+    }
 
     const start = totalCount ? currentOffset + 1 : 0;
     const end = Math.min(currentOffset + PAGE_SIZE, totalCount);
@@ -1019,7 +1334,7 @@
       // Live Overpass object records
       const sectorMatched = [];
       for (const r of dataset.records) {
-        if (!matchesTerms(r.search, termList)) continue;
+        if (!r.sectorTagMatched && !matchesTerms(r.search, termList)) continue;
         sectorMatched.push(r);
       }
       renderDistrictStrip(sectorMatched, f.district);
@@ -1096,98 +1411,101 @@
 
       // 1. If local Turbo SQLite engine is connected
       if (turboConnected && !f.quick) {
-        const params = new URLSearchParams({
-          sector: f.sector,
-          region: f.region,
-          district: f.district,
-          contact_mode: f.contactMode,
-          offset: String(currentOffset),
-          limit: String(PAGE_SIZE)
-        });
-        let pData = null;
-        let localOk = false;
-        try {
-          pData = await turboApi(`portfolio?${params}`, undefined, 12000);
-          localOk = true;
-        } catch (localErr) {
-          console.warn('Local engine unreachable or timed out, switching to Cloud CDN Shard:', localErr);
-          turboConnected = false;
-          turboToken = '';
-          const badge = $('engineBadge');
-          if (badge) badge.className = 'engine-badge cloud';
-          $('engineText').textContent = 'Hazır';
-          if ($('industrialBadge')) $('industrialBadge').style.display = 'none';
-        }
-
-        if (localOk) {
-          if (pData && pData.total > 0) {
-            activeMode = 'turbo-db';
-            turboPageData = pData;
-            renderTableRows(pData.rows, pData.total, pData);
+        // International Global Engine (Overture S3 + Overpass + libphonenumber + SQLite)
+        if (f.country !== 'Türkiye') {
+          try {
             setStatus(
-              `${f.city} kataloğunda "${f.sector || 'Tüm Sektörler'}" için ${fmt(pData.total)} doğrulanmış firma listelendi.`,
-              'Turbo Aktif',
+              `${f.city}, ${f.country} için küresel B2B veri kaynakları (Overture S3 + OSM) taranıyor…`,
+              'Küresel Keşif',
               false,
-              null
+              45
             );
-            if (Array.isArray(pData.districts) && pData.districts.length) {
-              populateDistricts(f.city, pData.districts.map(d => d[0]));
-              renderDistrictCounts(pData.districts, pData.total, f.district);
-            } else {
-              $('districtStrip').replaceChildren();
-            }
-            return;
-          }
-
-          // If local database has 0, check if we have a CDN shard for this city
-          if (f.country === 'Türkiye' && manifest.shards && manifest.shards[slug]) {
-            const shard = await loadCdnShard(slug);
-            if (shard) {
-              filterShardRecords(shard);
+            const gRes = await turboApi('industrial/global_search', {
+              city: f.city,
+              country: f.country,
+              sector: f.sector,
+              district: f.district,
+              contact_mode: f.contactMode,
+              offset: currentOffset,
+              limit: PAGE_SIZE
+            }, 42000);
+            if (gRes && Array.isArray(gRes.rows)) {
+              activeMode = 'turbo-db';
+              turboPageData = gRes;
+              renderTableRows(gRes.rows, gRes.total || 0, gRes);
+              if (Array.isArray(gRes.districts) && gRes.districts.length) {
+                populateDistricts(f.city, gRes.districts.map(d => d[0]));
+                renderDistrictCounts(gRes.districts, gRes.total || 0, f.district);
+              } else {
+                $('districtStrip').replaceChildren();
+              }
+              setStatus(
+                `${f.city} (${f.country}) kataloğunda "${f.sector || 'Tüm Sektörler'}" için ${fmt(gRes.total || 0)} uluslararası firma listelendi.`,
+                'Küresel Pro Aktif',
+                false,
+                null
+              );
               return;
             }
+          } catch (globalErr) {
+            console.warn('Global turbo search fallback to live browser Overpass:', globalErr);
+          }
+        } else {
+          const params = new URLSearchParams({
+            sector: f.sector,
+            region: f.region,
+            district: f.district,
+            contact_mode: f.contactMode,
+            offset: String(currentOffset),
+            limit: String(PAGE_SIZE)
+          });
+          let pData = null;
+          let localOk = false;
+          try {
+            pData = await turboApi(`portfolio?${params}`, undefined, 12000);
+            localOk = true;
+          } catch (localErr) {
+            console.warn('Local engine unreachable or timed out, switching to Cloud CDN Shard:', localErr);
+            turboConnected = false;
+            turboToken = '';
+            const badge = $('engineBadge');
+            if (badge) badge.className = 'engine-badge cloud';
+            $('engineText').textContent = 'Hazır';
+            if ($('industrialBadge')) $('industrialBadge').style.display = 'none';
           }
 
-          // If Türkiye, local DB already holds nationwide catalog; render empty cleanly
-          if (f.country === 'Türkiye') {
+          if (localOk) {
+            if (pData && pData.total > 0) {
+              activeMode = 'turbo-db';
+              turboPageData = pData;
+              renderTableRows(pData.rows, pData.total, pData);
+              setStatus(
+                `${f.city} kataloğunda "${f.sector || 'Tüm Sektörler'}" için ${fmt(pData.total)} doğrulanmış firma listelendi.`,
+                'Turbo Aktif',
+                false,
+                null
+              );
+              if (Array.isArray(pData.districts) && pData.districts.length) {
+                populateDistricts(f.city, pData.districts.map(d => d[0]));
+                renderDistrictCounts(pData.districts, pData.total, f.district);
+              } else {
+                $('districtStrip').replaceChildren();
+              }
+              return;
+            }
+
+            if (manifest.shards && manifest.shards[slug]) {
+              const shard = await loadCdnShard(slug);
+              if (shard) {
+                filterShardRecords(shard);
+                return;
+              }
+            }
+
             renderTableRows([], 0, { total: 0, websites: 0, with_email: 0, with_phone: 0, with_both: 0 });
             setStatus('Arama kriterine uygun kayıt bulunamadı. Sektör adını veya filtreleri değiştirebilirsiniz.', 'Bilgi', false, null);
             return;
           }
-
-          // Foreign city remote fetch via local engine
-          if (allowRemoteFetch && f.country !== 'Türkiye') {
-            try {
-              resetResultsView();
-              setStatus(`${f.city} bölgesi taranıyor, lütfen bekleyin…`, 'Taranıyor', false, 45);
-              const [w, s, e, n] = await resolveCityBbox(f.city, f.country);
-              await turboApi('places/download', {
-                region: f.region,
-                sector: f.sector,
-                box: `${w},${s},${e},${n}`,
-                source_mode: 'hybrid',
-                authorized: true
-              }, 45000);
-              const pAfter = await turboApi(`portfolio?${params}`, undefined, 12000);
-              if (pAfter && pAfter.total > 0) {
-                activeMode = 'turbo-db';
-                turboPageData = pAfter;
-                renderTableRows(pAfter.rows, pAfter.total, pAfter);
-                if (Array.isArray(pAfter.districts) && pAfter.districts.length) {
-                  populateDistricts(f.city, pAfter.districts.map(d => d[0]));
-                  renderDistrictCounts(pAfter.districts, pAfter.total, f.district);
-                }
-                setStatus('', '', false, null);
-                return;
-              }
-            } catch (turboErr) {
-              console.warn('Turbo discovery fallback:', turboErr);
-            }
-          }
-
-          renderTableRows([], 0, { total: 0, websites: 0, with_email: 0, with_phone: 0, with_both: 0 });
-          setStatus('Arama kriterine uygun kayıt bulunamadı.', 'Bilgi', false, null);
-          return;
         }
       }
 
@@ -1354,15 +1672,24 @@
   function syncExportInputsToSearch() {
     if (activeWorkspace === 'export') {
       const expSec = $('exportSectorInput');
+      const expCountry = $('exportCountrySelect');
       const expCity = $('exportCitySelect');
+      const expCustom = $('exportCityCustomInput');
       if (expSec && $('sectorInput')) {
         $('sectorInput').value = expSec.value.trim();
       }
-      if (expCity && expCity.value && $('citySelect')) {
-        $('countrySelect').value = 'Türkiye';
-        $('citySelect').hidden = false;
-        $('cityCustomInput').hidden = true;
+      if (expCountry && $('countrySelect')) {
+        $('countrySelect').value = expCountry.value || 'Türkiye';
+        populateCitiesForCountry($('countrySelect').value, $('citySelect'), $('cityCustomInput'));
+      }
+      if (expCity && $('citySelect')) {
         $('citySelect').value = expCity.value;
+        if ($('cityCustomInput')) {
+          $('cityCustomInput').hidden = (expCity.value !== '__custom__');
+          if (expCustom && expCity.value === '__custom__') {
+            $('cityCustomInput').value = expCustom.value.trim();
+          }
+        }
       }
     }
   }
@@ -1621,22 +1948,45 @@
 
     try {
       if (turboConnected) {
-        const res = await turboApi('industrial/crawl', { url: raw }, 20000);
+        const res = await turboApi('industrial/crawl', { url: raw }, 22000);
         box.replaceChildren();
         const head = el('div', `✓ ${res.title || res.url || raw} (${res.engine_used || res.tier_used || 'http2'})`, 'firm-name');
         const domInfo = res.domain_intel || {};
-        const infraLine = el(
-          'div',
-          `Altyapı: ${domInfo.provider || 'Bilinmiyor'} · MX: ${domInfo.has_mx ? 'Aktif' : 'Yok'} · SPF: ${(domInfo.spf || domInfo.has_spf) ? 'Var' : 'Yok'} · DMARC: ${domInfo.has_dmarc ? 'Var' : 'Yok'}`,
-          'text-muted'
+        const corpIds = res.corporate_identifiers || res.corporate_ids || {};
+        const execs = Array.isArray(res.decision_makers) ? res.decision_makers : [];
+        const pat = res.email_pattern || {};
+
+        const grid = el('div', null, 'intel-grid');
+        const b1 = el('div', null, 'intel-box');
+        b1.append(
+          el('small', 'DNS & Posta Altyapısı'),
+          el('div', `${domInfo.provider || 'Bilinmiyor'} · MX: ${domInfo.has_mx ? 'Aktif' : 'Yok'} · SPF: ${(domInfo.spf || domInfo.has_spf) ? 'Var' : 'Yok'} · DMARC: ${domInfo.has_dmarc ? 'Var' : 'Yok'}`)
         );
-        infraLine.style.marginTop = '6px';
+
+        const b2 = el('div', null, 'intel-box');
+        const vkns = Array.isArray(corpIds.all_vkns) && corpIds.all_vkns.length ? corpIds.all_vkns : (corpIds.vkn ? [corpIds.vkn] : []);
+        const vknText = vkns.length ? `VKN: ${vkns.join(', ')} (GİB Doğrulamalı)` : 'VKN: Sayfada Açık Değil';
+        const mersisText = corpIds.mersis ? ` · MERSİS: ${corpIds.mersis}` : '';
+        const kepText = (corpIds.kep_addresses && corpIds.kep_addresses.length) ? ` · KEP: ${corpIds.kep_addresses.join(', ')}` : '';
+        const vatList = corpIds.international_reg_ids || corpIds.vat_numbers || [];
+        const vatText = vatList.length ? ` · VAT/HRB: ${vatList.join(', ')}` : '';
+        b2.append(el('small', 'Resmi Sicil & Vergi İstihbaratı'), el('div', vknText + mersisText + kepText + vatText));
+
+        const b3 = el('div', null, 'intel-box');
+        const execText = execs.length
+          ? execs.map(x => `${x.name} (${x.role})`).join(' · ')
+          : 'Açık Künye/JSON-LD Yetkilisi Bulunamadı';
+        const patText = pat.pattern ? ` · Format: ${pat.pattern}` : '';
+        b3.append(el('small', 'Karar Vericiler & E-posta Kalıbı'), el('div', execText + patText));
+
+        grid.append(b1, b2, b3);
+
         const emLine = el('div', `E-postalar: ${(res.emails && res.emails.length) ? res.emails.join(', ') : 'Bulunamadı'}`, 'contact-item');
-        emLine.style.marginTop = '8px';
+        emLine.style.marginTop = '10px';
         const phList = (res.phones || []).map(p => (typeof p === 'string' ? p : `${p.e164} (${p.line_type}${p.whatsapp_eligible ? ' · WhatsApp' : ''})`));
         const phLine = el('div', `Telefonlar: ${phList.length ? phList.join(', ') : 'Bulunamadı'}`, 'contact-item');
         phLine.style.marginTop = '4px';
-        box.append(head, infraLine, emLine, phLine);
+        box.append(head, grid, emLine, phLine);
         const errMsg = res.error || res.blocked_reason;
         const snippet = res.markdown_snippet || res.markdown_preview;
         if (errMsg) {
@@ -1679,6 +2029,194 @@
     } finally {
       btn.disabled = false;
       btn.textContent = 'Canlı İstihbarat Çıkar';
+    }
+  }
+
+  // Light-Mode Vector Basemap Style (Carto Positron Light — Strictly White/Light Corporate Theme)
+  const LIGHT_VECTOR_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+
+  function buildRegularHexagonRing(lon, lat, radiusDeg = 0.014) {
+    const cosLat = Math.max(0.25, Math.cos((lat * Math.PI) / 180));
+    const ring = [];
+    for (let i = 0; i <= 6; i++) {
+      const ang = (Math.PI / 3) * (i % 6) + Math.PI / 6;
+      ring.push([
+        Number((lon + (radiusDeg * Math.cos(ang)) / cosLat).toFixed(6)),
+        Number((lat + radiusDeg * Math.sin(ang)).toFixed(6))
+      ]);
+    }
+    return ring;
+  }
+
+  function toggleSearchMap() {
+    const wrap = $('searchMapWrap');
+    if (!wrap) return;
+    wrap.hidden = !wrap.hidden;
+    const btn = $('toggleSearchMapBtn');
+    if (btn) {
+      btn.textContent = wrap.hidden ? '🗺️ Haritada Göster' : '🗺️ Haritayı Gizle';
+    }
+    if (!wrap.hidden) {
+      const rows = activeMode === 'turbo-db'
+        ? ((turboPageData && turboPageData.rows) || [])
+        : activeRecords.slice(currentOffset, currentOffset + PAGE_SIZE);
+      renderSearchVectorMap(rows, currentFilters());
+    }
+  }
+
+  function renderSearchVectorMap(rows, f) {
+    const canvas = $('searchMapCanvas');
+    if (!canvas || typeof window.maplibregl === 'undefined') return;
+    const valid = (rows || []).filter(r => typeof r.lat === 'number' && typeof r.lon === 'number' && Math.abs(r.lat) <= 90 && Math.abs(r.lon) <= 180);
+    if (!valid.length) return;
+
+    const titleEl = $('searchMapTitle');
+    if (titleEl) {
+      titleEl.textContent = `🗺️ ${f.city} (${f.country}) · ${f.sector || 'Tüm Sektörler'} — ${valid.length} Konum`;
+    }
+
+    if (!searchMapInstance) {
+      searchMapInstance = new window.maplibregl.Map({
+        container: canvas,
+        style: LIGHT_VECTOR_STYLE,
+        center: [valid[0].lon, valid[0].lat],
+        zoom: 10.5,
+        attributionControl: true
+      });
+      searchMapInstance.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    } else {
+      searchMapInstance.resize();
+    }
+
+    for (const m of searchMapMarkers) m.remove();
+    searchMapMarkers = [];
+
+    const bounds = new window.maplibregl.LngLatBounds();
+    for (const r of valid.slice(0, 150)) {
+      bounds.extend([r.lon, r.lat]);
+      const popRoot = el('div');
+      popRoot.append(
+        el('strong', r.name || 'Firma'),
+        el('div', formatCategoryLabel(r.category, f.sector), 'text-muted')
+      );
+      if (r.phones && r.phones[0]) popRoot.append(el('div', `📞 ${r.phones[0]}`));
+      if (r.emails && r.emails[0]) popRoot.append(el('div', `📧 ${r.emails[0]}`));
+      const quickBtn = el('button', '+ ERP Cari Kartı Oluştur', 'btn-quick-party');
+      quickBtn.type = 'button';
+      quickBtn.style.marginTop = '6px';
+      quickBtn.addEventListener('click', () => openQuickPartyModal(r, f));
+      popRoot.append(quickBtn);
+
+      const popup = new window.maplibregl.Popup({ offset: 18 }).setDOMContent(popRoot);
+      const marker = new window.maplibregl.Marker({ color: (r.hasWhatsapp || r.whatsapp) ? '#059669' : '#0284C7' })
+        .setLngLat([r.lon, r.lat])
+        .setPopup(popup)
+        .addTo(searchMapInstance);
+      searchMapMarkers.push(marker);
+    }
+
+    if (valid.length === 1) {
+      searchMapInstance.flyTo({ center: [valid[0].lon, valid[0].lat], zoom: 13 });
+    } else {
+      searchMapInstance.fitBounds(bounds, { padding: 48, maxZoom: 13.5, duration: 550 });
+    }
+  }
+
+  function renderH3VectorMap(clusters, city) {
+    const wrap = $('h3MapWrap');
+    const canvas = $('h3MapCanvas');
+    if (!wrap || !canvas || typeof window.maplibregl === 'undefined') return;
+    if (!clusters || !clusters.length) {
+      wrap.hidden = true;
+      return;
+    }
+    wrap.hidden = false;
+    const maxCnt = Math.max(1, ...clusters.map(c => c.firm_count || 1));
+
+    const features = clusters.map(c => {
+      const ring = (Array.isArray(c.boundary) && c.boundary.length >= 6)
+        ? c.boundary
+        : buildRegularHexagonRing(c.center_lon, c.center_lat, 0.014);
+      const ratio = (c.firm_count || 1) / maxCnt;
+      const fill = ratio > 0.66 ? '#0284C7' : (ratio > 0.33 ? '#38BDF8' : '#BAE6FD');
+      return {
+        type: 'Feature',
+        geometry: { type: 'Polygon', coordinates: [ring] },
+        properties: {
+          h3_index: c.h3_index || '',
+          district: c.district || city,
+          firm_count: c.firm_count || 0,
+          dominant_category: c.dominant_category || 'Sanayi',
+          with_email: c.with_email || 0,
+          with_phone: c.with_phone || 0,
+          samples: (c.sample_firms || []).slice(0, 3).join(' · '),
+          fill
+        }
+      };
+    });
+
+    const geojson = { type: 'FeatureCollection', features };
+
+    const applySource = () => {
+      const existing = h3MapInstance.getSource('h3-hexes');
+      if (existing) {
+        existing.setData(geojson);
+      } else {
+        h3MapInstance.addSource('h3-hexes', { type: 'geojson', data: geojson });
+        h3MapInstance.addLayer({
+          id: 'h3-hex-fill',
+          type: 'fill',
+          source: 'h3-hexes',
+          paint: {
+            'fill-color': ['get', 'fill'],
+            'fill-opacity': 0.52
+          }
+        });
+        h3MapInstance.addLayer({
+          id: 'h3-hex-line',
+          type: 'line',
+          source: 'h3-hexes',
+          paint: {
+            'line-color': '#0369A1',
+            'line-width': 2
+          }
+        });
+        h3MapInstance.on('click', 'h3-hex-fill', ev => {
+          if (!ev.features || !ev.features.length) return;
+          const p = ev.features[0].properties || {};
+          const popNode = el('div');
+          popNode.append(
+            el('strong', `⬡ ${p.district} (${fmt(p.firm_count)} Firma)`),
+            el('div', `Baskın Sektör: ${p.dominant_category}`),
+            el('div', `📧 ${fmt(p.with_email)} E-posta · 📞 ${fmt(p.with_phone)} Tel`),
+            el('div', p.samples ? `Öncü: ${p.samples}` : `H3: ${p.h3_index}`, 'text-muted')
+          );
+          new window.maplibregl.Popup()
+            .setLngLat(ev.lngLat)
+            .setDOMContent(popNode)
+            .addTo(h3MapInstance);
+        });
+        h3MapInstance.on('mouseenter', 'h3-hex-fill', () => { h3MapInstance.getCanvas().style.cursor = 'pointer'; });
+        h3MapInstance.on('mouseleave', 'h3-hex-fill', () => { h3MapInstance.getCanvas().style.cursor = ''; });
+      }
+      const bounds = new window.maplibregl.LngLatBounds();
+      for (const c of clusters) bounds.extend([c.center_lon, c.center_lat]);
+      h3MapInstance.fitBounds(bounds, { padding: 55, maxZoom: 12, duration: 550 });
+    };
+
+    if (!h3MapInstance) {
+      h3MapInstance = new window.maplibregl.Map({
+        container: canvas,
+        style: LIGHT_VECTOR_STYLE,
+        center: [clusters[0].center_lon, clusters[0].center_lat],
+        zoom: 10
+      });
+      h3MapInstance.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+      h3MapInstance.on('load', applySource);
+    } else {
+      h3MapInstance.resize();
+      if (h3MapInstance.isStyleLoaded()) applySource();
+      else h3MapInstance.once('load', applySource);
     }
   }
 
@@ -1818,6 +2356,8 @@
       if (statusEl) {
         statusEl.textContent = `✓ ${engineName} ile ${city} genelinde en yoğun ${clusters.length} sanayi ve ticaret kümesi haritalandı.`;
       }
+
+      renderH3VectorMap(clusters.slice(0, 20), city);
 
       for (const c of clusters.slice(0, 15)) {
         const tr = el('tr');
@@ -2138,11 +2678,35 @@
     $('partyNaceInput').value = naceCode ? `${naceCode} - ${naceTitle}` : 'Belirtilmedi';
 
     $('partyEfaturaInput').value = (firm.isEfatura || firm.efatura) ? 'Evet (e-Fatura Mükellefi)' : 'Belirtilmedi';
+    if ($('partyVknInput')) $('partyVknInput').value = firm.vkn || '';
+    if ($('partyWebhookUrlInput')) {
+      try {
+        $('partyWebhookUrlInput').value = localStorage.getItem('erp_webhook_url') || '';
+      } catch {}
+    }
 
     dialog.showModal();
   }
 
+  // Official Turkish Revenue Administration (GİB) 10-Digit VKN Modulo-10 Checksum
+  function validateGibVknClient(raw) {
+    const d = String(raw || '').replace(/\D+/g, '');
+    if (d.length !== 10 || new Set(d).size === 1) return false;
+    let total = 0;
+    for (let i = 0; i < 9; i++) {
+      const digit = Number(d[i]);
+      const v = (digit + (9 - i)) % 10;
+      if (v === 0) continue;
+      let p = (v * Math.pow(2, 9 - i)) % 9;
+      if (p === 0) p = 9;
+      total += p;
+    }
+    const check = (10 - (total % 10)) % 10;
+    return check === Number(d[9]);
+  }
+
   function getPartyFormData() {
+    const vknRaw = $('partyVknInput') ? $('partyVknInput').value.trim() : '';
     return {
       id: 'party_' + Date.now(),
       code: $('partyCodeInput').value.trim(),
@@ -2155,9 +2719,77 @@
       email: $('partyEmailInput').value.trim(),
       nace: $('partyNaceInput').value.trim(),
       efatura: $('partyEfaturaInput').value.trim(),
-      source: 'haritalar_lead_intelligence',
+      vkn: vknRaw,
+      vkn_verified: vknRaw.length === 10 ? validateGibVknClient(vknRaw) : null,
+      source: 'haritalar_lead_intelligence_v7',
       created_at: new Date().toISOString()
     };
+  }
+
+  function handleExportPartyVcard() {
+    const p = getPartyFormData();
+    const safeVcf = s => String(s || '').replace(/[\r\n;]+/g, ' ').trim();
+    const lines = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${safeVcf(p.name)}`,
+      `ORG:${safeVcf(p.name)}`,
+      p.phone ? `TEL;TYPE=WORK,VOICE:${safeVcf(p.phone)}` : '',
+      p.email ? `EMAIL;TYPE=PREF,INTERNET:${safeVcf(p.email)}` : '',
+      `ADR;TYPE=WORK:;;${safeVcf(p.address)};${safeVcf(p.district)};${safeVcf(p.city)};;`,
+      `NOTE:${safeVcf('Cari: ' + p.code + ' | NACE: ' + p.nace + (p.vkn ? ' | VKN: ' + p.vkn : ''))}`,
+      'END:VCARD'
+    ].filter(Boolean);
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/vcard;charset=utf-8' });
+    triggerDownload(blob, `${slugify(p.name || p.code || 'firma')}.vcf`);
+  }
+
+  async function handleSendPartyWebhook() {
+    const party = getPartyFormData();
+    const urlInput = $('partyWebhookUrlInput');
+    const webhookUrl = urlInput ? urlInput.value.trim() : '';
+    if (!webhookUrl || !/^https?:\/\//i.test(webhookUrl)) {
+      alert('Lütfen geçerli bir ERP / CRM Webhook URL adresi girin (https://…).');
+      return;
+    }
+    if (party.vkn && party.vkn.replace(/\D+/g, '').length === 10 && !party.vkn_verified) {
+      alert('Girilen 10 haneli VKN, GİB Modulo-10 doğrulamasından geçemedi. Lütfen kontrol edin.');
+      return;
+    }
+    try {
+      localStorage.setItem('erp_webhook_url', webhookUrl);
+    } catch {}
+
+    const btn = $('partyWebhookBtn');
+    const notice = $('partySuccessNotice');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Gönderiliyor…';
+    }
+    try {
+      if (turboConnected) {
+        const res = await turboApi('erp/webhook', { webhook_url: webhookUrl, payload: party }, 12000);
+        if (!res.ok) throw new Error(res.error || `HTTP ${res.status_code || 'Hata'}`);
+      } else {
+        const r = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(party)
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      }
+      if (notice) {
+        notice.textContent = `✓ Cari kart (${party.code}) canlı ERP Webhook adresine başarıyla iletildi!`;
+        notice.style.display = 'block';
+      }
+    } catch (err) {
+      alert('ERP Webhook gönderim hatası: ' + (err.message || err));
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '🔗 ERP Webhook Gönder';
+      }
+    }
   }
 
   function handleSaveParty() {
@@ -2255,22 +2887,50 @@
     if (partyExportJson) partyExportJson.addEventListener('click', handleExportPartyJson);
     const partyCopy = $('partyCopyBtn');
     if (partyCopy) partyCopy.addEventListener('click', handleCopyParty);
+    const partyWebhook = $('partyWebhookBtn');
+    if (partyWebhook) partyWebhook.addEventListener('click', handleSendPartyWebhook);
+    const partyVcard = $('partyVcardBtn');
+    if (partyVcard) partyVcard.addEventListener('click', handleExportPartyVcard);
+
+    const toggleMapBtn = $('toggleSearchMapBtn');
+    if (toggleMapBtn) toggleMapBtn.addEventListener('click', toggleSearchMap);
+
+    // Export Country/City Sync
+    if ($('exportCountrySelect')) {
+      $('exportCountrySelect').addEventListener('change', () => {
+        populateCitiesForCountry($('exportCountrySelect').value, $('exportCitySelect'), $('exportCityCustomInput'));
+      });
+    }
+    if ($('exportCitySelect')) {
+      $('exportCitySelect').addEventListener('change', () => {
+        if ($('exportCityCustomInput')) {
+          $('exportCityCustomInput').hidden = ($('exportCitySelect').value !== '__custom__');
+        }
+      });
+    }
 
     // Enrich Workspace
     const enrichStart = $('enrichStartBtn');
     if (enrichStart) enrichStart.addEventListener('click', handleEnrich);
     $('countrySelect').addEventListener('change', () => {
-      const isTr = $('countrySelect').value === 'Türkiye';
-      $('citySelect').hidden = !isTr;
-      $('cityCustomInput').hidden = isTr;
-      populateDistricts(isTr ? $('citySelect').value : '');
+      const countryVal = $('countrySelect').value || 'Türkiye';
+      populateCitiesForCountry(countryVal, $('citySelect'), $('cityCustomInput'));
+      const activeCity = resolveSelectedCity(countryVal, $('citySelect'), $('cityCustomInput'));
+      populateDistricts(countryVal === 'Türkiye' ? activeCity : '');
       currentOffset = 0;
       hasStartedSearch = false;
       resetResultsView();
     });
 
     $('citySelect').addEventListener('change', () => {
-      populateDistricts($('citySelect').value);
+      const countryVal = $('countrySelect').value || 'Türkiye';
+      const isCustom = $('citySelect').value === '__custom__';
+      if ($('cityCustomInput')) {
+        $('cityCustomInput').hidden = !isCustom;
+        if (isCustom) $('cityCustomInput').focus();
+      }
+      const activeCity = resolveSelectedCity(countryVal, $('citySelect'), $('cityCustomInput'));
+      populateDistricts(countryVal === 'Türkiye' ? activeCity : '');
       $('districtSelect').value = '';
       currentOffset = 0;
       hasStartedSearch = false;
@@ -2380,7 +3040,7 @@
     resetResultsView();
 
     try {
-      const res = await fetch('/data/manifest.json?v=6.0.0', { cache: 'no-cache' });
+      const res = await fetch('/data/manifest.json?v=7.0.1', { cache: 'no-cache' });
       if (res.ok) {
         manifest = await res.json();
         populateDistricts($('citySelect') ? $('citySelect').value : 'İstanbul');

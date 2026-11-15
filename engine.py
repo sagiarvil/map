@@ -673,12 +673,21 @@ class AsyncCrawlSession:
         raise ScanError('Yönlendirme sınırı')
 
 
-def phone_normalize(raw: Any) -> str:
+try:
+    import phonenumbers as _phonenumbers
+    from phonenumbers import PhoneNumberFormat as _PNFormat, PhoneNumberType as _PNType, number_type as _pn_type
+    HAS_PHONENUMBERS = True
+except ImportError:  # pragma: no cover
+    _phonenumbers = None  # type: ignore[assignment]
+    HAS_PHONENUMBERS = False
+
+
+def phone_normalize(raw: Any, default_country: str = 'TR') -> str:
     """Keep published public business numbers as normalized E.164/444 text while rejecting placeholder junk."""
     if not isinstance(raw, str):
         return ''
     raw = unquote(raw).strip().split(';', 1)[0].split('?', 1)[0]
-    raw = re.sub(r'(?i)\s*(?:dahili|ext\.?|iç hat)\s*[:.]?\s*\d+\s*$', '', raw).strip()
+    raw = re.sub(r'(?i)\s*(?:dahili|ext\.?|iç hat|extension)\s*[:.]?\s*\d+\s*$', '', raw).strip()
     if not re.fullmatch(r'[+0-9().\s\-/\[\]]+', raw):
         return ''
     digits = re.sub(r'\D', '', raw)
@@ -688,16 +697,27 @@ def phone_normalize(raw: Any) -> str:
     # Reject repeated-digit fake placeholders (e.g. +905555555555, 02120000000)
     if len(digits) >= 7 and len(set(digits[-7:])) == 1:
         return ''
-    if len(digits) == 12 and digits.startswith('90') and digits[2] in '23458':
-        return '+' + digits
-    if len(digits) == 11 and digits.startswith('0') and digits[1] in '23458':
-        return '+90' + digits[1:]
-    if len(digits) == 10 and digits[0] in '23458':
-        return '+90' + digits
+    iso = (default_country or 'TR').strip().upper()
+    if iso == 'TR':
+        if len(digits) == 11 and digits.startswith('15') and digits[1:3] in ('50', '53', '54', '55', '56'):
+            return '+90' + digits[1:]
+        if len(digits) == 12 and digits.startswith('90') and digits[2] in '23458':
+            return '+' + digits
+        if len(digits) == 11 and digits.startswith('0') and digits[1] in '23458':
+            return '+90' + digits[1:]
+        if len(digits) == 10 and digits[0] in '23458':
+            return '+90' + digits
+        if len(digits) == 7 and digits.startswith('444'):
+            return digits
+    if HAS_PHONENUMBERS:
+        try:
+            parsed = _phonenumbers.parse(raw, iso if len(iso) == 2 else 'TR')
+            if _phonenumbers.is_valid_number(parsed):
+                return _phonenumbers.format_number(parsed, _PNFormat.E164)
+        except Exception:
+            pass
     if raw.startswith('+') and 7 <= len(digits) <= 15:
         return '+' + digits
-    if len(digits) == 7 and digits.startswith('444'):
-        return digits
     return ''
 
 
@@ -1304,32 +1324,47 @@ def discover(fetch: Any, url: str) -> list[dict[str, str]]:
 # --- B2B Intelligence Engines (WhatsApp, Enterprise Stack, CT Logs) ---
 
 def is_whatsapp_phone(raw: Any) -> bool:
-    """Detect if phone candidate is an active Turkish mobile / WhatsApp number (+905xx...)."""
+    """Detect if phone candidate is an active Turkish (+905xx) or international mobile WhatsApp number."""
     if not isinstance(raw, str):
         return False
-    digits = re.sub(r'\D', '', raw)
+    s = raw.strip()
+    digits = re.sub(r'\D', '', s)
     if digits.startswith('90') and len(digits) == 12:
-        digits = digits[2:]
-    elif digits.startswith('0') and len(digits) == 11:
-        digits = digits[1:]
-    return len(digits) == 10 and digits.startswith('5')
+        return digits[2] == '5'
+    if s.startswith('+90'):
+        return len(digits) == 12 and digits[2] == '5'
+    if not s.startswith('+'):
+        if digits.startswith('0') and len(digits) == 11:
+            return digits[1] == '5'
+        if len(digits) == 10:
+            return digits[0] == '5'
+        return False
+    if HAS_PHONENUMBERS:
+        try:
+            parsed = _phonenumbers.parse(s, None)
+            if _phonenumbers.is_valid_number(parsed):
+                return _pn_type(parsed) == _PNType.MOBILE
+        except Exception:
+            pass
+    return False
 
 
 def whatsapp_url(raw: Any) -> str:
-    """Format direct click-to-chat URL for WhatsApp Web / Mobile."""
+    """Format direct click-to-chat URL for WhatsApp Web / Mobile (TR + International E.164)."""
     if not isinstance(raw, str):
         return ''
-    digits = re.sub(r'\D', '', raw)
-    if digits.startswith('90') and len(digits) == 12:
-        d10 = digits[2:]
-    elif digits.startswith('0') and len(digits) == 11:
-        d10 = digits[1:]
-    elif len(digits) == 10:
-        d10 = digits
-    else:
+    s = raw.strip()
+    digits = re.sub(r'\D', '', s)
+    if digits.startswith('90') and len(digits) == 12 and digits[2] == '5':
+        return f'https://wa.me/{digits}'
+    if not s.startswith('+'):
+        if digits.startswith('0') and len(digits) == 11 and digits[1] == '5':
+            return f'https://wa.me/90{digits[1:]}'
+        if len(digits) == 10 and digits[0] == '5':
+            return f'https://wa.me/90{digits}'
         return ''
-    if len(d10) == 10 and d10.startswith('5'):
-        return f'https://wa.me/90{d10}'
+    if is_whatsapp_phone(s) and 8 <= len(digits) <= 15:
+        return f'https://wa.me/{digits}'
     return ''
 
 

@@ -20,7 +20,7 @@ def slugify_city(region: str) -> str:
     return catalog.fold(prov).replace(' ', '-')
 
 
-def build_shards(db_path: Path, out_dir: Path, min_rows: int = 0) -> dict[str, object]:
+def build_shards(db_path: Path, out_dir: Path, min_rows: int = 0, only_tr: bool = False) -> dict[str, object]:
     out_dir.mkdir(parents=True, exist_ok=True)
     for stale in list(out_dir.glob('*.json')) + list(out_dir.glob('*.gz')):
         if stale.name != 'manifest.json':
@@ -48,10 +48,11 @@ def build_shards(db_path: Path, out_dir: Path, min_rows: int = 0) -> dict[str, o
         ):
             place_phones[pid].add(ph)
 
+        where_clause = "WHERE region LIKE '%, Türkiye'" if only_tr else ''
         regions = [
             r[0]
             for r in conn.execute(
-                'SELECT region FROM places GROUP BY region HAVING count(*) >= ? ORDER BY region',
+                f'SELECT region FROM places {where_clause} GROUP BY region HAVING count(*) >= ? ORDER BY region',
                 (min_rows,),
             )
         ]
@@ -194,7 +195,7 @@ def build_shards(db_path: Path, out_dir: Path, min_rows: int = 0) -> dict[str, o
 
 
 if __name__ == '__main__':
-    res = build_shards(ROOT / 'data' / 'leads.sqlite3', ROOT / 'hosting' / 'data', min_rows=15_000)
+    res = build_shards(ROOT / 'data' / 'leads.sqlite3', ROOT / 'hosting' / 'data', min_rows=1, only_tr=True)
     total_firms = 0
     for slug, info in res.get('shards', {}).items():  # type: ignore[union-attr]
         total_firms += int(info['count'])  # type: ignore[arg-type]

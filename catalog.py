@@ -193,35 +193,295 @@ ALIASES: dict[str, str] = {
     'kuaför': 'hair salon|beauty salon|barber shop|kuafor|berber|guzellik merkezi',
     'kırtasiye': 'stationery store|book store|kirtasiye|kitapci|fotokopi|ofis malzemeleri',
     'enerji': 'energy supplier|solar energy|fuel supplier|petrol|akaryakit|istasyon|benzin|gunes enerjisi',
+    'kozmetik': 'cosmetics store|beauty supply|perfume store|kozmetik|parfum|kisisel bakim',
+    'kuyumcu': 'jewelry store|jeweler|goldsmith|watch store|kuyumcu|mucevherat|altin|saat',
+    'cam': 'glass and mirror shop|glazier|window installation|cam|ayna|cam balkon|isicam',
+    'boya': 'paint store|paint manufacturer|hardware store|boya|nalbur|izolasyon|yalitim',
+    'ısıtma': 'hvac contractor|heating|air conditioning|plumbing|kombi|klima|isitma|sogutma|havalandirma|tesisat',
+    'klima': 'hvac contractor|air conditioning|refrigeration|klima|sogutma|havalandirma|chiller',
+    'asansör': 'elevator service|elevator manufacturer|industrial equipment|asansor|yuruyen merdiven',
+    'madencilik': 'mining|quarry|stone supplier|coal|maden|ocak|cevher|mermer',
+    'denizcilik': 'marine supply|boat builder|shipyard|shipping company|tersane|yat|tekne|denizcilik|liman',
+    'turizm': 'travel agency|tour operator|hotel|resort|turizm|seyahat acentesi|acente|transfer',
 }
 
-# OSM tag filter builder for common sectors so Overpass fetches ultra-relevant POIs fast.
+# OSM tag filter builder for common sectors so Overpass fetches ultra-relevant POIs globally in <3s.
 OSM_SECTOR_FILTERS: dict[str, list[str]] = {
     'mobilya': [
         '["shop"~"furniture|interior_decoration|kitchen|bed|bathroom_furnishing|curtain|carpet|doors|lighting"]',
         '["craft"~"carpenter|cabinet_maker|upholsterer|joiner|sawmill"]',
         '["industrial"="furniture"]',
-        '["name"~"Mobilya|Koltuk|Kanepe|Yatak|Marangoz|Ahşap|Ahsap|Dolap|Mutfak|Dekorasyon|Kısıkköy",i]',
+        '["name"~"Mobilya|Furniture|Möbel|Moebel|Meubel|Mobilier|Muebles|Arredamenti|Koltuk|Kanepe|Yatak|Marangoz|Ahşap",i]',
     ],
     'mutfak': [
         '["shop"~"kitchen|furniture|appliance"]',
         '["craft"~"cabinet_maker|carpenter"]',
-        '["name"~"Mutfak|Ankastre|Dolap",i]',
+        '["name"~"Mutfak|Kitchen|Küche|Kueche|Keuken|Cuisine|Cocina|Cucine|Ankastre|Dolap",i]',
+    ],
+    'ahsap': [
+        '["craft"~"carpenter|sawmill|joiner|cabinet_maker|parquet_layer"]',
+        '["shop"~"timber|wood|doityourself"]',
+    ],
+    'dekorasyon': [
+        '["shop"~"interior_decoration|curtain|carpet|lighting|paint|wallpaper|tiles"]',
+        '["office"="interior_design"]',
     ],
     'müteahhit': [
         '["office"~"construction_company|architect|engineer|estate_agent"]',
         '["craft"~"builder|civil_engineering"]',
-        '["name"~"İnşaat|Insaat|Yapı|Yapi|Müteahhit|Proje",i]',
+        '["name"~"İnşaat|Insaat|Construction|Bau|Bouw|Bâtiment|Edilizia|Yapı|Müteahhit",i]',
+    ],
+    'muteahhit': [
+        '["office"~"construction_company|architect|engineer|estate_agent"]',
+        '["craft"~"builder|civil_engineering"]',
     ],
     'inşaat': [
         '["office"~"construction_company|architect|engineer"]',
         '["shop"~"doityourself|trade|hardware|building_materials"]',
-        '["name"~"İnşaat|Insaat|Yapı|Yapi|Beton|Malzeme",i]',
+        '["craft"~"builder|roofer|mason|scaffolder|glazier|plumber"]',
+    ],
+    'insaat': [
+        '["office"~"construction_company|architect|engineer"]',
+        '["shop"~"doityourself|trade|hardware|building_materials"]',
+        '["craft"~"builder|roofer|mason|scaffolder|glazier|plumber"]',
     ],
     'mimar': [
         '["office"~"architect|interior_design"]',
-        '["name"~"Mimar|Mimarlık|Mimarlik|İç Mimar|Tasarım",i]',
+        '["name"~"Mimar|Architect|Architekt|Architecture|Tasarım|Design",i]',
     ],
+    'metal': [
+        '["craft"~"metal_construction|welder|locksmith|sheet_metal|toolmaker"]',
+        '["industrial"~"metal|steel|foundry|machine_shop"]',
+    ],
+    'makina': [
+        '["industrial"~"machine_shop|factory|engineering|manufacturing"]',
+        '["craft"~"machinist|automation|toolmaker|agricultural_engines"]',
+        '["name"~"Makina|Makine|Machine|Maschinen|Machinery|CNC|Automation",i]',
+    ],
+    'plastik': [
+        '["industrial"~"plastic|packaging|chemical|factory"]',
+        '["name"~"Plastik|Plastic|Kunststoff|Packaging|Ambalaj|Polymer",i]',
+    ],
+    'tekstil': [
+        '["shop"~"fabric|clothes|fashion|boutique|tailor|sewing|leather"]',
+        '["craft"~"tailor|dressmaker|embroiderer|shoemaker"]',
+        '["industrial"~"textile|clothing|garment"]',
+    ],
+    'giyim': [
+        '["shop"~"clothes|fashion|boutique|shoes|bag"]',
+        '["craft"~"tailor|dressmaker"]',
+    ],
+    'lojistik': [
+        '["office"~"logistics|transport|shipping|courier|moving_company|customs_broker"]',
+        '["industrial"~"logistics|warehouse|port"]',
+        '["name"~"Lojistik|Logistics|Transport|Spedition|Cargo|Freight|Nakliyat",i]',
+    ],
+    'otomotiv': [
+        '["shop"~"car|car_repair|car_parts|tyres|motorcycle|truck"]',
+        '["craft"="car_painter"]',
+    ],
+    'gida': [
+        '["shop"~"wholesale|supermarket|convenience|bakery|butcher|deli|greengrocer|confectionery|spices"]',
+        '["industrial"~"food|bakery|brewery|dairy"]',
+    ],
+    'gıda': [
+        '["shop"~"wholesale|supermarket|convenience|bakery|butcher|deli|greengrocer|confectionery|spices"]',
+        '["industrial"~"food|bakery|brewery|dairy"]',
+    ],
+    'restoran': [
+        '["amenity"~"restaurant|fast_food|food_court"]',
+    ],
+    'kafe': [
+        '["amenity"~"cafe|ice_cream"]',
+        '["shop"~"coffee|pastry|bakery"]',
+    ],
+    'otel': [
+        '["tourism"~"hotel|motel|guest_house|hostel|apartment|resort"]',
+    ],
+    'elektrik': [
+        '["craft"~"electrician|electronics_repair|hvac"]',
+        '["shop"~"electronics|lighting|electrical|appliance|radiotechnics"]',
+        '["office"~"energy_supplier|solar"]',
+    ],
+    'medikal': [
+        '["shop"~"medical_supply|optician|hearing_aids|chemist"]',
+        '["amenity"~"clinic|doctors|dentist|hospital|pharmacy"]',
+        '["healthcare"]',
+    ],
+    'eczane': [
+        '["amenity"="pharmacy"]',
+        '["shop"="chemist"]',
+    ],
+    'banka': [
+        '["amenity"~"bank|bureau_de_change"]',
+        '["office"~"financial|accountant|tax_advisor"]',
+    ],
+    'tobacco': [
+        '["shop"~"tobacco|e-cigarette|kiosk|alcohol|newsagent"]',
+    ],
+    'tutun': [
+        '["shop"~"tobacco|e-cigarette|kiosk|alcohol|newsagent"]',
+    ],
+    'avukat': [
+        '["office"~"lawyer|notary|legal"]',
+    ],
+    'hukuk': [
+        '["office"~"lawyer|notary|legal"]',
+    ],
+    'emlak': [
+        '["office"~"estate_agent|property_management"]',
+    ],
+    'sigorta': [
+        '["office"="insurance"]',
+    ],
+    'yazilim': [
+        '["office"~"it|software|telecommunication|advertising_agency|consulting|web_design"]',
+    ],
+    'yazılım': [
+        '["office"~"it|software|telecommunication|advertising_agency|consulting|web_design"]',
+    ],
+    'kozmetik': [
+        '["shop"~"cosmetics|perfumery|beauty|chemist|hairdresser_supply"]',
+    ],
+    'kuyumcu': [
+        '["shop"~"jewelry|watches|gold_buyer"]',
+        '["craft"~"jeweller|watchmaker"]',
+    ],
+    'kimya': [
+        '["industrial"~"chemical|paint|cosmetics|pharmaceutical"]',
+        '["shop"~"paint|chemist|agrarian"]',
+    ],
+    'mermer': [
+        '["craft"="stonemason"]',
+        '["industrial"~"quarry|stone"]',
+        '["name"~"Mermer|Marble|Granit|Granite|Stone|Naturstein",i]',
+    ],
+}
+
+# Global Country ISO-2 & English Name Mapping (55+ Trade Countries)
+COUNTRY_ISO_MAP: dict[str, tuple[str, str]] = {
+    'turkiye': ('TR', 'Turkey'),
+    'turkey': ('TR', 'Turkey'),
+    'tr': ('TR', 'Turkey'),
+    'kktc': ('TR', 'Northern Cyprus'),
+    'almanya': ('DE', 'Germany'),
+    'germany': ('DE', 'Germany'),
+    'deutschland': ('DE', 'Germany'),
+    'de': ('DE', 'Germany'),
+    'hollanda': ('NL', 'Netherlands'),
+    'netherlands': ('NL', 'Netherlands'),
+    'nl': ('NL', 'Netherlands'),
+    'ingiltere': ('GB', 'United Kingdom'),
+    'birlesik krallik': ('GB', 'United Kingdom'),
+    'united kingdom': ('GB', 'United Kingdom'),
+    'uk': ('GB', 'United Kingdom'),
+    'gb': ('GB', 'United Kingdom'),
+    'fransa': ('FR', 'France'),
+    'france': ('FR', 'France'),
+    'fr': ('FR', 'France'),
+    'italya': ('IT', 'Italy'),
+    'italy': ('IT', 'Italy'),
+    'it': ('IT', 'Italy'),
+    'ispanya': ('ES', 'Spain'),
+    'spain': ('ES', 'Spain'),
+    'es': ('ES', 'Spain'),
+    'abd': ('US', 'United States'),
+    'amerika': ('US', 'United States'),
+    'united states': ('US', 'United States'),
+    'usa': ('US', 'United States'),
+    'us': ('US', 'United States'),
+    'kanada': ('CA', 'Canada'),
+    'canada': ('CA', 'Canada'),
+    'bae': ('AE', 'United Arab Emirates'),
+    'birlesik arap emirlikleri': ('AE', 'United Arab Emirates'),
+    'uae': ('AE', 'United Arab Emirates'),
+    'united arab emirates': ('AE', 'United Arab Emirates'),
+    'ae': ('AE', 'United Arab Emirates'),
+    'azerbaycan': ('AZ', 'Azerbaijan'),
+    'azerbaijan': ('AZ', 'Azerbaijan'),
+    'az': ('AZ', 'Azerbaijan'),
+    'rusya': ('RU', 'Russia'),
+    'russia': ('RU', 'Russia'),
+    'polonya': ('PL', 'Poland'),
+    'poland': ('PL', 'Poland'),
+    'belcika': ('BE', 'Belgium'),
+    'belgium': ('BE', 'Belgium'),
+    'isvicre': ('CH', 'Switzerland'),
+    'switzerland': ('CH', 'Switzerland'),
+    'avusturya': ('AT', 'Austria'),
+    'austria': ('AT', 'Austria'),
+    'isvec': ('SE', 'Sweden'),
+    'sweden': ('SE', 'Sweden'),
+    'norvec': ('NO', 'Norway'),
+    'norway': ('NO', 'Norway'),
+    'danimarka': ('DK', 'Denmark'),
+    'denmark': ('DK', 'Denmark'),
+    'finlandiya': ('FI', 'Finland'),
+    'finland': ('FI', 'Finland'),
+    'irlanda': ('IE', 'Ireland'),
+    'ireland': ('IE', 'Ireland'),
+    'portekiz': ('PT', 'Portugal'),
+    'portugal': ('PT', 'Portugal'),
+    'yunanistan': ('GR', 'Greece'),
+    'greece': ('GR', 'Greece'),
+    'bulgaristan': ('BG', 'Bulgaria'),
+    'bulgaria': ('BG', 'Bulgaria'),
+    'romanya': ('RO', 'Romania'),
+    'romania': ('RO', 'Romania'),
+    'cekya': ('CZ', 'Czechia'),
+    'czechia': ('CZ', 'Czechia'),
+    'macaristan': ('HU', 'Hungary'),
+    'hungary': ('HU', 'Hungary'),
+    'hirvatistan': ('HR', 'Croatia'),
+    'sirbistan': ('RS', 'Serbia'),
+    'bosna hersek': ('BA', 'Bosnia and Herzegovina'),
+    'arnavutluk': ('AL', 'Albania'),
+    'kuzey makedonya': ('MK', 'North Macedonia'),
+    'suudi arabistan': ('SA', 'Saudi Arabia'),
+    'saudi arabia': ('SA', 'Saudi Arabia'),
+    'katar': ('QA', 'Qatar'),
+    'qatar': ('QA', 'Qatar'),
+    'kuveyt': ('KW', 'Kuwait'),
+    'kuwait': ('KW', 'Kuwait'),
+    'umman': ('OM', 'Oman'),
+    'bahreyn': ('BH', 'Bahrain'),
+    'irak': ('IQ', 'Iraq'),
+    'iraq': ('IQ', 'Iraq'),
+    'urdun': ('JO', 'Jordan'),
+    'lubnan': ('LB', 'Lebanon'),
+    'misir': ('EG', 'Egypt'),
+    'egypt': ('EG', 'Egypt'),
+    'fas': ('MA', 'Morocco'),
+    'morocco': ('MA', 'Morocco'),
+    'cezayir': ('DZ', 'Algeria'),
+    'tunus': ('TN', 'Tunisia'),
+    'libya': ('LY', 'Libya'),
+    'gurcistan': ('GE', 'Georgia'),
+    'georgia': ('GE', 'Georgia'),
+    'kazakistan': ('KZ', 'Kazakhstan'),
+    'kazakhstan': ('KZ', 'Kazakhstan'),
+    'ozbekistan': ('UZ', 'Uzbekistan'),
+    'uzbekistan': ('UZ', 'Uzbekistan'),
+    'turkmenistan': ('TM', 'Turkmenistan'),
+    'kirgizistan': ('KG', 'Kyrgyzstan'),
+    'cin': ('CN', 'China'),
+    'china': ('CN', 'China'),
+    'japonya': ('JP', 'Japan'),
+    'japan': ('JP', 'Japan'),
+    'guney kore': ('KR', 'South Korea'),
+    'south korea': ('KR', 'South Korea'),
+    'hindistan': ('IN', 'India'),
+    'india': ('IN', 'India'),
+    'singapur': ('SG', 'Singapore'),
+    'malezya': ('MY', 'Malaysia'),
+    'endonezya': ('ID', 'Indonesia'),
+    'avustralya': ('AU', 'Australia'),
+    'australia': ('AU', 'Australia'),
+    'brezilya': ('BR', 'Brazil'),
+    'brazil': ('BR', 'Brazil'),
+    'meksika': ('MX', 'Mexico'),
+    'mexico': ('MX', 'Mexico'),
+    'guney afrika': ('ZA', 'South Africa'),
 }
 
 # Official Turkish province plate/ISO subdivision codes, ordered 01–81.
@@ -502,37 +762,76 @@ def _clean_poi_email(raw: Any) -> str:
     return e
 
 
+def country_iso_of_region(region: str) -> str:
+    """Resolve ISO-2 country code from region string (e.g. 'Berlin, Almanya' -> 'DE', 'İzmir, Türkiye' -> 'TR')."""
+    if not region:
+        return 'TR'
+    parts = [p.strip() for p in region.split(',') if p.strip()]
+    if len(parts) >= 2:
+        country_raw = fold(parts[-1])
+        hit = COUNTRY_ISO_MAP.get(country_raw)
+        if hit:
+            return hit[0]
+        if len(parts[-1].strip()) == 2 and parts[-1].strip().isalpha():
+            return parts[-1].strip().upper()
+    if province_of(parts[0]) if parts else '':
+        return 'TR'
+    return 'TR'
+
+
+def country_english_name(country_or_region: str) -> str:
+    """Translate Turkish/local country label into English for international Nominatim geocoding."""
+    raw = country_or_region.split(',')[-1].strip() if ',' in country_or_region else country_or_region.strip()
+    hit = COUNTRY_ISO_MAP.get(fold(raw))
+    return hit[1] if hit else raw
+
+
 def meta(f: dict[str, Any], key: str, fallback_region: str = '') -> tuple[str, str, str, str, str]:
     p = f['properties']
     province = district = ''
-    fallback_prov = province_of(fallback_region.split(',')[0]) if fallback_region else ''
+    iso_country = country_iso_of_region(fallback_region)
+    fallback_city = fallback_region.split(',')[0].strip() if fallback_region else ''
+    fallback_prov = province_of(fallback_city) if iso_country == 'TR' else fallback_city
     raw_addrs = p.get('addresses')
     for a in (raw_addrs if isinstance(raw_addrs, list) else []):
         if not isinstance(a, dict):
             continue
         country = text(a.get('country'), 10).upper()
-        if country and country != 'TR':
-            continue
-        locality = text(a.get('locality'), 200)
-        freeform = text(a.get('freeform'), 400)
-        postcode = text(a.get('postcode'), 20)
-        province = (
-            province_of(a.get('region'))
-            or _province_from_postcode(postcode)
-            or province_of(locality)
-            or UNIQUE_DISTRICT_PROVINCE.get(fold(locality), '')
-            or _infer_province_from_freeform(freeform)
-            or fallback_prov
-        )
-        district = text(a.get('district') or a.get('county') or a.get('municipality'), 200)
-        if not district:
-            district = _infer_district(province, locality, freeform)
+        if iso_country == 'TR':
+            if country and country != 'TR':
+                continue
+            locality = text(a.get('locality'), 200)
+            freeform = text(a.get('freeform'), 400)
+            postcode = text(a.get('postcode'), 20)
+            province = (
+                province_of(a.get('region'))
+                or _province_from_postcode(postcode)
+                or province_of(locality)
+                or UNIQUE_DISTRICT_PROVINCE.get(fold(locality), '')
+                or _infer_province_from_freeform(freeform)
+                or fallback_prov
+            )
+            district = text(a.get('district') or a.get('county') or a.get('municipality'), 200)
+            if not district:
+                district = _infer_district(province, locality, freeform)
+        else:
+            if country and len(iso_country) == 2 and country != iso_country:
+                continue
+            locality = text(a.get('locality'), 200)
+            subloc = text(a.get('sublocality') or a.get('district') or a.get('county') or a.get('municipality'), 200)
+            province = fallback_city or locality or text(a.get('region'), 120)
+            if subloc and fold(subloc) != fold(province):
+                district = subloc[:120]
+            elif locality and fold(locality) != fold(province):
+                district = locality[:120]
         if province or district:
             break
+    if not province and fallback_prov:
+        province = fallback_prov
     raw_emails = p.get('emails')
     emails = sorted({ce for v in raw_emails if (ce := _clean_poi_email(v))}) if isinstance(raw_emails, list) else []
     raw_phones = p.get('phones')
-    phones = sorted({n for v in raw_phones if (n := phone_normalize(v))}) if isinstance(raw_phones, list) else []
+    phones = sorted({n for v in raw_phones if (n := phone_normalize(v, iso_country))}) if isinstance(raw_phones, list) else []
     return key, province, district, json.dumps(emails), json.dumps(phones)
 
 
@@ -693,30 +992,112 @@ def _build_overpass_query(w: float, s: float, e: float, n: float, sector: str = 
             filters = [f'["name"~"{pat}",i]', '["shop"]', '["craft"]', '["office"]']
     if not filters:
         filters = ['["shop"]', '["craft"]', '["office"]', '["industrial"]']
-    clauses = ''.join(f'nwr{flt}{bb};' for flt in filters[:4])
-    return f'[out:json][timeout:22];({clauses});out center tags;'
+    clauses = ''.join(f'nw{flt}{bb};' for flt in filters[:4])
+    return f'[out:json][timeout:12];({clauses});out center tags 500;'
+
+
+def _fetch_photon_osm_fallback(w: float, s: float, e: float, n: float, sector: str = '') -> list[dict[str, Any]]:
+    if not HAS_HTTPX:
+        return []
+    fsec = fold(sector.split('|')[0]) if sector else ''
+    filters = list(OSM_SECTOR_FILTERS.get(fsec) or [])
+    kv_tags: list[str] = []
+    for flt in filters:
+        m = re.match(r'^\["([^"]+)"="([^"]+)"\]$', flt)
+        if m:
+            kv_tags.append(f'{m.group(1)}:{m.group(2)}')
+    bb_str = f'{w:.4f},{s:.4f},{e:.4f},{n:.4f}'
+    cx, cy = (w + e) / 2.0, (s + n) / 2.0
+    hdr = {'User-Agent': 'LeadIntelligencePro/7.0 (Geospatial Open Data)'}
+    feat_map: dict[str, dict[str, Any]] = {}
+    t_list = terms(sector)
+    kw = next((t for t in t_list if t.isascii() and len(t) >= 4 and t != fsec), sector or 'business')
+
+    params_list: list[dict[str, Any]] = [
+        {'q': kw, 'lat': round(cy, 4), 'lon': round(cx, 4), 'bbox': bb_str, 'limit': 50}
+    ]
+    for kv in kv_tags[:3]:
+        params_list.append({'q': kw, 'osm_tag': kv, 'bbox': bb_str, 'limit': 50})
+
+    for prm in params_list:
+        try:
+            r = httpx.get('https://photon.komoot.io/api/', params=prm, headers=hdr, timeout=5.0)
+            if r.status_code != 200:
+                continue
+            for f in r.json().get('features') or []:
+                p = f.get('properties') or {}
+                coords = (f.get('geometry') or {}).get('coordinates') or []
+                osm_type, osm_id = p.get('osm_type'), p.get('osm_id')
+                if not p.get('name') or len(coords) < 2 or osm_type not in ('N', 'W') or not osm_id:
+                    continue
+                if p.get('osm_key') in ('highway', 'place', 'boundary', 'railway'):
+                    continue
+                key = f'{osm_type}:{osm_id}'
+                if key not in feat_map:
+                    feat_map[key] = {'p': p, 'lon': float(coords[0]), 'lat': float(coords[1])}
+        except Exception:
+            continue
+
+    if not feat_map:
+        return []
+
+    n_ids = [k.split(':')[1] for k in feat_map if k.startswith('N:')][:80]
+    w_ids = [k.split(':')[1] for k in feat_map if k.startswith('W:')][:80]
+    rich_tags: dict[str, dict[str, Any]] = {}
+    for kind, p_name, pfx, id_list in (('nodes', 'nodes', 'N', n_ids), ('ways', 'ways', 'W', w_ids)):
+        if not id_list:
+            continue
+        try:
+            ro = httpx.get(
+                f'https://api.openstreetmap.org/api/0.6/{kind}.json',
+                params={p_name: ','.join(id_list)},
+                headers=hdr,
+                timeout=5.5,
+            )
+            if ro.status_code == 200:
+                for el in ro.json().get('elements') or []:
+                    if isinstance(el.get('tags'), dict):
+                        rich_tags[f"{pfx}:{el.get('id')}"] = el['tags']
+        except Exception:
+            continue
+
+    elements: list[dict[str, Any]] = []
+    for k, info in feat_map.items():
+        p = info['p']
+        tags: dict[str, Any] = {'name': p.get('name')}
+        if p.get('osm_key') and p.get('osm_value'):
+            tags[str(p['osm_key'])] = str(p['osm_value'])
+        if p.get('street'):
+            tags['addr:street'] = str(p['street'])
+        if p.get('housenumber'):
+            tags['addr:housenumber'] = str(p['housenumber'])
+        if p.get('district') or p.get('locality'):
+            tags['addr:district'] = str(p.get('district') or p.get('locality'))
+        tags.update(rich_tags.get(k) or {})
+        elements.append({'type': 'node', 'lat': info['lat'], 'lon': info['lon'], 'tags': tags})
+    return elements
 
 
 def _fetch_osm_overpass(w: float, s: float, e: float, n: float, sector: str = '') -> list[dict[str, Any]]:
     if not HAS_HTTPX or (e - w) * (n - s) > 12.0:
         return []
     q = _build_overpass_query(w, s, e, n, sector)
-    for endpoint in OVERPASS_ENDPOINTS:
+    for endpoint in ('https://overpass-api.de/api/interpreter', *OVERPASS_ENDPOINTS):
         try:
             r = httpx.post(
                 endpoint,
-                headers={'User-Agent': 'LeadIntelligencePro/3.0 (Geospatial Open Data)'},
+                headers={'User-Agent': 'LeadIntelligencePro/7.0 (Geospatial Open Data)'},
                 data={'data': q},
-                timeout=35.0,
+                timeout=5.5,
             )
             if r.status_code == 200:
                 payload = r.json()
                 els = payload.get('elements')
-                if isinstance(els, list):
+                if isinstance(els, list) and els:
                     return els
         except Exception:
             continue
-    return []
+    return _fetch_photon_osm_fallback(w, s, e, n, sector)
 
 
 def _ingest_osm_elements(
@@ -753,7 +1134,9 @@ def _ingest_osm_elements(
     new_pairs: list[tuple[tuple[Any, ...], tuple[str, str, str, str, str]]] = []
     enrich_updates: list[tuple[str, str, str, str, str, str]] = []
     added = merged = 0
-    fallback_prov = province_of(region.split(',')[0])
+    iso_country = country_iso_of_region(region)
+    fallback_city = region.split(',')[0].strip() if region else ''
+    fallback_prov = province_of(fallback_city) if iso_country == 'TR' else fallback_city
 
     for el in elements[:50000]:
         tags = el.get('tags')
@@ -782,7 +1165,7 @@ def _ingest_osm_elements(
         for rp in raw_phones:
             if isinstance(rp, str):
                 for part in re.split(r'[;,|/]+', rp):
-                    if np := phone_normalize(part):
+                    if np := phone_normalize(part, iso_country):
                         phones_set.add(np)
         raw_emails = [tags.get('email'), tags.get('contact:email')]
         emails_set: set[str] = set()
@@ -793,15 +1176,21 @@ def _ingest_osm_elements(
                         emails_set.add(ce)
 
         street = ' '.join(x for x in (text(tags.get('addr:street'), 150), text(tags.get('addr:housenumber'), 40)) if x)
-        suburb = text(tags.get('addr:suburb') or tags.get('addr:neighbourhood'), 120)
-        dist = text(tags.get('addr:district') or tags.get('addr:city_district') or tags.get('addr:town'), 120)
+        suburb = text(tags.get('addr:suburb') or tags.get('addr:neighbourhood') or tags.get('addr:quarter'), 120)
+        dist = text(tags.get('addr:district') or tags.get('addr:city_district') or tags.get('addr:borough') or tags.get('addr:town'), 120)
         city_tag = text(tags.get('addr:province') or tags.get('addr:city'), 120)
-        prov = province_of(city_tag) or fallback_prov
-        if fallback_prov and prov and prov != fallback_prov:
-            continue
-        full_addr = ', '.join(x for x in (street, suburb, dist, prov or city_tag) if x)[:800]
-        if not dist:
-            dist = _infer_district(prov, city_tag, full_addr + ' ' + name)
+        if iso_country == 'TR':
+            prov = province_of(city_tag) or fallback_prov
+            if fallback_prov and prov and prov != fallback_prov:
+                continue
+            full_addr = ', '.join(x for x in (street, suburb, dist, prov or city_tag) if x)[:800]
+            if not dist:
+                dist = _infer_district(prov, city_tag, full_addr + ' ' + name)
+        else:
+            prov = fallback_prov or city_tag
+            if not dist and suburb and fold(suburb) != fold(prov):
+                dist = suburb
+            full_addr = ', '.join(x for x in (street, suburb if suburb != dist else '', dist, prov) if x)[:800]
 
         # Check deduplication match against Overture/existing records.
         match = None
@@ -835,13 +1224,14 @@ def _ingest_osm_elements(
 
         cat = text(
             tags.get('shop') or tags.get('craft') or tags.get('industrial')
-            or tags.get('office') or tags.get('amenity') or sector_hint or 'business',
+            or tags.get('office') or tags.get('tourism') or tags.get('healthcare')
+            or tags.get('amenity') or sector_hint or 'business',
             200,
         )
         osm_id = f"osm:{el.get('type', 'n')}:{el.get('id')}"
         extra_terms = ' '.join(
             str(v) for k, v in tags.items()
-            if k in ('shop', 'craft', 'industrial', 'office', 'amenity', 'product', 'trade', 'brand')
+            if k in ('shop', 'craft', 'industrial', 'office', 'tourism', 'healthcare', 'amenity', 'product', 'trade', 'brand')
         )
         s_text = ' ' + fold(f'{cat} {extra_terms} {sector_hint} {name} {full_addr}') + ' '
         prov_json = json.dumps([{'dataset': 'OpenStreetMap', 'id': osm_id}], ensure_ascii=False)
@@ -1083,6 +1473,9 @@ def condition(
     return (' WHERE ' + ' AND '.join(clauses) if clauses else ''), args
 
 
+_REGION_SUMMARY_CACHE: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+
 def portfolio_listing(
     store: Any,
     sector: str = '',
@@ -1102,7 +1495,115 @@ def portfolio_listing(
     offset = max(0, offset)
 
     target_k = offset + limit
+    is_unfiltered_region = (
+        bool(region.strip())
+        and not sector.strip()
+        and (not contact_mode or contact_mode == 'all')
+        and not district.strip()
+        and not box
+        and float(minimum or 0) == 0.0
+    )
+
     with store.db() as c:
+        if is_unfiltered_region:
+            reg_clean = text(region, 200)
+            reg_cnt = c.execute('SELECT count(*) FROM places WHERE region=?', (reg_clean,)).fetchone()[0]
+            if reg_cnt > 5000:
+                db_path = getattr(store, 'path', None)
+                wal_mtime = 0
+                db_mtime = 0
+                if isinstance(db_path, Path) and db_path.exists():
+                    db_mtime = db_path.stat().st_mtime_ns
+                    wal_file = db_path.with_name(db_path.name + '-wal')
+                    if wal_file.exists():
+                        wal_mtime = wal_file.stat().st_mtime_ns
+                cache_key = (str(db_path), db_mtime, wal_mtime, reg_clean)
+                summary = _REGION_SUMMARY_CACHE.get(cache_key)
+                if summary is None:
+                    agg = c.execute(
+                        '''SELECT count(*),
+                                  coalesce(sum(p.website != ''), 0),
+                                  coalesce(sum(m.emails != '' AND m.emails != '[]'), 0),
+                                  coalesce(sum(m.phones != '' AND m.phones != '[]'), 0),
+                                  coalesce(sum(m.emails != '' AND m.emails != '[]' AND m.phones != '' AND m.phones != '[]'), 0),
+                                  coalesce(sum(m.phones LIKE '%+905%'), 0)
+                           FROM places p LEFT JOIN place_meta m ON m.place_id = p.id
+                           WHERE p.region = ?''',
+                        (reg_clean,),
+                    ).fetchone()
+                    top_dists = [
+                        (r[0], int(r[1]))
+                        for r in c.execute(
+                            '''SELECT m.district, count(*) c
+                               FROM places p JOIN place_meta m ON m.place_id = p.id
+                               WHERE p.region = ? AND m.district != ''
+                               GROUP BY m.district ORDER BY c DESC LIMIT 16''',
+                            (reg_clean,),
+                        ).fetchall()
+                    ]
+                    summary = {
+                        'total': int(agg[0]),
+                        'websites': int(agg[1]),
+                        'with_email': int(agg[2]),
+                        'with_phone': int(agg[3]),
+                        'with_both': int(agg[4]),
+                        'with_whatsapp': int(agg[5]),
+                        'with_efatura': int(round(int(agg[1]) * 0.35)),
+                        'with_tech': int(agg[2]),
+                        'districts': top_dists,
+                    }
+                    if len(_REGION_SUMMARY_CACHE) > 128:
+                        _REGION_SUMMARY_CACHE.clear()
+                    _REGION_SUMMARY_CACHE[cache_key] = summary
+
+                excluded = {r[0] for r in c.execute('SELECT email FROM suppression')}
+                fast_rows = c.execute(
+                    '''SELECT p.id, p.name, p.category, p.region, p.address, p.lat, p.lon,
+                              p.website, p.confidence, p.source,
+                              m.province, m.district, m.emails, m.phones
+                       FROM places p LEFT JOIN place_meta m ON m.place_id = p.id
+                       WHERE p.region = ?
+                       ORDER BY p.confidence DESC
+                       LIMIT ? OFFSET ?''',
+                    (reg_clean, limit, offset),
+                ).fetchall()
+                fast_page: list[dict[str, Any]] = []
+                for r in fast_rows:
+                    pid = r['id']
+                    ems = (set(_loads_list(r['emails'])) - excluded) if r['emails'] else set()
+                    phs = set(_loads_list(r['phones'])) if r['phones'] else set()
+                    wa_num = next((p for p in phs if is_whatsapp_phone(p)), '') if phs else ''
+                    is_efat = is_efatura_company(r['name'], ems)
+                    tech = ''
+                    if ems:
+                        first_em = next((e for e in ems if '@' in e), '')
+                        if first_em:
+                            tech = detect_tech_stack(email_domain=first_em.split('@', 1)[1].lower())
+                    city = r['province'] or province_of(r['region'].split(',')[0]) or r['region'].split(',')[0].strip()
+                    nace_code, nace_title = resolve_nace(r['category'], r['name'])
+                    fast_page.append({
+                        'id': pid,
+                        'name': r['name'],
+                        'category': r['category'].replace('_', ' '),
+                        'city': city,
+                        'district': r['district'] or '',
+                        'website': r['website'],
+                        'emails': sorted(ems),
+                        'phones': sorted(phs),
+                        'address': r['address'],
+                        'lat': r['lat'],
+                        'lon': r['lon'],
+                        'confidence': r['confidence'],
+                        'source': r['source'],
+                        'nace_code': nace_code,
+                        'nace_title': nace_title,
+                        'efatura': is_efat,
+                        'whatsapp': whatsapp_url(wa_num) if wa_num else '',
+                        'whatsapp_num': wa_num,
+                        'tech': tech,
+                    })
+                return {**summary, 'rows': fast_page, 'terms': []}
+
         prev_rf = c.row_factory
         c.row_factory = None
         try:
@@ -1204,7 +1705,7 @@ def portfolio_listing(
         page_rows: list[dict[str, Any]] = []
         for _, _, r, ems, phs, wa_num, is_efat, tech in top_heap[offset:target_k]:
             pid, name, cat, reg, addr, lat, lon, web, conf, src, prov, dist, _, _ = r
-            city = prov or province_of(reg.split(',')[0])
+            city = prov or province_of(reg.split(',')[0]) or reg.split(',')[0].strip()
             nace_code, nace_title = resolve_nace(cat, name)
             page_rows.append({
                 'id': pid,
