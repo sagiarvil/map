@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import catalog
+import engine
 
 
 def generate(
@@ -67,22 +68,57 @@ def generate(
                 emails: set[str] | list[str],
                 phones: set[str] | list[str],
                 address: str,
+                website: str = '',
             ) -> None:
                 nonlocal ne, np, total
                 clean_emails = sorted(set(emails) - excluded)
                 clean_phones = sorted(set(phones))
-                if not catalog.contact_match(bool(clean_emails), bool(clean_phones), contact_mode):
+
+                wa_num = next((p for p in clean_phones if engine.is_whatsapp_phone(p)), '')
+                wa_url = engine.whatsapp_url(wa_num) if wa_num else ''
+                has_wa = bool(wa_num)
+                is_efat = catalog.is_efatura_company(name, clean_emails)
+
+                first_em = next((e for e in clean_emails if '@' in e), '')
+                em_dom = first_em.split('@')[1].lower() if first_em else ''
+                tech = engine.detect_tech_stack(email_domain=em_dom)
+                has_ent = bool(tech and tech in ('Microsoft 365', 'Google Workspace', 'Özel Kurumsal Sunucu'))
+                nace_code, nace_title = catalog.resolve_nace(cat, name)
+
+                if not catalog.contact_match(
+                    bool(clean_emails),
+                    bool(clean_phones),
+                    contact_mode,
+                    has_whatsapp=has_wa,
+                    has_efatura=is_efat,
+                    has_enterprise_mail=has_ent,
+                ):
                     return
+
                 ne = max(ne, len(clean_emails))
                 np = max(np, len(clean_phones))
                 total += 1
-                if total > 1_048_575 or 5 + ne + np > 16_384:
+                if total > 1_048_575 or 8 + ne + np > 16_384:
                     raise ValueError(
                         'Tek Excel sayfası kapasitesi aşıldı. Filtreyi daraltın; hiçbir kayıt sessizce kesilmedi.'
                     )
                 out.write(
                     json.dumps(
-                        [name, cat, city, district, clean_emails, clean_phones, address],
+                        [
+                            name,
+                            cat,
+                            nace_code,
+                            nace_title,
+                            'e-Fatura Mükellefi' if is_efat else 'Standart',
+                            tech or 'Standart',
+                            wa_url,
+                            city,
+                            district,
+                            clean_emails,
+                            clean_phones,
+                            website,
+                            address,
+                        ],
                         ensure_ascii=False,
                     )
                     + '\n'
@@ -115,6 +151,7 @@ def generate(
                     email,
                     phone,
                     address,
+                    website=p['website'] or '',
                 )
 
             if not minimum and not box:
@@ -157,6 +194,7 @@ def generate(
                             job_emails.get(jid, []),
                             job_phones.get(jid, []),
                             j['w_addr'] or '',
+                            website=j['url'],
                         )
 
         with xlsxwriter.Workbook(
@@ -172,17 +210,28 @@ def generate(
             head = wb.add_format({'bold': True, 'bg_color': '#183D62', 'font_color': '#FFFFFF', 'valign': 'vcenter'})
             body = wb.add_format({'valign': 'top', 'num_format': '@'})
             headers = (
-                ['Firma adı', 'Sektör', 'İl', 'İlçe']
+                [
+                    'Firma adı',
+                    'Sektör',
+                    'NACE Kodu',
+                    'NACE Faaliyet Tanımı',
+                    'Kurumsal Düzey',
+                    'Mail / Altyapı',
+                    'WhatsApp Linki',
+                    'İl',
+                    'İlçe',
+                ]
                 + [f'E-posta {i}' for i in range(1, ne + 1)]
                 + [f'Telefon {i}' for i in range(1, np + 1)]
-                + ['Adres']
+                + ['Web sitesi', 'Adres']
             )
             ws.write_row(0, 0, headers, head)
             ws.set_row(0, 28)
             ws.freeze_panes(1, 4)
             ws.hide_gridlines(2)
             ws.autofilter(0, 0, total, len(headers) - 1)
-            for i, w_col in enumerate([36, 27, 18, 22] + [38] * ne + [23] * np + [60]):
+            widths = [36, 24, 14, 38, 22, 22, 34, 16, 18] + [34] * ne + [22] * np + [34, 60]
+            for i, w_col in enumerate(widths):
                 ws.set_column(i, i, w_col, body)
             wb.set_properties({
                 'title': 'İşletme portföyü',
@@ -195,14 +244,28 @@ def generate(
             ws.set_footer('&LOverture Maps / Places & OpenStreetMap — docs.overturemaps.org/attribution/')
             with spool.open(encoding='utf-8') as inp:
                 for i, line in enumerate(inp, 1):
-                    name, cat, city, district, emails_l, phones_l, address = json.loads(line)
+                    (
+                        name,
+                        cat,
+                        nace_code,
+                        nace_title,
+                        efat,
+                        tech,
+                        wa_url,
+                        city,
+                        district,
+                        emails_l,
+                        phones_l,
+                        site,
+                        address,
+                    ) = json.loads(line)
                     row = (
-                        [name, cat, city, district]
+                        [name, cat, nace_code, nace_title, efat, tech, wa_url, city, district]
                         + emails_l
                         + [''] * (ne - len(emails_l))
                         + phones_l
                         + [''] * (np - len(phones_l))
-                        + [address]
+                        + [site, address]
                     )
                     for j, value in enumerate(row):
                         if value:

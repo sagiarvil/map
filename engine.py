@@ -1299,3 +1299,102 @@ def discover(fetch: Any, url: str) -> list[dict[str, str]]:
         if len(seen) >= 500:
             break
     return list(seen.values())
+
+
+# --- B2B Intelligence Engines (WhatsApp, Enterprise Stack, CT Logs) ---
+
+def is_whatsapp_phone(raw: Any) -> bool:
+    """Detect if phone candidate is an active Turkish mobile / WhatsApp number (+905xx...)."""
+    if not isinstance(raw, str):
+        return False
+    digits = re.sub(r'\D', '', raw)
+    if digits.startswith('90') and len(digits) == 12:
+        digits = digits[2:]
+    elif digits.startswith('0') and len(digits) == 11:
+        digits = digits[1:]
+    return len(digits) == 10 and digits.startswith('5')
+
+
+def whatsapp_url(raw: Any) -> str:
+    """Format direct click-to-chat URL for WhatsApp Web / Mobile."""
+    if not isinstance(raw, str):
+        return ''
+    digits = re.sub(r'\D', '', raw)
+    if digits.startswith('90') and len(digits) == 12:
+        d10 = digits[2:]
+    elif digits.startswith('0') and len(digits) == 11:
+        d10 = digits[1:]
+    elif len(digits) == 10:
+        d10 = digits
+    else:
+        return ''
+    if len(d10) == 10 and d10.startswith('5'):
+        return f'https://wa.me/90{d10}'
+    return ''
+
+
+def detect_tech_stack(html: str = '', email_domain: str = '', mx_host: str = '') -> str:
+    """Detect enterprise email infrastructure (M365, Google Workspace) & e-commerce CMS engines."""
+    hay_mx = (mx_host + ' ' + email_domain).lower()
+    if 'protection.outlook.com' in hay_mx or 'outlook.com' in hay_mx:
+        return 'Microsoft 365'
+    if any(k in hay_mx for k in ('google.com', 'googlemail.com', 'aspmx.l.google.com')):
+        return 'Google Workspace'
+    if 'yandex' in hay_mx:
+        return 'Yandex 360'
+
+    if html:
+        low_html = html[:100_000].lower()
+        if 'cdn.shopify.com' in low_html or 'myshopify.com' in low_html:
+            return 'Shopify'
+        if 'ticimax' in low_html:
+            return 'Ticimax'
+        if 'ideasoft' in low_html:
+            return 'İdeasoft'
+        if 't-soft' in low_html:
+            return 'T-Soft'
+        if 'woocommerce' in low_html:
+            return 'WooCommerce'
+        if 'wp-content' in low_html:
+            return 'WordPress'
+
+    if email_domain and not any(email_domain.endswith(bd) for bd in ('gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com', 'yandex.com', 'mail.ru')):
+        return 'Özel Kurumsal Sunucu'
+    return ''
+
+
+async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
+    """Query Certificate Transparency logs for newly created SSL certificates on Turkish commercial domains."""
+    safe_q = re.sub(r'[^a-zA-Z0-9.\-]', '', query).strip('.')
+    if not safe_q:
+        safe_q = '%.com.tr'
+    elif not safe_q.startswith('%'):
+        safe_q = f'%{safe_q}%.tr'
+
+    url = f'https://crt.sh/?q={safe_q}&output=json'
+    results: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.get(url, headers={'User-Agent': 'Mozilla/5.0 (compatible; LeadIntelPro/4.0)'})
+            if res.status_code == 200:
+                data = res.json()
+                for row in data:
+                    name_val = row.get('name_value', '').lower()
+                    for dom in name_val.split('\n'):
+                        dom = dom.strip().lstrip('*.')
+                        if dom and dom not in seen and not dom.startswith('www.'):
+                            seen.add(dom)
+                            results.append({
+                                'domain': dom,
+                                'issuer': row.get('issuer_name', ''),
+                                'entry_timestamp': row.get('entry_timestamp', ''),
+                                'not_before': row.get('not_before', ''),
+                            })
+                            if len(results) >= limit:
+                                return results
+    except Exception:
+        pass
+    return results
+

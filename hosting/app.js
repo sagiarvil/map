@@ -238,8 +238,83 @@
     return false;
   }
 
-  function matchesContact(hasEmail, hasPhone, mode) {
+  const RE_EFATURA_NAME = /\b(a\.?\s*ş\.?|a\.?\s*s\.?|anonim|ltd\.?\s*şti\.?|ltd\.?|limited|şirketi|san\.?\s*ve\s*tic\.?|sanayi\s*ve\s*ticaret|holding|grup)\b/i;
+  const RE_EFATURA_MAIL = /(@|\.)(kep\.tr|efatura@|e-fatura@|muhasebe@|finans@)/i;
+  const FREE_MAIL_DOMAINS = new Set([
+    'gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com', 'yandex.com', 'yandex.com.tr',
+    'mynet.com', 'mail.ru', 'icloud.com', 'live.com', 'msn.com', 'aol.com'
+  ]);
+
+  const NACE_RULES = [
+    { re: /yatak|baza|ev tekstil/i, code: '47.59.01', title: 'Yatak, baza ve ev tekstili perakende satışı' },
+    { re: /ofis|büro|buro/i, code: '31.01.01', title: 'Büro ve mağaza mobilyaları imalatı' },
+    { re: /mutfak|banyo|dolap/i, code: '31.02.01', title: 'Mutfak ve banyo mobilyaları imalatı' },
+    { re: /marangoz|ahşap|ahsap|doğrama|dograma/i, code: '16.23.01', title: 'Ahşap yapı ve doğrama malzemeleri imalatı' },
+    { re: /döşeme|doseme|koltuk|kanepe/i, code: '31.09.02', title: 'Koltuk, kanepe ve döşemeli mobilya imalatı' },
+    { re: /mobilya|furniture/i, code: '31.09.01', title: 'Diğer mobilyaların imalatı (NACE Rev. 2)' },
+    { re: /müteahhit|muteahhit|inşaat.*taahhüt|taahhut/i, code: '41.20.02', title: 'İkamet amaçlı binaların inşaatı (Müteahhitlik)' },
+    { re: /inşaat|insaat|yapı|yapi|şantiye|santiye/i, code: '41.20.01', title: 'İkamet amaçlı olmayan binaların inşaatı' },
+    { re: /mimarlık|mimarlik|mimar|iç mimar|ic mimar/i, code: '71.11.01', title: 'Mimarlık ve iç mimarlık faaliyetleri' },
+    { re: /torna|tesviye|makina|makine|mekanik/i, code: '28.99.01', title: 'Özel amaçlı diğer makinelerin imalatı' },
+    { re: /çelik|celik|demir|metal|ferforje/i, code: '25.11.01', title: 'Metal yapı ve yapı parçaları imalatı' },
+    { re: /plastik|ambalaj|polimer|enjeksiyon/i, code: '22.29.01', title: 'Diğer plastik ürünlerin imalatı' },
+    { re: /tekstil|konfeksiyon|kumaş|kumas|giyim/i, code: '13.92.01', title: 'Ev tekstili ve mefruşat ürünleri imalatı' },
+    { re: /lojistik|nakliyat|taşıma|tasima|kargo|antrepo/i, code: '49.41.01', title: 'Karayolu ile şehirler arası yük taşımacılığı (Lojistik)' },
+    { re: /otomotiv|oto servis|yedek parça|oto tamir/i, code: '45.20.01', title: 'Motorlu kara taşıtlarının bakım ve onarımı' },
+    { re: /gıda|gida|unlu mamul|fırın|firin|toptan gıda/i, code: '10.89.01', title: 'Diğer gıda maddelerinin imalatı ve toptan ticareti' },
+    { re: /elektrik|enerji|pano|trafo|tesisat/i, code: '43.21.01', title: 'Bina ve diğer inşaat elektrik tesisatı' },
+    { re: /medikal|tıbbi|tibbi|sağlık|saglik|ortopedi/i, code: '32.50.01', title: 'Tıbbi araç, gereç ve medikal malzeme imalatı' },
+    { re: /hırdavat|hirdavat|yapı market|yapi market/i, code: '47.52.01', title: 'Hırdavat, boya ve cam perakende ticareti' }
+  ];
+
+  function resolveNaceClient(category, name) {
+    const text = `${category || ''} ${name || ''}`;
+    for (const rule of NACE_RULES) {
+      if (rule.re.test(text)) return { code: rule.code, title: rule.title };
+    }
+    return { code: '46.90.01', title: 'Belirli bir mala tahsis edilmemiş toptan ticaret' };
+  }
+
+  function detectWhatsapp(phones) {
+    if (!phones || !phones.length) return null;
+    for (const ph of phones) {
+      const clean = String(ph).replace(/\D+/g, '');
+      let mobile = '';
+      if (clean.length === 10 && clean.startsWith('5')) mobile = '90' + clean;
+      else if (clean.length === 11 && clean.startsWith('05')) mobile = '9' + clean;
+      else if (clean.length === 12 && clean.startsWith('905')) mobile = clean;
+      if (mobile) {
+        return {
+          num: '+' + mobile,
+          url: `https://wa.me/${mobile}`
+        };
+      }
+    }
+    return null;
+  }
+
+  function detectEfatura(name, emails) {
+    if (RE_EFATURA_NAME.test(name || '')) return true;
+    if (emails && emails.some(e => RE_EFATURA_MAIL.test(e))) return true;
+    return false;
+  }
+
+  function detectEnterpriseMail(emails) {
+    if (!emails || !emails.length) return false;
+    for (const e of emails) {
+      const dom = (e.split('@')[1] || '').toLowerCase().trim();
+      if (dom && !FREE_MAIL_DOMAINS.has(dom) && dom.includes('.')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function matchesContact(hasEmail, hasPhone, mode, row) {
     switch (mode) {
+      case 'has_whatsapp': return Boolean(row && (row.hasWhatsapp || row.whatsapp));
+      case 'has_efatura': return Boolean(row && (row.isEfatura || row.efatura));
+      case 'has_enterprise_mail': return Boolean(row && (row.isEnterpriseMail || row.tech));
       case 'has_email': return hasEmail;
       case 'has_phone': return hasPhone;
       case 'both': return hasEmail && hasPhone;
@@ -391,18 +466,46 @@
   }
 
   function materializeTuple(dataset, r) {
+    const name = r[0] || '';
+    const category = dataset.cats[r[1]] || 'İşletme';
+    const city = dataset.city;
+    const district = dataset.dists[r[2]] || '';
+    const website = r[3] || '';
+    const emails = Array.isArray(r[4]) ? r[4] : [];
+    const phones = Array.isArray(r[5]) ? r[5] : [];
+    const address = r[6] || '';
+    const lat = r[7];
+    const lon = r[8];
+    const conf = r[9] || 75;
+
+    const wa = detectWhatsapp(phones);
+    const isEfatura = detectEfatura(name, emails);
+    const isEnterpriseMail = detectEnterpriseMail(emails);
+    const nace = resolveNaceClient(category, name);
+
     return {
-      name: r[0] || '',
-      category: dataset.cats[r[1]] || 'İşletme',
-      city: dataset.city,
-      district: dataset.dists[r[2]] || '',
-      website: r[3] || '',
-      emails: Array.isArray(r[4]) ? r[4] : [],
-      phones: Array.isArray(r[5]) ? r[5] : [],
-      address: r[6] || '',
-      lat: r[7],
-      lon: r[8],
-      conf: r[9] || 75
+      name,
+      category,
+      city,
+      district,
+      website,
+      emails,
+      phones,
+      address,
+      lat,
+      lon,
+      conf,
+      hasWhatsapp: Boolean(wa),
+      whatsappUrl: wa ? wa.url : '',
+      whatsappNum: wa ? wa.num : '',
+      whatsapp: wa ? wa.url : '',
+      isEfatura,
+      efatura: isEfatura,
+      isEnterpriseMail,
+      tech: isEnterpriseMail ? 'Kurumsal Mail' : '',
+      nace_code: nace.code,
+      nace_title: nace.title,
+      nace
     };
   }
 
@@ -552,20 +655,37 @@
 
       const search = ` ${fold(name)} ${fold(category)} ${fold(sector)} `;
       const quickBlob = fold(`${name} ${district} ${website} ${emails.join(' ')} ${phones.join(' ')} ${address}`);
+      const cleanEmails = Array.from(new Set(emails));
+      const wa = detectWhatsapp(phones);
+      const isEfatura = detectEfatura(name, cleanEmails);
+      const isEnterpriseMail = detectEnterpriseMail(cleanEmails);
+      const nace = resolveNaceClient(category, name);
+
       records.push({
         name,
         category,
         city,
         district,
         website,
-        emails: Array.from(new Set(emails)),
+        emails: cleanEmails,
         phones,
         address,
         lat,
         lon,
         conf: 85,
         search,
-        quickBlob
+        quickBlob,
+        hasWhatsapp: Boolean(wa),
+        whatsappUrl: wa ? wa.url : '',
+        whatsappNum: wa ? wa.num : '',
+        whatsapp: wa ? wa.url : '',
+        isEfatura,
+        efatura: isEfatura,
+        isEnterpriseMail,
+        tech: isEnterpriseMail ? 'Kurumsal Mail' : '',
+        nace_code: nace.code,
+        nace_title: nace.title,
+        nace
       });
     }
 
@@ -632,10 +752,12 @@
     $('exportCsvBtn').disabled = totalCount <= 0;
 
     $('kpiTotal').textContent = fmt(stats.total);
+    if ($('kpiWhatsapp')) $('kpiWhatsapp').textContent = fmt(stats.with_whatsapp || 0);
+    if ($('kpiEfatura')) $('kpiEfatura').textContent = fmt(stats.with_efatura || 0);
     $('kpiWebsites').textContent = fmt(stats.websites);
     $('kpiEmails').textContent = fmt(stats.with_email);
     $('kpiPhones').textContent = fmt(stats.with_phone);
-    $('kpiBoth').textContent = fmt(stats.with_both);
+    if ($('kpiBoth')) $('kpiBoth').textContent = fmt(stats.with_both || 0);
 
     const f = currentFilters();
     $('activeFilterSummary').textContent =
@@ -664,30 +786,45 @@
 
       // 1. Firma & Adres
       const tdName = el('td');
-      tdName.append(el('span', r.name, 'firm-name'));
+      const nameRow = el('div', null, 'firm-name-row');
+      nameRow.append(el('span', r.name, 'firm-name'));
+      if (r.isEfatura || r.efatura) {
+        nameRow.append(el('span', '🏢 e-Fatura', 'badge efatura'));
+      }
+      tdName.append(nameRow);
       if (r.address) tdName.append(el('span', r.address, 'firm-addr'));
 
-      // 2. Sektör
+      // 2. Sektör & NACE
       const tdCat = el('td');
-      tdCat.append(el('span', formatCategoryLabel(r.category, f.sector), 'badge'));
+      tdCat.append(el('div', formatCategoryLabel(r.category, f.sector), 'cat-label'));
+      const naceCode = r.nace_code || (r.nace && r.nace.code);
+      const naceTitle = r.nace_title || (r.nace && r.nace.title);
+      if (naceCode) {
+        const naceBadge = el('span', `NACE: ${naceCode}`, 'badge nace');
+        if (naceTitle) naceBadge.title = naceTitle;
+        tdCat.append(naceBadge);
+      }
 
       // 3. İl / İlçe
       const tdLoc = el('td');
-      tdLoc.append(el('div', r.city || f.city));
+      tdLoc.append(el('div', r.city || f.city, 'loc-city'));
       if (r.district) tdLoc.append(el('span', r.district, 'badge dist'));
 
-      // 4. E-posta
+      // 4. E-posta & Altyapı
       const tdEmail = el('td');
       const emails = r.emails || [];
       if (emails.length) {
         const list = el('div', null, 'contact-list');
         for (const em of emails.slice(0, 3)) {
           const item = el('span', em, 'contact-item');
-          const dom = em.split('@')[1] || '';
+          const dom = (em.split('@')[1] || '').toLowerCase();
           if (mxCache.get(dom) === 'mx') {
             item.append(' ', el('span', '✓ MX', 'badge mx-ok'));
           }
           list.append(item);
+        }
+        if (r.tech || r.isEnterpriseMail) {
+          list.append(el('span', r.tech || 'Kurumsal Mail', 'badge m365'));
         }
         if (emails.length > 3) list.append(el('span', `+${emails.length - 3} e-posta daha`, 'contact-empty'));
         tdEmail.append(list);
@@ -695,13 +832,22 @@
         tdEmail.append(el('span', '—', 'contact-empty'));
       }
 
-      // 5. Telefon
+      // 5. Telefon & WhatsApp
       const tdPhone = el('td');
       const phones = r.phones || [];
-      if (phones.length) {
+      const waUrl = r.whatsappUrl || r.whatsapp;
+      if (phones.length || waUrl) {
         const list = el('div', null, 'contact-list');
         for (const ph of phones.slice(0, 3)) {
           list.append(el('span', ph, 'contact-item'));
+        }
+        if (waUrl) {
+          const waLink = el('a', '💬 WhatsApp', 'wa-btn');
+          waLink.href = waUrl;
+          waLink.target = '_blank';
+          waLink.rel = 'noopener noreferrer';
+          waLink.title = 'WhatsApp ile tek tıkla canlı mesaj başlatın';
+          list.append(waLink);
         }
         if (phones.length > 3) list.append(el('span', `+${phones.length - 3} hat daha`, 'contact-empty'));
         tdPhone.append(list);
@@ -746,6 +892,7 @@
     const dFold = fold(f.district);
     const finalRows = [];
     let websites = 0, with_email = 0, with_phone = 0, with_both = 0;
+    let with_whatsapp = 0, with_efatura = 0;
 
     if (dataset.isTupleShard) {
       const hasTerms = termList.length > 0;
@@ -772,7 +919,6 @@
         const phs = r[5] || [];
         const he = ems.length > 0;
         const hp = phs.length > 0;
-        if (!matchesContact(he, hp, f.contactMode)) continue;
 
         if (f.quick) {
           const blob = fold(`${r[0]} ${distName} ${r[3]} ${ems.join(' ')} ${phs.join(' ')} ${r[6]}`);
@@ -780,11 +926,15 @@
         }
 
         const obj = materializeTuple(dataset, r);
+        if (!matchesContact(he, hp, f.contactMode, obj)) continue;
+
         finalRows.push(obj);
         if (obj.website) websites++;
         if (he) with_email++;
         if (hp) with_phone++;
         if (he && hp) with_both++;
+        if (obj.hasWhatsapp) with_whatsapp++;
+        if (obj.isEfatura) with_efatura++;
       }
 
       populateDistricts(f.city, dataset.dists);
@@ -803,12 +953,14 @@
         if (f.quick && !r.quickBlob.includes(f.quick)) continue;
         const he = r.emails.length > 0;
         const hp = r.phones.length > 0;
-        if (!matchesContact(he, hp, f.contactMode)) continue;
+        if (!matchesContact(he, hp, f.contactMode, r)) continue;
         finalRows.push(r);
         if (r.website) websites++;
         if (he) with_email++;
         if (hp) with_phone++;
         if (he && hp) with_both++;
+        if (r.hasWhatsapp) with_whatsapp++;
+        if (r.isEfatura) with_efatura++;
       }
     }
 
@@ -820,11 +972,13 @@
       websites,
       with_email,
       with_phone,
-      with_both
+      with_both,
+      with_whatsapp,
+      with_efatura
     });
 
     setStatus(
-      `${f.city} kataloğunda "${f.sector || 'Tüm Sektörler'}" için ${fmt(finalRows.length)} temiz firma listelendi (${fmt(with_phone)} telefonlu, ${fmt(with_email)} e-postalı).`,
+      `${f.city} kataloğunda "${f.sector || 'Tüm Sektörler'}" için ${fmt(finalRows.length)} temiz firma listelendi (${fmt(with_whatsapp)} WhatsApp, ${fmt(with_phone)} telefonlu, ${fmt(with_email)} e-postalı).`,
       'Hazır',
       false,
       null
@@ -876,26 +1030,32 @@
         }
 
         if (allowRemoteFetch) {
-          resetResultsView();
-          setStatus(`${f.city} bölgesi taranıyor, lütfen bekleyin (yaklaşık 15–20 sn)…`, 'Taranıyor', false, 45);
-          const [w, s, e, n] = await resolveCityBbox(f.city, f.country);
-          await turboApi('places/download', {
-            region: f.region,
-            sector: f.sector,
-            box: `${w},${s},${e},${n}`,
-            source_mode: 'hybrid',
-            authorized: true
-          });
-          const pAfter = await turboApi(`portfolio?${params}`);
-          activeMode = 'turbo-db';
-          turboPageData = pAfter;
-          renderTableRows(pAfter.rows, pAfter.total, pAfter);
-          if (Array.isArray(pAfter.districts) && pAfter.districts.length) {
-            populateDistricts(f.city, pAfter.districts.map(d => d[0]));
-            renderDistrictCounts(pAfter.districts, pAfter.total, f.district);
+          try {
+            resetResultsView();
+            setStatus(`${f.city} bölgesi taranıyor, lütfen bekleyin (yaklaşık 15–20 sn)…`, 'Taranıyor', false, 45);
+            const [w, s, e, n] = await resolveCityBbox(f.city, f.country);
+            await turboApi('places/download', {
+              region: f.region,
+              sector: f.sector,
+              box: `${w},${s},${e},${n}`,
+              source_mode: 'hybrid',
+              authorized: true
+            });
+            const pAfter = await turboApi(`portfolio?${params}`);
+            if (pAfter && pAfter.total > 0) {
+              activeMode = 'turbo-db';
+              turboPageData = pAfter;
+              renderTableRows(pAfter.rows, pAfter.total, pAfter);
+              if (Array.isArray(pAfter.districts) && pAfter.districts.length) {
+                populateDistricts(f.city, pAfter.districts.map(d => d[0]));
+                renderDistrictCounts(pAfter.districts, pAfter.total, f.district);
+              }
+              setStatus('', '', false, null);
+              return;
+            }
+          } catch (turboErr) {
+            console.warn('Turbo discovery fallback:', turboErr);
           }
-          setStatus('', '', false, null);
-          return;
         }
 
         if (!allowRemoteFetch) {
@@ -1132,13 +1292,31 @@
       return `"${s.replace(/"/g, '""')}"`;
     };
 
-    const lines = [
-      ['Firma adı', 'Sektör', 'İl', 'İlçe', 'E-postalar', 'Telefonlar', 'Web sitesi', 'Adres'].map(safeCsv).join(',')
+    const headers = [
+      'Firma adı',
+      'Sektör',
+      'NACE Kodu',
+      'NACE Faaliyet Tanımı',
+      'Kurumsal Düzey',
+      'Mail / Altyapı',
+      'WhatsApp Linki',
+      'İl',
+      'İlçe',
+      'E-postalar',
+      'Telefonlar',
+      'Web sitesi',
+      'Adres'
     ];
+    const lines = [headers.map(safeCsv).join(',')];
     for (const r of rowsToExport) {
       lines.push([
         r.name,
         r.category,
+        (r.nace && r.nace.code) || r.nace_code || '',
+        (r.nace && r.nace.title) || r.nace_title || '',
+        r.isEfatura || r.efatura ? 'e-Fatura Mükellefi' : 'Standart',
+        r.tech || (r.isEnterpriseMail ? 'Kurumsal Mail' : 'Standart'),
+        r.whatsappUrl || r.whatsapp || '',
         r.city,
         r.district,
         (r.emails || []).join('; '),

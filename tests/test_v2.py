@@ -41,7 +41,15 @@ class CatalogTests(unittest.TestCase):
             self.assertIsNone(z.testzip()); ns={'m':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'};book=ET.fromstring(z.read('xl/workbook.xml'));self.assertEqual(len(book.findall('m:sheets/m:sheet',ns)),1)
             xml=z.read('xl/worksheets/sheet1.xml');self.assertNotIn(b'sales@firma.com',xml);self.assertIn(b'=HYPERLINK',xml);self.assertFalse(ET.fromstring(xml).findall('.//m:f',ns));root=ET.fromstring(xml)
             rows=[{c.attrib['r']:''.join(c.itertext()) for c in r} for r in root.findall('.//m:row',ns)]
-            self.assertEqual(list(rows[0].values()),['Firma adı','Sektör','İl','İlçe','E-posta 1','E-posta 2','Telefon 1','Telefon 2','Adres']);self.assertEqual(rows[1]['C2'],'İzmir');self.assertEqual(rows[1]['D2'],'Buca');self.assertEqual(rows[1]['E2'],'info@firma.com');self.assertEqual(rows[1]['F2'],'ofis@firma.com');self.assertEqual(rows[1]['G2'],'+902321234567');self.assertEqual(rows[1]['H2'],'+908501234567');self.assertEqual(len(rows),3)
+            expected_headers = ['Firma adı', 'Sektör', 'NACE Kodu', 'NACE Faaliyet Tanımı', 'Kurumsal Düzey', 'Mail / Altyapı', 'WhatsApp Linki', 'İl', 'İlçe', 'E-posta 1', 'E-posta 2', 'Telefon 1', 'Telefon 2', 'Web sitesi', 'Adres']
+            self.assertEqual(list(rows[0].values()), expected_headers)
+            self.assertEqual(rows[1]['H2'], 'İzmir')
+            self.assertEqual(rows[1]['I2'], 'Buca')
+            self.assertEqual(rows[1]['J2'], 'info@firma.com')
+            self.assertEqual(rows[1]['K2'], 'ofis@firma.com')
+            self.assertEqual(rows[1]['L2'], '+902321234567')
+            self.assertEqual(rows[1]['M2'], '+908501234567')
+            self.assertEqual(len(rows), 3)
     def test_phone_crawl(self):
         from engine import Page
         self.assertEqual(Page('<a href="tel:02321234567">Ara</a><a href="tel:+902321234567">Ara</a>').phones(),['+902321234567'])

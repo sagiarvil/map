@@ -83,9 +83,12 @@
           </div>
 
           <div class="field">
-            <label for="contactModeSelect">İletişim Filtresi</label>
+            <label for="contactModeSelect">İletişim &amp; İstihbarat Filtresi</label>
             <select id="contactModeSelect">
               <option value="all" selected>Tüm Firmalar</option>
+              <option value="has_whatsapp">💬 WhatsApp Hattı Olanlar</option>
+              <option value="has_efatura">🏢 e-Fatura Mükellefi (Kurumsal Ciro)</option>
+              <option value="has_enterprise_mail">☁️ Kurumsal Mail (M365 / Google)</option>
               <option value="has_email">E-postası Olanlar</option>
               <option value="has_phone">Telefonu Olanlar</option>
               <option value="both">E-posta + Telefon Olanlar</option>
@@ -128,10 +131,11 @@
         <div class="summary-bar">
           <div class="summary-metrics">
             <span class="metric-pill primary-metric"><strong id="kpiTotal">0</strong> Firma</span>
+            <span class="metric-pill">💬 WhatsApp: <strong id="kpiWhatsapp">0</strong></span>
+            <span class="metric-pill">🏢 e-Fatura: <strong id="kpiEfatura">0</strong></span>
             <span class="metric-pill">E-posta: <strong id="kpiEmails">0</strong></span>
             <span class="metric-pill">Telefon: <strong id="kpiPhones">0</strong></span>
-            <span class="metric-pill">Web Sitesi: <strong id="kpiWebsites">0</strong></span>
-            <span class="metric-pill subtle-hide">E-posta + Tel: <strong id="kpiBoth">0</strong></span>
+            <span class="metric-pill subtle-hide">Web Sitesi: <strong id="kpiWebsites">0</strong></span>
           </div>
           <span id="activeFilterSummary" class="filter-tag"></span>
         </div>

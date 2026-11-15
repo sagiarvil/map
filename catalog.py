@@ -30,10 +30,13 @@ from engine import (
     EMAIL,
     ROLE,
     ScanError,
+    detect_tech_stack,
     domain_key,
+    is_whatsapp_phone,
     normalize,
     now,
     phone_normalize,
+    whatsapp_url,
 )
 
 try:
@@ -853,14 +856,128 @@ def _fts_match_expression(term_list: list[str]) -> str:
     return ' OR '.join(dict.fromkeys(parts))
 
 
-CONTACT_MODES = ('all', 'has_email', 'has_phone', 'both', 'email_only', 'phone_only')
+# --- Official TOBB & Chamber of Commerce NACE Rev. 2 Classifications ---
+NACE_MAP: dict[str, tuple[str, str]] = {
+    # Mobilya & Ağaç Sanayi
+    'furniture': ('31.09.01', 'Diğer mobilyaların imalatı'),
+    'furniture store': ('47.59.01', 'Mobilya perakende ticareti'),
+    'furniture manufacturer': ('31.09.01', 'Mobilya imalatı'),
+    'furniture wholesaler': ('46.47.01', 'Mobilya toptan ticareti'),
+    'office furniture store': ('31.01.01', 'Büro ve mağaza mobilyaları imalatı'),
+    'mattress store': ('31.03.01', 'Yatak ve baza imalatı'),
+    'kitchen': ('31.02.01', 'Mutfak mobilyalarının imalatı'),
+    'kitchen remodeling': ('31.02.01', 'Mutfak mobilyaları imalatı ve montajı'),
+    'cabinet maker': ('31.02.01', 'Mutfak ve banyo dolapları imalatı'),
+    'carpenter': ('16.23.01', 'Ahşap doğrama ve marangozluk ürünleri imalatı'),
+    'upholstery service': ('31.09.04', 'Koltuk, kanepe döşemesi ve imalatı'),
+    'woodworking': ('16.10.01', 'Kereste ve ahşap plaka imalatı'),
+    'home goods store': ('47.59.03', 'Züccaciye ve ev eşyaları perakende ticareti'),
+    'carpet store': ('47.53.01', 'Halı ve zemin kaplamaları perakende ticareti'),
+    'lighting store': ('47.59.02', 'Aydınlatma teçhizatı perakende ticareti'),
+    'interior design': ('74.10.02', 'İç mimarların faaliyetleri'),
+
+    # İnşaat, Yapı & Mimarlık
+    'construction company': ('41.20.01', 'İkamet amaçlı binaların inşaatı (müteahhitlik)'),
+    'general contractor': ('41.20.02', 'İkamet amaçlı olmayan binaların inşaatı'),
+    'building supply store': ('46.73.01', 'Ağaç ve inşaat malzemesi toptan ticareti'),
+    'hardware store': ('47.52.01', 'Hırdavat ve yapı market perakende ticareti'),
+    'architectural designer': ('71.11.01', 'Mimarlık faaliyetleri'),
+    'civil engineer': ('71.12.01', 'Mühendislik ve proje danışmanlığı'),
+
+    # Metal, Makina & Sanayi
+    'metal fabricator': ('25.11.01', 'Metal yapı ve çelik konstrüksiyon imalatı'),
+    'machine shop': ('28.99.01', 'Özel amaçlı diğer makinaların imalatı ve talaşlı imalat'),
+    'industrial equipment': ('46.69.01', 'Sanayi makinaları ve ekipmanları toptan ticareti'),
+    'plastic': ('22.29.01', 'Plastikten diğer mamullerin imalatı ve kalıpçılık'),
+
+    # Tekstil & Konfeksiyon
+    'textile': ('13.92.01', 'Ev tekstili ve mefruşat imalatı'),
+    'fabric store': ('46.41.01', 'Kumaş toptan ticareti'),
+    'clothing store': ('47.71.01', 'Giyim eşyası perakende ticareti'),
+
+    # Lojistik & Otomotiv
+    'logistics': ('52.29.01', 'Lojistik ve taşımacılık destekleyici faaliyetleri'),
+    'transport': ('49.41.01', 'Karayolu ile yük taşımacılığı'),
+    'auto repair': ('45.20.01', 'Motorlu kara taşıtlarının bakım ve onarımı'),
+    'auto parts': ('45.31.01', 'Motorlu taşıt yedek parça toptan ticareti'),
+
+    # Gıda, Elektrik, Medikal
+    'wholesale': ('46.39.01', 'Gıda toptan ticareti'),
+    'electrician': ('43.21.01', 'Elektrik tesisatı ve kablolama işleri'),
+    'medical supply': ('46.46.01', 'Tıbbi ürün ve gereç toptan ticareti'),
+    'clinic': ('86.21.01', 'Genel hekimlik ve klinik faaliyetleri'),
+}
+
+EFATURA_CORP_RE = re.compile(
+    r'\b(?:a\.?\s*ş\.?|anonim\s+şirketi|ltd\.?\s*şti\.?|limited\s+şirketi|san\.\s*ve\s*tic\.|sanayi\s+ve\s+ticaret|holding|a\.?\s*s\.?|ltd\.)\b',
+    re.I,
+)
 
 
-def contact_match(has_email: bool, has_phone: bool, mode: str = 'all') -> bool:
+def resolve_nace(category: str, name: str = '') -> tuple[str, str]:
+    """Map international category tag or commercial company name into official Turkish NACE Rev. 2 code & description."""
+    cat_clean = category.replace('_', ' ').strip().lower()
+    if cat_clean in NACE_MAP:
+        return NACE_MAP[cat_clean]
+    for key, (code, desc) in NACE_MAP.items():
+        if key in cat_clean:
+            return code, desc
+    # Keyword inference from Turkish name
+    f_name = fold(name)
+    if any(k in f_name for k in ('imalat', 'uretim', 'fabrika', 'sanayi', 'atolye')):
+        return '31.09.01', 'Diğer mobilya ve ahşap imalatı'
+    if any(k in f_name for k in ('insaat', 'yapi', 'muteahhit')):
+        return '41.20.01', 'Bina inşaatı (müteahhitlik)'
+    if any(k in f_name for k in ('mimarlik', 'tasarim', 'ic mimar')):
+        return '71.11.01', 'Mimarlık ve tasarım faaliyetleri'
+    if any(k in f_name for k in ('makina', 'makine', 'torna', 'otomasyon')):
+        return '28.99.01', 'Özel amaçlı makina imalatı'
+    return '47.59.01', 'Perakende ticaret / Hizmet faaliyeti'
+
+
+def is_efatura_company(name: str, emails: Any = ()) -> bool:
+    """Detect whether company meets official Turkish corporate entity (A.Ş. / Ltd. Şti.) or registered e-Fatura/KEP criteria."""
+    if EFATURA_CORP_RE.search(name):
+        return True
+    if emails:
+        for em in (emails if isinstance(emails, (list, set, tuple)) else []):
+            em_low = str(em).lower()
+            if '.kep.tr' in em_low or em_low.startswith('efatura@') or em_low.startswith('e-fatura@'):
+                return True
+    return False
+
+
+CONTACT_MODES = (
+    'all',
+    'has_whatsapp',
+    'has_efatura',
+    'has_enterprise_mail',
+    'has_email',
+    'has_phone',
+    'both',
+    'email_only',
+    'phone_only',
+)
+
+
+def contact_match(
+    has_email: bool,
+    has_phone: bool,
+    mode: str = 'all',
+    has_whatsapp: bool = False,
+    has_efatura: bool = False,
+    has_enterprise_mail: bool = False,
+) -> bool:
     if mode == 'all' or not mode:
         return True
     if mode not in CONTACT_MODES:
         raise ValueError('Geçersiz iletişim filtresi')
+    if mode == 'has_whatsapp':
+        return has_whatsapp
+    if mode == 'has_efatura':
+        return has_efatura
+    if mode == 'has_enterprise_mail':
+        return has_enterprise_mail
     if mode == 'has_email':
         return has_email
     if mode == 'has_phone':
@@ -971,8 +1088,8 @@ def portfolio_listing(
         ):
             place_phones.setdefault(pid, set()).add(ph)
 
-        total = websites = with_email = with_phone = with_both = 0
-        matched_rows: list[tuple[tuple[int, int, int, int, int, float], sqlite3.Row, set[str], set[str]]] = []
+        total = websites = with_email = with_phone = with_both = with_whatsapp = with_efatura = with_tech = 0
+        matched_rows: list[tuple[tuple[int, int, int, int, int, float], sqlite3.Row, set[str], set[str], dict[str, Any]]] = []
         dist_counts: dict[str, int] = {}
         cur = c.execute(
             '''SELECT p.id, p.name, p.category, p.region, p.address, p.lat, p.lon,
@@ -986,8 +1103,25 @@ def portfolio_listing(
             pid = r['id']
             ems = (set(json.loads(r['emails'] or '[]')) - excluded) | place_emails.get(pid, set())
             phs = set(json.loads(r['phones'] or '[]')) | place_phones.get(pid, set())
+
+            wa_num = next((p for p in phs if is_whatsapp_phone(p)), '')
+            wa_url = whatsapp_url(wa_num) if wa_num else ''
+            has_wa = bool(wa_num)
+            is_efat = is_efatura_company(r['name'], ems)
+
+            first_em = next((e for e in ems if '@' in e), '')
+            em_dom = first_em.split('@')[1].lower() if first_em else ''
+            tech = detect_tech_stack(email_domain=em_dom)
+            has_ent_mail = bool(tech and tech in ('Microsoft 365', 'Google Workspace', 'Özel Kurumsal Sunucu'))
+            nace_code, nace_title = resolve_nace(r['category'], r['name'])
+
             he, hp = bool(ems), bool(phs)
-            if not contact_match(he, hp, contact_mode):
+            if not contact_match(
+                he, hp, contact_mode,
+                has_whatsapp=has_wa,
+                has_efatura=is_efat,
+                has_enterprise_mail=has_ent_mail,
+            ):
                 continue
             hw = bool(r['website'])
             total += 1
@@ -999,15 +1133,29 @@ def portfolio_listing(
                 with_phone += 1
             if he and hp:
                 with_both += 1
+            if has_wa:
+                with_whatsapp += 1
+            if is_efat:
+                with_efatura += 1
+            if tech:
+                with_tech += 1
             d_name = r['district'] or ''
             if d_name:
                 dist_counts[d_name] = dist_counts.get(d_name, 0) + 1
             q_score = (int(he and hp), int(he), int(hw and hp), int(hw), int(hp), float(r['confidence'] or 0.0))
-            matched_rows.append((q_score, r, ems, phs))
+            intel = {
+                'nace_code': nace_code,
+                'nace_title': nace_title,
+                'efatura': is_efat,
+                'whatsapp': wa_url,
+                'whatsapp_num': wa_num,
+                'tech': tech,
+            }
+            matched_rows.append((q_score, r, ems, phs, intel))
 
         matched_rows.sort(key=lambda item: item[0], reverse=True)
         page_rows: list[dict[str, Any]] = []
-        for _, r, ems, phs in matched_rows[offset:offset + limit]:
+        for _, r, ems, phs, intel in matched_rows[offset:offset + limit]:
             city = r['province'] or province_of(r['region'].split(',')[0])
             page_rows.append({
                 'id': r['id'],
@@ -1023,6 +1171,12 @@ def portfolio_listing(
                 'lon': r['lon'],
                 'confidence': r['confidence'],
                 'source': r['source'],
+                'nace_code': intel['nace_code'],
+                'nace_title': intel['nace_title'],
+                'efatura': intel['efatura'],
+                'whatsapp': intel['whatsapp'],
+                'whatsapp_num': intel['whatsapp_num'],
+                'tech': intel['tech'],
             })
 
     return {
@@ -1031,6 +1185,9 @@ def portfolio_listing(
         'with_email': with_email,
         'with_phone': with_phone,
         'with_both': with_both,
+        'with_whatsapp': with_whatsapp,
+        'with_efatura': with_efatura,
+        'with_tech': with_tech,
         'districts': sorted(dist_counts.items(), key=lambda kv: kv[1], reverse=True)[:16],
         'rows': page_rows,
         'terms': terms(sector),

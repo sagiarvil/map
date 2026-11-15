@@ -146,13 +146,18 @@
       if (r.emails && r.emails.length > ne) ne = r.emails.length;
       if (r.phones && r.phones.length > np) np = r.phones.length;
     }
-    if (records.length > 1048575 || 6 + ne + np > 16384) {
+    if (records.length > 1048575 || 9 + ne + np > 16384) {
       throw new Error('Excel tek sayfa kapasitesi aşıldı; lütfen filtreyi daraltın.');
     }
 
     const headers = [
       'Firma adı',
       'Sektör',
+      'NACE Kodu',
+      'NACE Faaliyet Tanımı',
+      'Kurumsal Düzey',
+      'Mail / Altyapı',
+      'WhatsApp Linki',
       'İl',
       'İlçe',
       ...Array.from({ length: ne }, (_, i) => `E-posta ${i + 1}`),
@@ -161,8 +166,8 @@
       'Adres'
     ];
     const widths = [
-      36, 26, 16, 20,
-      ...Array.from({ length: ne }, () => 36),
+      36, 24, 14, 38, 22, 22, 34, 16, 18,
+      ...Array.from({ length: ne }, () => 34),
       ...Array.from({ length: np }, () => 22),
       34,
       58
@@ -204,6 +209,11 @@
       const vals = [
         rec.name || '',
         rec.category || '',
+        (rec.nace && rec.nace.code) || rec.nace_code || '',
+        (rec.nace && rec.nace.title) || rec.nace_title || '',
+        rec.isEfatura || rec.efatura ? 'e-Fatura Mükellefi' : 'Standart',
+        rec.tech || (rec.isEnterpriseMail ? 'Kurumsal Mail' : 'Standart'),
+        rec.whatsappUrl || rec.whatsapp || '',
         rec.city || '',
         rec.district || '',
         ...Array.from({ length: ne }, (_, k) => ems[k] || ''),

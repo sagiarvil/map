@@ -503,6 +503,52 @@ class V4CleanlinessAndLexborTests(unittest.TestCase):
             finally:
                 st.close()
 
+    def test_v5_b2b_intelligence_engines(self) -> None:
+        """Verify NACE Rev. 2, WhatsApp links, e-Fatura corporate detection & tech stack."""
+        import catalog
+        import engine
+
+        # 1. NACE Rev. 2 Resolution
+        code1, title1 = catalog.resolve_nace('furniture store', 'Özkul Mobilya Ltd. Şti.')
+        self.assertEqual(code1, '47.59.01')
+        self.assertIn('Mobilya', title1)
+
+        code_mfg, title_mfg = catalog.resolve_nace('furniture manufacturing', 'Özkul Mobilya Fabrikası')
+        self.assertEqual(code_mfg, '31.09.01')
+        self.assertIn('imalat', title_mfg.lower())
+
+        code2, title2 = catalog.resolve_nace('construction', 'Akay Müteahhitlik İnşaat Taahhüt')
+        self.assertEqual(code2, '41.20.01')
+        self.assertIn('inşaat', title2.lower())
+
+        # 2. WhatsApp Mobile Detection & URL Generation
+        self.assertTrue(engine.is_whatsapp_phone('+905321234567'))
+        self.assertTrue(engine.is_whatsapp_phone('0542 987 65 43'))
+        self.assertFalse(engine.is_whatsapp_phone('+902322501122'))
+        self.assertFalse(engine.is_whatsapp_phone('+908501234567'))
+        self.assertEqual(engine.whatsapp_url('+905321234567'), 'https://wa.me/905321234567')
+
+        # 3. e-Fatura Corporate Entity & KEP Detection
+        self.assertTrue(catalog.is_efatura_company('Özkul Mobilya San. ve Tic. Ltd. Şti.', ['info@ozkul.com.tr']))
+        self.assertTrue(catalog.is_efatura_company('İstikbal A.Ş.', []))
+        self.assertTrue(catalog.is_efatura_company('Küçük Esnaf', ['sirket@hs01.kep.tr']))
+        self.assertFalse(catalog.is_efatura_company('Ahmet Usta Marangoz', ['ahmet@gmail.com']))
+
+        # 4. Tech Stack & Mail Infrastructure Fingerprinting
+        self.assertEqual(engine.detect_tech_stack(mx_host='firma-com.mail.protection.outlook.com'), 'Microsoft 365')
+        self.assertEqual(engine.detect_tech_stack(mx_host='aspmx.l.google.com'), 'Google Workspace')
+        self.assertEqual(engine.detect_tech_stack(mx_host='mx.yandex.net'), 'Yandex 360')
+        self.assertEqual(engine.detect_tech_stack(html='<script src="https://cdn.shopify.com/s/files/test.js"></script>'), 'Shopify')
+        self.assertEqual(engine.detect_tech_stack(html='<div class="ticimax-wrapper"></div>'), 'Ticimax')
+
+        # 5. Dynamic Contact Intelligence Modes
+        self.assertTrue(catalog.contact_match(True, True, 'has_whatsapp', has_whatsapp=True))
+        self.assertFalse(catalog.contact_match(True, True, 'has_whatsapp', has_whatsapp=False))
+        self.assertTrue(catalog.contact_match(True, True, 'has_efatura', has_efatura=True))
+        self.assertFalse(catalog.contact_match(True, True, 'has_efatura', has_efatura=False))
+        self.assertTrue(catalog.contact_match(True, True, 'has_enterprise_mail', has_enterprise_mail=True))
+        self.assertFalse(catalog.contact_match(True, True, 'has_enterprise_mail', has_enterprise_mail=False))
+
 
 if __name__ == '__main__':
     unittest.main()
