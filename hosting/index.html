@@ -6,10 +6,10 @@
   <title>Haritalar — AppFlow V10.2 B2B İstihbarat &amp; ERP Keşif Fabrikası</title>
   <meta name="description" content="HTMLANDHTML V10.2 AppFlow mimarisiyle 81 ilde kurumsal firma arama, NACE Rev. 2, WhatsApp, e-Fatura istihbaratı ve ERP cari oluşturma merkezi.">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="/style.css?v=7.0.2">
+  <link rel="stylesheet" href="/style.css?v=7.1.0">
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer></script>
-  <script src="/xlsx-engine.js?v=7.0.2" defer></script>
-  <script src="/app.js?v=7.0.2" defer></script>
+  <script src="/xlsx-engine.js?v=7.1.0" defer></script>
+  <script src="/app.js?v=7.2.0" defer></script>
 </head>
 <body class="flow-home">
   <!-- AppFlow Header Bar -->
@@ -256,7 +256,8 @@
           <div class="field">
             <label for="citySelect">İl / Şehir</label>
             <select id="citySelect">
-              <option value="İstanbul" selected>İstanbul</option>
+              <option value="__all__" selected>🌍 Tüm Şehirler (81 İl Türkiye Geneli)</option>
+              <option value="İstanbul">İstanbul</option>
               <option value="Ankara">Ankara</option>
               <option value="İzmir">İzmir</option>
               <option value="Adana">Adana</option>
@@ -480,7 +481,8 @@
           <div class="field">
             <label for="exportCitySelect">İhraç Edilecek İl / Şehir</label>
             <select id="exportCitySelect">
-              <option value="İstanbul" selected>İstanbul</option>
+              <option value="__all__" selected>🌍 Tüm Şehirler (81 İl Türkiye Geneli)</option>
+              <option value="İstanbul">İstanbul</option>
             </select>
             <input id="exportCityCustomInput" type="text" placeholder="Özel şehir adı yazın…" style="margin-top:6px" hidden>
           </div>
@@ -516,7 +518,7 @@
         <p class="text-muted">Seçilen il ve sektördeki web sitelerinden KVKK iletişim sayfalarını tarayarak doğrulanmış e-posta ve telefon havuzunu genişletin.</p>
         <div class="action-bar" style="margin-top:16px">
           <button id="enrichStartBtn" type="button" class="btn btn-primary">Taramayı Başlat &amp; Kuyruğa Ekle</button>
-          <button id="enrichPauseBtn" type="button" class="btn btn-secondary" disabled>Duraklat</button>
+          <button id="enrichPauseBtn" type="button" class="btn btn-secondary">Duraklat</button>
         </div>
         <div id="enrichLiveStatus" style="margin-top:14px; font-weight:550; color:var(--text-muted)">
           Durum: Yerel turbo motor beklemede.
@@ -719,50 +721,50 @@
         <h3>Endüstriyel Motor Matrisi — V7 Pro 100/100 Küresel Çekirdek (9/9 Aktif)</h3>
         <p class="text-muted">Türkiye 81 İl CDN + 46 Ülke Yurtdışı Canlı Keşif + VKN/MERSİS/Yetkili İstihbaratı + İnteraktif H3 Vektör Harita:</p>
         <div id="engineMatrixGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:12px; margin-top:14px">
-          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+          <div data-engine-card="duckdb" style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">🦆 DuckDB Spatial v2.0</strong>
             <small style="color:var(--muted)">C++ Vektörize Bellek-İçi OLAP Analitik + TTL Önbellek</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C++ Aktif</span></div>
+            <div style="margin-top:6px"><span class="badge mx-ok" data-engine-badge="duckdb" style="font-size:11px">● C++ Aktif</span></div>
           </div>
-          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+          <div data-engine-card="overturemaps" style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">🗺️ Overture Maps + PyArrow v26</strong>
             <small style="color:var(--muted)">AWS S3 GeoParquet Doğrudan Sütunsal Akış (2.3B+ POI)</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C++ S3 Aktif</span></div>
+            <div style="margin-top:6px"><span class="badge mx-ok" data-engine-badge="overturemaps" style="font-size:11px">● C++ S3 Aktif</span></div>
           </div>
-          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+          <div data-engine-card="splink" style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">🔗 Splink v5.0 Bayesian</strong>
             <small style="color:var(--muted)">Kalibre Fellegi-Sunter Olasılıksal Şube/Firma Tekilleştirme</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● DuckDB Aktif</span></div>
+            <div style="margin-top:6px"><span class="badge mx-ok" data-engine-badge="splink" style="font-size:11px">● DuckDB Aktif</span></div>
           </div>
-          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+          <div data-engine-card="rapidfuzz" style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">⚡ RapidFuzz v3.14 C++ SIMD</strong>
             <small style="color:var(--muted)">WRatio &amp; Token-Set Bulanık Kurumsal Ünvan Eşleştirme</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C++ SIMD Aktif</span></div>
+            <div style="margin-top:6px"><span class="badge mx-ok" data-engine-badge="rapidfuzz" style="font-size:11px">● C++ SIMD Aktif</span></div>
           </div>
-          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+          <div data-engine-card="h3" style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">⬡ Uber H3 v4.5 Spatial</strong>
             <small style="color:var(--muted)">Altıgen (Hexagonal) OSB, Sanayi Sitesi ve Küme Yoğunluk Radarı</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C Çekirdek Aktif</span></div>
+            <div style="margin-top:6px"><span class="badge mx-ok" data-engine-badge="h3" style="font-size:11px">● C Çekirdek Aktif</span></div>
           </div>
-          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+          <div data-engine-card="trafilatura_lexbor" style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">📄 Lexbor C + Trafilatura v2.3</strong>
             <small style="color:var(--muted)">Selectolax C HTML5 DOM + Kurumsal Metin ve Metadata Çıkarımı</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C HTML5 Aktif</span></div>
+            <div style="margin-top:6px"><span class="badge mx-ok" data-engine-badge="trafilatura_lexbor" style="font-size:11px">● C HTML5 Aktif</span></div>
           </div>
-          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+          <div data-engine-card="curl_cffi" style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">🌐 curl_cffi v0.17 + HTTP/2</strong>
             <small style="color:var(--muted)">Yerel libcurl HTTP/2 + robots.txt &amp; SSRF Korumalı İletişim</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● C libcurl Aktif</span></div>
+            <div style="margin-top:6px"><span class="badge mx-ok" data-engine-badge="curl_cffi" style="font-size:11px">● C libcurl Aktif</span></div>
           </div>
-          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+          <div data-engine-card="phonenumbers" style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">📞 Google libphonenumber v9</strong>
             <small style="color:var(--muted)">ITU-T E.164 Onarım, Mobil/Sabit Hat Ayrımı &amp; WhatsApp Doğrulama</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● ITU-T Aktif</span></div>
+            <div style="margin-top:6px"><span class="badge mx-ok" data-engine-badge="phonenumbers" style="font-size:11px">● ITU-T Aktif</span></div>
           </div>
-          <div style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
+          <div data-engine-card="orjson_dns" style="padding:12px 14px; background:var(--surface-alt); border-radius:8px; border:1px solid var(--line)">
             <strong style="color:var(--ink); display:block; font-size:13px">🦀 orjson + MX/SPF/DMARC</strong>
             <small style="color:var(--muted)">Rust SIMD JSON + RFC 5322 IDNA Hijyen + Canlı DNS Altyapı</small>
-            <div style="margin-top:6px"><span class="badge mx-ok" style="font-size:11px">● Rust SIMD Aktif</span></div>
+            <div style="margin-top:6px"><span class="badge mx-ok" data-engine-badge="orjson_dns" style="font-size:11px">● Rust SIMD Aktif</span></div>
           </div>
         </div>
       </div>

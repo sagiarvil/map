@@ -19,7 +19,9 @@ import concurrent.futures
 import ipaddress
 import importlib.metadata
 import json
+import logging
 import re
+import sqlite3
 import socket
 import threading
 import time
@@ -42,9 +44,15 @@ from selectolax.lexbor import LexborHTMLParser
 import catalog
 import engine as core_engine
 
+logging.getLogger("splink").setLevel(logging.WARNING)
+
 _ANALYTICS_LOCK = threading.Lock()
 _ANALYTICS_CACHE: dict[str, tuple[float, Dict[str, Any]]] = {}
 _ANALYTICS_TTL_SEC = 60.0
+
+_SELFTEST_LOCK = threading.Lock()
+_SELFTEST_CACHE: tuple[float, Dict[str, Any]] | None = None
+_SELFTEST_TTL_SEC = 30.0
 
 _JUNK_EMAIL_DOMAINS = frozenset({
     "example.com", "example.org", "test.com", "domain.com", "email.com",
@@ -285,79 +293,189 @@ def _pkg_version(name: str, fallback: str) -> str:
         return fallback
 
 
-def get_engine_status() -> Dict[str, Any]:
-    """Return physical status and installed versions of all 9 Tier-1 C/C++/Rust engines + V7 Global modules."""
-    return {
-        "status": "active",
-        "version": "7.0-pro",
-        "active_engines": 9,
-        "total_engines": 9,
-        "architecture": "V7 Pro 100/100 Global Enterprise C/C++/Rust Stack",
-        "capabilities": [
-            "81-Province Nationwide Offline & Cloud Shards",
-            "Global 55+ Country Sector & City Live Hybrid Engine (Overture S3 + OSM)",
-            "GİB Official VKN Modulo-10, MERSİS-16 & KEP Verification",
-            "Executive Decision-Maker & Corporate Email Pattern Inference",
-            "Uber H3 6-Vertex Interactive Vector Map & SSRF-Safe ERP Webhooks",
-        ],
-        "engines": {
+def _probe_single_engine(fn: Any) -> Tuple[bool, float, str]:
+    t0 = time.perf_counter()
+    try:
+        fn()
+        return True, round((time.perf_counter() - t0) * 1000, 2), ""
+    except Exception as exc:
+        return False, round((time.perf_counter() - t0) * 1000, 2), f"{type(exc).__name__}: {exc}"
+
+
+def get_engine_status(force_selftest: bool = False) -> Dict[str, Any]:
+    """Execute live physical self-tests and return verified status + versions of all 9 Tier-1 C/C++/Rust engines."""
+    global _SELFTEST_CACHE
+    now_mono = time.monotonic()
+    with _SELFTEST_LOCK:
+        if not force_selftest and _SELFTEST_CACHE is not None and (now_mono - _SELFTEST_CACHE[0]) < _SELFTEST_TTL_SEC:
+            return dict(_SELFTEST_CACHE[1])
+
+        def _t_duckdb() -> None:
+            c = duckdb.connect(":memory:")
+            try:
+                val = c.execute("SELECT sum(i) FROM range(100) t(i)").fetchone()
+                assert val and int(val[0]) == 4950
+            finally:
+                c.close()
+
+        def _t_overture() -> None:
+            import overturemaps
+            import pyarrow as pa
+            import pyarrow.compute as pc
+
+            arr = pa.array(["Meubles Paris", "Plastik Sanayi"])
+            m = pc.match_substring_regex(arr, "meuble", ignore_case=True)
+            assert arr.filter(m).to_pylist() == ["Meubles Paris"]
+            assert callable(overturemaps.record_batch_reader)
+
+        def _t_splink() -> None:
+            from splink import SettingsCreator, block_on
+            import splink.comparison_library as cl
+
+            s = SettingsCreator(
+                link_type="dedupe_only",
+                comparisons=[cl.ExactMatch("phone")],
+                blocking_rules_to_generate_predictions=[block_on("phone")],
+            )
+            assert s is not None
+
+        def _t_rapidfuzz() -> None:
+            sc = fuzz.WRatio("Fabricants de Meubles", "Meubles")
+            assert sc >= 60.0
+
+        def _t_h3() -> None:
+            cell = h3.latlng_to_cell(41.0082, 28.9784, 7)
+            verts = h3.cell_to_boundary(cell)
+            assert len(verts) == 6
+
+        def _t_lexbor() -> None:
+            import trafilatura
+
+            dom = LexborHTMLParser("<html><head><title>Kurumsal</title></head><body>Test</body></html>")
+            t_node = dom.root.css_first("title") if dom.root else None
+            assert t_node is not None and t_node.text(strip=True) == "Kurumsal"
+            assert callable(trafilatura.extract)
+
+        def _t_curl_cffi() -> None:
+            from curl_cffi.requests import Session
+
+            sess = Session(impersonate="chrome")
+            sess.close()
+
+        def _t_phones() -> None:
+            vp = normalize_and_classify_phone("+33 6 12 34 56 78", "FR")
+            assert vp is not None and vp["e164"] == "+33612345678" and vp["whatsapp_eligible"] is True
+
+        def _t_orjson_dns() -> None:
+            b = orjson.dumps({"ok": True})
+            assert orjson.loads(b)["ok"] is True
+            assert validate_and_normalize_email("info@arcelik.com.tr") == "info@arcelik.com.tr"
+            assert dns.resolver.Resolver() is not None
+
+        ok_duck, ms_duck, err_duck = _probe_single_engine(_t_duckdb)
+        ok_ov, ms_ov, err_ov = _probe_single_engine(_t_overture)
+        ok_sp, ms_sp, err_sp = _probe_single_engine(_t_splink)
+        ok_rf, ms_rf, err_rf = _probe_single_engine(_t_rapidfuzz)
+        ok_h3, ms_h3, err_h3 = _probe_single_engine(_t_h3)
+        ok_lx, ms_lx, err_lx = _probe_single_engine(_t_lexbor)
+        ok_cc, ms_cc, err_cc = _probe_single_engine(_t_curl_cffi)
+        ok_ph, ms_ph, err_ph = _probe_single_engine(_t_phones)
+        ok_oj, ms_oj, err_oj = _probe_single_engine(_t_orjson_dns)
+
+        engines_dict: Dict[str, Dict[str, Any]] = {
             "duckdb": {
-                "installed": True,
+                "installed": ok_duck,
+                "verified": ok_duck,
+                "latency_ms": ms_duck,
                 "version": duckdb.__version__,
                 "backend": "C++ Vectorized Columnar OLAP",
-                "state": "operational",
+                "state": "operational" if ok_duck else f"error: {err_duck}",
             },
             "overturemaps": {
-                "installed": True,
+                "installed": ok_ov,
+                "verified": ok_ov,
+                "latency_ms": ms_ov,
                 "version": _pkg_version("overturemaps", "2.1.1"),
                 "pyarrow": _pkg_version("pyarrow", "26.0.1"),
                 "backend": "C++ PyArrow / AWS S3 2.3B Global POI",
-                "state": "operational",
+                "state": "operational" if ok_ov else f"error: {err_ov}",
             },
             "splink": {
-                "installed": True,
+                "installed": ok_sp,
+                "verified": ok_sp,
+                "latency_ms": ms_sp,
                 "version": _pkg_version("splink", "5.0.0"),
                 "algorithm": "Calibrated Fellegi-Sunter Bayesian Linkage",
-                "state": "operational",
+                "state": "operational" if ok_sp else f"error: {err_sp}",
             },
             "rapidfuzz": {
-                "installed": True,
+                "installed": ok_rf,
+                "verified": ok_rf,
+                "latency_ms": ms_rf,
                 "version": _pkg_version("rapidfuzz", "3.14.6"),
                 "backend": "C++ SIMD Token-Set & WRatio String Engine",
-                "state": "operational",
+                "state": "operational" if ok_rf else f"error: {err_rf}",
             },
             "h3": {
-                "installed": True,
+                "installed": ok_h3,
+                "verified": ok_h3,
+                "latency_ms": ms_h3,
                 "version": _pkg_version("h3", "4.5.0"),
                 "backend": "Uber H3 C Hexagonal Spatial Index (6-Vertex Polygons)",
-                "state": "operational",
+                "state": "operational" if ok_h3 else f"error: {err_h3}",
             },
             "trafilatura_lexbor": {
-                "installed": True,
+                "installed": ok_lx,
+                "verified": ok_lx,
+                "latency_ms": ms_lx,
                 "version": f"{_pkg_version('trafilatura', '2.3.1')} / Lexbor {_pkg_version('selectolax', '1.0.2')}",
                 "engine": "C HTML5 DOM + VKN/MERSİS/KEP & Executive Distillation",
-                "state": "operational",
+                "state": "operational" if ok_lx else f"error: {err_lx}",
             },
             "curl_cffi": {
-                "installed": True,
+                "installed": ok_cc,
+                "verified": ok_cc,
+                "latency_ms": ms_cc,
                 "version": _pkg_version("curl_cffi", "0.17.0"),
                 "engine": "C libcurl HTTP/2 Native TLS Client (robots/SSRF Safe)",
-                "state": "operational",
+                "state": "operational" if ok_cc else f"error: {err_cc}",
             },
             "phonenumbers": {
-                "installed": True,
+                "installed": ok_ph,
+                "verified": ok_ph,
+                "latency_ms": ms_ph,
                 "version": _pkg_version("phonenumbers", "9.0.43"),
                 "engine": "Google libphonenumber Global 240-Country E.164 & WhatsApp Classifier",
-                "state": "operational",
+                "state": "operational" if ok_ph else f"error: {err_ph}",
             },
             "orjson_dns": {
-                "installed": True,
+                "installed": ok_oj,
+                "verified": ok_oj,
+                "latency_ms": ms_oj,
                 "version": f"orjson {_pkg_version('orjson', '3.13.0')} / email-validator {_pkg_version('email-validator', '2.4.0')}",
                 "engine": "Rust SIMD JSON + RFC 5322 & Live MX/SPF/DMARC",
-                "state": "operational",
+                "state": "operational" if ok_oj else f"error: {err_oj}",
             },
-        },
-    }
+        }
+        active_cnt = sum(1 for item in engines_dict.values() if item["verified"])
+        payload = {
+            "status": "active" if active_cnt == len(engines_dict) else "degraded",
+            "version": "7.1-pro",
+            "active_engines": active_cnt,
+            "total_engines": len(engines_dict),
+            "selftest_verified": active_cnt == len(engines_dict),
+            "architecture": "V7.1 Pro 100/100 Global Enterprise C/C++/Rust Stack",
+            "capabilities": [
+                "81-Province Nationwide Offline & Cloud Shards ('Tüm Şehirler')",
+                "Global 55+ Country Multilingual & Manual Keyword Hybrid Engine",
+                "GİB Official VKN Modulo-10, MERSİS-16 & KEP Verification",
+                "Executive Decision-Maker & Corporate Email Pattern Inference",
+                "Uber H3 6-Vertex Interactive Vector Map & SSRF-Safe ERP Webhooks",
+            ],
+            "engines": engines_dict,
+        }
+        _SELFTEST_CACHE = (now_mono, payload)
+        return dict(payload)
 
 
 def validate_gib_vkn(vkn: Any) -> bool:
@@ -689,63 +807,89 @@ def inspect_domain_infrastructure(domain_or_email: str, timeout: float = 2.5) ->
 
 
 def get_database_analytics(sqlite_path: str | Path, force_refresh: bool = False) -> Dict[str, Any]:
-    """Run single-pass vectorized analytics across SQLite leads using DuckDB with 60s TTL cache."""
+    """Run single-pass vectorized analytics across SQLite leads using DuckDB with thread-safe singleflight cache."""
     db_file = Path(sqlite_path).resolve()
     if not db_file.exists():
         return {"error": "Veritabanı dosyası bulunamadı", "total": 0, "total_places": 0}
 
-    cache_key = f"{db_file}:{db_file.stat().st_mtime_ns}"
-    now_mono = time.monotonic()
-    if not force_refresh:
-        with _ANALYTICS_LOCK:
-            cached = _ANALYTICS_CACHE.get(cache_key)
-            if cached and (now_mono - cached[0]) < _ANALYTICS_TTL_SEC:
-                res = dict(cached[1])
-                res["cached"] = True
-                return res
+    with _ANALYTICS_LOCK:
+        cache_key = f"{db_file}:{db_file.stat().st_mtime_ns}"
+        now_mono = time.monotonic()
+        cached = _ANALYTICS_CACHE.get(cache_key)
+        # Singleflight coalesce: even on force_refresh bursts within 0.5s, share the fresh computation
+        if cached and ((not force_refresh and (now_mono - cached[0]) < _ANALYTICS_TTL_SEC) or (now_mono - cached[0]) < 0.5):
+            res = dict(cached[1])
+            res["cached"] = True
+            return res
 
-    t0 = time.perf_counter()
-    con = duckdb.connect()
-    try:
-        con.execute(f"ATTACH '{db_file}' AS sqlite (TYPE SQLITE, READ_ONLY)")
-        p_stats = con.execute(
-            """SELECT
-                 COUNT(*) AS total_places,
-                 COUNT(CASE WHEN website != '' AND website IS NOT NULL THEN 1 END) AS with_web,
-                 COUNT(DISTINCT region) AS distinct_regions
-               FROM sqlite.places"""
-        ).fetchone()
-        total_places, with_web, distinct_regions = int(p_stats[0]), int(p_stats[1]), int(p_stats[2])
+        t0 = time.perf_counter()
+        escaped_db = str(db_file).replace("'", "''")
+        try:
+            con = duckdb.connect(":memory:")
+            try:
+                con.execute(f"ATTACH '{escaped_db}' AS sqlite (TYPE SQLITE, READ_ONLY)")
+                p_stats = con.execute(
+                    """SELECT
+                         COUNT(*) AS total_places,
+                         COUNT(CASE WHEN website != '' AND website IS NOT NULL THEN 1 END) AS with_web,
+                         COUNT(DISTINCT region) AS distinct_regions
+                       FROM sqlite.places"""
+                ).fetchone()
+                total_places, with_web, distinct_regions = int(p_stats[0]), int(p_stats[1]), int(p_stats[2])
 
-        top_cats = con.execute(
-            """SELECT category, COUNT(*) AS cnt
-               FROM sqlite.places
-               WHERE category != '' AND category IS NOT NULL
-               GROUP BY category
-               ORDER BY cnt DESC
-               LIMIT 10"""
-        ).fetchall()
+                top_cats = con.execute(
+                    """SELECT category, COUNT(*) AS cnt
+                       FROM sqlite.places
+                       WHERE category != '' AND category IS NOT NULL
+                       GROUP BY category
+                       ORDER BY cnt DESC
+                       LIMIT 10"""
+                ).fetchall()
 
-        meta_stats = con.execute(
-            """SELECT
-                 COUNT(CASE WHEN emails != '' AND emails != '[]' THEN 1 END),
-                 COUNT(CASE WHEN phones != '' AND phones != '[]' THEN 1 END)
-               FROM sqlite.place_meta"""
-        ).fetchone()
-        email_cnt, phone_cnt = int(meta_stats[0]), int(meta_stats[1])
+                meta_stats = con.execute(
+                    """SELECT
+                         COUNT(CASE WHEN emails != '' AND emails != '[]' THEN 1 END),
+                         COUNT(CASE WHEN phones != '' AND phones != '[]' THEN 1 END)
+                       FROM sqlite.place_meta"""
+                ).fetchone()
+                email_cnt, phone_cnt = int(meta_stats[0]), int(meta_stats[1])
 
-        top_provinces = con.execute(
-            """SELECT province, COUNT(*) AS cnt
-               FROM sqlite.place_meta
-               WHERE province != '' AND province IS NOT NULL
-               GROUP BY province
-               ORDER BY cnt DESC
-               LIMIT 15"""
-        ).fetchall()
+                top_provinces = con.execute(
+                    """SELECT province, COUNT(*) AS cnt
+                       FROM sqlite.place_meta
+                       WHERE province != '' AND province IS NOT NULL
+                       GROUP BY province
+                       ORDER BY cnt DESC
+                       LIMIT 15"""
+                ).fetchall()
+                engine_label = "DuckDB Spatial v2.0 (Vectorized Columnar OLAP)"
+            finally:
+                con.close()
+        except Exception:
+            # Resilient read-only SQLite fallback if WAL checkpoint is mid-write
+            scon = sqlite3.connect(f"file:{db_file}?mode=ro", uri=True)
+            try:
+                p_stats = scon.execute(
+                    "SELECT count(*), coalesce(sum(website != ''), 0), count(DISTINCT region) FROM places"
+                ).fetchone()
+                total_places, with_web, distinct_regions = int(p_stats[0]), int(p_stats[1]), int(p_stats[2])
+                top_cats = scon.execute(
+                    "SELECT category, count(*) c FROM places WHERE category != '' GROUP BY category ORDER BY c DESC LIMIT 10"
+                ).fetchall()
+                meta_stats = scon.execute(
+                    "SELECT coalesce(sum(emails != '' AND emails != '[]'), 0), coalesce(sum(phones != '' AND phones != '[]'), 0) FROM place_meta"
+                ).fetchone()
+                email_cnt, phone_cnt = int(meta_stats[0]), int(meta_stats[1])
+                top_provinces = scon.execute(
+                    "SELECT province, count(*) c FROM place_meta WHERE province != '' GROUP BY province ORDER BY c DESC LIMIT 15"
+                ).fetchall()
+                engine_label = "SQLite WAL Read-Only Vector Fallback"
+            finally:
+                scon.close()
 
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
         payload = {
-            "engine": "DuckDB Spatial v2.0 (Vectorized Columnar OLAP)",
+            "engine": engine_label,
             "total_places": total_places,
             "distinct_regions": distinct_regions,
             "with_website": with_web,
@@ -756,12 +900,9 @@ def get_database_analytics(sqlite_path: str | Path, force_refresh: bool = False)
             "speed_ms": f"{elapsed_ms} ms",
             "cached": False,
         }
-        with _ANALYTICS_LOCK:
-            _ANALYTICS_CACHE.clear()
-            _ANALYTICS_CACHE[cache_key] = (now_mono, payload)
-        return payload
-    finally:
-        con.close()
+        _ANALYTICS_CACHE.clear()
+        _ANALYTICS_CACHE[cache_key] = (time.monotonic(), payload)
+        return dict(payload)
 
 
 def _clean_corp_name(name: str) -> str:
@@ -779,11 +920,11 @@ def deduplicate_records_splink(records: List[Dict[str, Any]]) -> List[Dict[str, 
     from splink import DuckDBAPI, Linker, SettingsCreator, block_on
     import splink.comparison_library as cl
 
-    con = duckdb.connect()
+    con = duckdb.connect(":memory:")
     try:
         rows = []
         for idx, r in enumerate(records):
-            uid = str(r.get("id") or idx + 1)
+            uid = f"{idx}_{r.get('id') or idx + 1}"
             raw_name = str(r.get("name") or "").strip()
             norm_name = _clean_corp_name(raw_name) or raw_name.lower()
             city = str(r.get("city") or "").strip().lower()
@@ -800,46 +941,52 @@ def deduplicate_records_splink(records: List[Dict[str, Any]]) -> List[Dict[str, 
                 "phone": clean_phone or f"__no_phone_{uid}",
             })
 
-        df = pd.DataFrame(rows)
-        con.register("firms", df)
+        try:
+            df = pd.DataFrame(rows)
+            con.register("firms", df)
 
-        settings = SettingsCreator(
-            link_type="dedupe_only",
-            comparisons=[
-                cl.ExactMatch("phone").configure(
-                    m_probabilities=[0.96, 0.04],
-                    u_probabilities=[0.001, 0.999],
-                ),
-                cl.LevenshteinAtThresholds("name", [3, 12]).configure(
-                    m_probabilities=[0.55, 0.30, 0.10, 0.05],
-                    u_probabilities=[0.001, 0.009, 0.04, 0.95],
-                ),
-                cl.ExactMatch("city").configure(
-                    m_probabilities=[0.90, 0.10],
-                    u_probabilities=[0.05, 0.95],
-                ),
-            ],
-            blocking_rules_to_generate_predictions=[
-                block_on("phone"),
-                "l.city = r.city AND substr(l.name, 1, 6) = substr(r.name, 1, 6)",
-            ],
-            probability_two_random_records_match=0.05,
-        )
+            settings = SettingsCreator(
+                link_type="dedupe_only",
+                comparisons=[
+                    cl.ExactMatch("phone").configure(
+                        m_probabilities=[0.96, 0.04],
+                        u_probabilities=[0.001, 0.999],
+                    ),
+                    cl.LevenshteinAtThresholds("name", [3, 12]).configure(
+                        m_probabilities=[0.55, 0.30, 0.10, 0.05],
+                        u_probabilities=[0.001, 0.009, 0.04, 0.95],
+                    ),
+                    cl.ExactMatch("city").configure(
+                        m_probabilities=[0.90, 0.10],
+                        u_probabilities=[0.05, 0.95],
+                    ),
+                ],
+                blocking_rules_to_generate_predictions=[
+                    block_on("phone"),
+                    "l.city = r.city AND substr(l.name, 1, 6) = substr(r.name, 1, 6)",
+                ],
+                probability_two_random_records_match=0.05,
+            )
 
-        db_api = DuckDBAPI(con)
-        splink_df = db_api.table_to_splink_dataframe("firms", "firms")
-        linker = Linker(splink_df, settings)
-        predictions = linker.inference.predict()
-        clusters = linker.clustering.cluster_pairwise_predictions_at_threshold(predictions, 0.5)
-        res_df = clusters.as_pandas_dataframe()
-
-        raw_cluster_map = dict(zip(res_df["unique_id"].astype(str), res_df["cluster_id"].astype(str)))
+            db_api = DuckDBAPI(con)
+            splink_df = db_api.table_to_splink_dataframe("firms", "firms")
+            linker = Linker(splink_df, settings)
+            predictions = linker.inference.predict()
+            clusters = linker.clustering.cluster_pairwise_predictions_at_threshold(predictions, 0.5)
+            res_df = clusters.as_pandas_dataframe()
+            raw_cluster_map = dict(zip(res_df["unique_id"].astype(str), res_df["cluster_id"].astype(str)))
+        except Exception:
+            raw_cluster_map = {}
+            for row in rows:
+                ph_key = row["phone"] if not row["phone"].startswith("__no_phone_") else ""
+                nm_key = f"{row['city']}:{row['name'][:16]}" if row["name"] else row["unique_id"]
+                raw_cluster_map[row["unique_id"]] = ph_key or nm_key
 
         canonical_ids: dict[str, int] = {}
         cluster_counts: Counter[int] = Counter()
         mapped_ids: list[int] = []
         for idx, r in enumerate(records):
-            uid = str(r.get("id") or idx + 1)
+            uid = f"{idx}_{r.get('id') or idx + 1}"
             raw_cid = raw_cluster_map.get(uid, uid)
             cid = canonical_ids.setdefault(raw_cid, len(canonical_ids) + 1)
             cluster_counts[cid] += 1
@@ -1074,12 +1221,13 @@ def _matches_sector_terms(search_blob: str, term_list: List[str]) -> bool:
 
 
 COUNTRY_TOP_CITIES: Dict[str, List[str]] = {
-    "FR": ["Paris", "Lyon", "Marseille"],
-    "DE": ["Berlin", "München", "Hamburg"],
-    "GB": ["London", "Manchester", "Birmingham"],
-    "NL": ["Amsterdam", "Rotterdam", "Utrecht"],
-    "IT": ["Milano", "Roma", "Torino"],
-    "ES": ["Madrid", "Barcelona", "Valencia"],
+    "TR": ["İstanbul", "İzmir", "Ankara", "Bursa"],
+    "FR": ["Paris", "Lyon", "Marseille", "Toulouse"],
+    "DE": ["Berlin", "München", "Hamburg", "Köln"],
+    "GB": ["London", "Manchester", "Birmingham", "Leeds"],
+    "NL": ["Amsterdam", "Rotterdam", "Utrecht", "Eindhoven"],
+    "IT": ["Milano", "Roma", "Torino", "Bologna"],
+    "ES": ["Madrid", "Barcelona", "Valencia", "Sevilla"],
     "BE": ["Brussels", "Antwerp", "Ghent"],
     "AT": ["Wien", "Graz", "Linz"],
     "CH": ["Zürich", "Genève", "Basel"],
@@ -1087,16 +1235,37 @@ COUNTRY_TOP_CITIES: Dict[str, List[str]] = {
     "RO": ["București", "Cluj-Napoca", "Timișoara"],
     "BG": ["Sofia", "Plovdiv", "Varna"],
     "GR": ["Athens", "Thessaloniki"],
+    "CZ": ["Praha", "Brno"],
+    "HU": ["Budapest", "Debrecen"],
+    "SE": ["Stockholm", "Göteborg", "Malmö"],
+    "DK": ["Copenhagen", "Aarhus"],
+    "NO": ["Oslo", "Bergen"],
+    "PT": ["Lisboa", "Porto"],
+    "IE": ["Dublin", "Cork"],
+    "RS": ["Belgrade", "Novi Sad"],
+    "BA": ["Sarajevo", "Banja Luka"],
+    "AL": ["Tirana", "Durrës"],
+    "HR": ["Zagreb", "Split"],
     "AE": ["Dubai", "Abu Dhabi", "Sharjah"],
     "SA": ["Riyadh", "Jeddah", "Dammam"],
-    "QA": ["Doha"],
-    "KW": ["Kuwait City"],
-    "IQ": ["Erbil", "Baghdad"],
+    "QA": ["Doha", "Al Rayyan"],
+    "KW": ["Kuwait City", "Hawalli"],
+    "OM": ["Muscat", "Salalah"],
+    "BH": ["Manama"],
+    "IQ": ["Erbil", "Baghdad", "Basra"],
+    "JO": ["Amman", "Irbid"],
     "AZ": ["Bakü", "Ganja"],
-    "RU": ["Moscow", "Saint Petersburg"],
-    "US": ["New York", "Los Angeles", "Chicago"],
+    "CY": ["Lefkoşa", "Girne"],
+    "KZ": ["Almaty", "Astana"],
+    "UZ": ["Tashkent", "Samarkand"],
+    "GE": ["Tbilisi", "Batumi"],
+    "RU": ["Moscow", "Saint Petersburg", "Kazan"],
+    "US": ["New York", "Los Angeles", "Chicago", "Houston"],
     "CA": ["Toronto", "Montreal", "Vancouver"],
     "CN": ["Shanghai", "Guangzhou", "Shenzhen"],
+    "JP": ["Tokyo", "Osaka"],
+    "KR": ["Seoul", "Busan"],
+    "IN": ["Mumbai", "New Delhi", "Bengaluru"],
     "EG": ["Cairo", "Alexandria"],
     "MA": ["Casablanca", "Rabat"],
     "DZ": ["Algiers", "Oran"],
@@ -1115,83 +1284,88 @@ def global_sector_city_search(
     limit: int = 100,
     force_refresh: bool = False,
 ) -> Dict[str, Any]:
-    """High-speed global B2B discovery for ANY (sector, country, city) worldwide.
-
-    Combines C++ PyArrow Overture Maps S3 GeoParquet (filtered on the fly by multilingual sector taxonomy)
-    + OpenStreetMap Overpass/Photon in parallel, validates global phones via Google libphonenumber, deduplicates,
-    persists into SQLite for instant pagination/XLSX export, and returns enriched corporate rows.
-    """
+    """High-speed global B2B discovery for ANY (sector, country, city) worldwide, including 'Tüm Şehirler'."""
     city_clean = catalog.text(city, 120)
     country_clean = catalog.text(country, 120) or "Türkiye"
     if not city_clean:
-        raise ValueError("Şehir adı gerekli")
+        city_clean = "__all__"
 
     iso_country = catalog.country_iso_of_region(f"Merkez, {country_clean}")
+    is_wild, _ = catalog.is_wildcard_region(f"{city_clean}, {country_clean}")
 
-    # Country-wide scan mode ("Tüm Ülke"): aggregate top commercial hubs of the country
-    if city_clean in ("__all_country__", "Tüm Ülke", "Tum Ulke"):
-        hubs = COUNTRY_TOP_CITIES.get(iso_country) or ["Capital"]
-        if hubs == ["Capital"]:
+    # Nationwide Türkiye mode ("Tüm Şehirler"): instant SQLite FTS5 query across all 81 provinces
+    if is_wild and iso_country == "TR" and catalog.fold(country_clean) != "kktc":
+        tr_res = catalog.portfolio_listing(
+            store,
+            sector=sector,
+            region="__all__, Türkiye",
+            district=district,
+            contact_mode=contact_mode,
+            offset=offset,
+            limit=limit,
+        )
+        tr_res["country_iso"] = "TR"
+        tr_res["source_engine"] = "nationwide-81-province-sqlite"
+        return tr_res
+
+    # Country-wide international scan mode ("Tüm Şehirler"): parallel multi-city discovery + unified SQLite aggregation
+    if is_wild:
+        wild_region = f"__all__, {country_clean}"
+        if not force_refresh:
+            cached_wild = catalog.portfolio_listing(
+                store,
+                sector=sector,
+                region=wild_region,
+                district=district,
+                contact_mode=contact_mode,
+                offset=offset,
+                limit=limit,
+            )
+            if cached_wild["total"] >= 60 and len(cached_wild.get("districts") or []) >= 2:
+                cached_wild["country_iso"] = iso_country
+                cached_wild["source_engine"] = "multi-city-sqlite-cache"
+                return cached_wild
+
+        hubs = (COUNTRY_TOP_CITIES.get("CY") if catalog.fold(country_clean) == "kktc" else COUNTRY_TOP_CITIES.get(iso_country)) or []
+        if not hubs:
             city_clean = catalog.country_english_name(country_clean)
         else:
-            combined_rows: list[dict[str, Any]] = []
-            seen_keys: set[str] = set()
-            tot = web = w_em = w_ph = w_bo = w_wa = w_ef = w_tc = 0
-            dist_agg: dict[str, int] = {}
-            for hub in hubs[:3]:
-                sub = global_sector_city_search(
-                    store,
-                    city=hub,
-                    country=country_clean,
-                    sector=sector,
-                    contact_mode=contact_mode,
-                    district=district,
-                    offset=0,
-                    limit=200,
-                    force_refresh=force_refresh,
-                )
-                for r in sub.get("rows") or []:
-                    rk = f"{catalog.fold(r.get('name', ''))}:{r.get('city', '')}"
-                    if rk in seen_keys:
-                        continue
-                    seen_keys.add(rk)
-                    if not r.get("district"):
-                        r["district"] = hub
-                    combined_rows.append(r)
-                    dist_agg[hub] = dist_agg.get(hub, 0) + 1
-            tot = len(combined_rows)
-            for r in combined_rows:
-                he = bool(r.get("emails"))
-                hp = bool(r.get("phones"))
-                if r.get("website"):
-                    web += 1
-                if he:
-                    w_em += 1
-                if hp:
-                    w_ph += 1
-                if he and hp:
-                    w_bo += 1
-                if r.get("whatsapp"):
-                    w_wa += 1
-                if r.get("efatura"):
-                    w_ef += 1
-                if r.get("tech"):
-                    w_tc += 1
-            return {
-                "total": tot,
-                "websites": web,
-                "with_email": w_em,
-                "with_phone": w_ph,
-                "with_both": w_bo,
-                "with_whatsapp": w_wa,
-                "with_efatura": w_ef,
-                "with_tech": w_tc,
-                "districts": sorted(dist_agg.items(), key=lambda x: x[1], reverse=True),
-                "rows": combined_rows[offset : offset + limit],
-                "terms": catalog.terms(sector),
-                "country_iso": iso_country,
-                "source_engine": "multi-city-global-hybrid",
-            }
+            target_hubs = hubs[:3]
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(target_hubs)) as hub_pool:
+                futs = [
+                    hub_pool.submit(
+                        global_sector_city_search,
+                        store,
+                        hub,
+                        country_clean,
+                        sector,
+                        None,
+                        "all",
+                        "",
+                        0,
+                        200,
+                        force_refresh,
+                    )
+                    for hub in target_hubs
+                ]
+                for fut in concurrent.futures.as_completed(futs, timeout=36.0):
+                    try:
+                        fut.result()
+                    except Exception:
+                        pass
+
+            agg_res = catalog.portfolio_listing(
+                store,
+                sector=sector,
+                region=wild_region,
+                district=district,
+                contact_mode=contact_mode,
+                offset=offset,
+                limit=limit,
+            )
+            agg_res["country_iso"] = iso_country
+            agg_res["source_engine"] = "multi-city-global-hybrid"
+            return agg_res
 
     region = f"{city_clean}, {country_clean}"
     iso_country = catalog.country_iso_of_region(region)

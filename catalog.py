@@ -209,6 +209,18 @@ ALIASES: dict[str, str] = {
     'madencilik': 'mining|quarry|stone supplier|coal|carriere|mines|bergbau|steinbruch|cava|mineria|maden|ocak|cevher|mermer',
     'denizcilik': 'marine supply|boat builder|shipyard|shipping company|chantier naval|nautisme|maritime|werft|schifffahrt|cantiere navale|nautica|astillero|scheepswerf|tersane|yat|tekne|denizcilik|liman',
     'turizm': 'travel agency|tour operator|hotel|resort|agence de voyage|tourisme|reisebuero|tourismus|agenzia viaggi|agencia de viajes|reisbureau|turizm|seyahat acentesi|acente|transfer',
+    'forklift': 'forklift|material handling|industrial equipment supplier|chariot elevateur|manutention|gabelstapler|flurfoerderzeuge|carrelli elevatori|carretillas elevadoras|heftruck|istif makinalari|transpalet|vinc',
+    'güneş enerjisi': 'solar|solar energy|solar panel|renewable energy|energy supplier|solaire|photovoltaique|panneau solaire|photovoltaik|solaranlagen|fotovoltaico|energia solar|zonnepanelen|gunes paneli|ges',
+    'seramik': 'ceramic|tile store|tile contractor|bathroom supply store|carrelage|ceramique|fliesen|keramik|ceramiche|piastrelle|azulejos|ceramica|tegels|seramik|fayans|granit|vitrifiye',
+    'kapı': 'door|door supplier|door shop|garage door supplier|security door|porte|menuiserie|portail|tueren|tore|porte blindate|serramenti|puertas|deuren|celik kapi|oda kapisi|otomatik kapi|kepenk|panjur',
+    'pencere': 'window|window installation|window supplier|glazier|siding|fenetre|menuiserie pvc|volet|fenster|fensterbau|rollladen|finestre|infissi|ventanas|ramen|kozijnen|pvc dograma|cam balkon|panjur|kepenk',
+    'halı': 'carpet|carpet store|rug store|flooring store|carpet cleaning|tapis|moquette|sol|teppich|bodenbelag|tappeti|pavimenti|alfombras|tapijt|vloeren|hali|kilim|parke|zemin kaplama',
+    'otomasyon': 'automation|industrial automation|robotics|machine shop|automatisme|robotique|automatisierung|robotik|automazione|automatizacion|cnc|plc|pano|endustriyel otomasyon',
+    'döküm': 'foundry|metal fabrication|iron works|steel manufacturer|fonderie|metallurgie|giesserei|metallguss|fonderia|fundicion|gieterij|dokum|pik dokum|aluminyum dokum|celik dokum',
+    'kalıp': 'mold maker|tool and die|injection molding|machine shop|moule|outillage|usinage|werkzeugbau|formenbau|stampi|matriceria|moldes|matrijzen|kalip|plastik kalip|sac kalip',
+    'hidrolik': 'hydraulics|hydraulic equipment|industrial equipment|pneumatics|hydraulique|pneumatique|hydraulik|pneumatik|oleodinamica|hidraulica|hidrolik|pnomatik|hortum|silindir|pompa',
+    'rulman': 'bearing|bearing supplier|industrial equipment supplier|power transmission|roulement|transmission mecanique|kugellager|waelzlager|antriebstechnik|cuscinetti|rodamientos|lagers|rulman|kayis kasnak|reduktor',
+    'yalıtım': 'insulation contractor|waterproofing|roofing|building materials|isolation|etancheite|daemmung|isolierung|abdichtung|isolamento|impermeabilizzazione|aislamiento|isolatie|yalitim|izolasyon|mantolama|epoksi',
 }
 
 # OSM tag filter builder for common sectors so Overpass fetches ultra-relevant POIs globally in <3s.
@@ -361,6 +373,71 @@ OSM_SECTOR_FILTERS: dict[str, list[str]] = {
         '["craft"="stonemason"]',
         '["industrial"~"quarry|stone"]',
         '["name"~"Mermer|Marble|Granit|Granite|Stone|Naturstein",i]',
+    ],
+    'cam': [
+        '["craft"~"glaziery|window_construction"]',
+        '["shop"~"glaziery|window_blind|doors"]',
+        '["name"~"Cam|Glass|Vitrerie|Glaserei|Vetreria|Cristaleria",i]',
+    ],
+    'boya': [
+        '["shop"~"paint|hardware|doityourself"]',
+        '["craft"="painter"]',
+    ],
+    'isitma': [
+        '["craft"~"hvac|plumber|heating_engineer"]',
+        '["shop"~"hvac|radiator|bathroom_furnishing"]',
+    ],
+    'klima': [
+        '["craft"~"hvac|cooling"]',
+        '["shop"~"hvac|appliance"]',
+    ],
+    'asansor': [
+        '["craft"="elevator"]',
+        '["industrial"~"elevator|engineering"]',
+        '["name"~"Asansör|Asansor|Elevator|Ascenseur|Aufzug|Ascensori|Lift",i]',
+    ],
+    'kapi': [
+        '["shop"~"doors|locksmith|window_blind|hardware"]',
+        '["craft"~"carpenter|locksmith|window_construction|metal_construction"]',
+        '["name"~"Kapı|Kapi|Door|Porte|Türen|Tueren|Puertas|Porte Blindate|Kepenk",i]',
+    ],
+    'pencere': [
+        '["craft"~"window_construction|glaziery|carpenter"]',
+        '["shop"~"window_blind|doors|glaziery"]',
+    ],
+    'seramik': [
+        '["shop"~"tiles|bathroom_furnishing|building_materials"]',
+        '["craft"="tiler"]',
+    ],
+    'hali': [
+        '["shop"~"carpet|flooring|interior_decoration|curtain"]',
+        '["craft"="floorer"]',
+    ],
+    'gunes enerjisi': [
+        '["office"~"energy_supplier|solar"]',
+        '["craft"~"photovoltaic|electrician"]',
+        '["shop"~"energy|electrical"]',
+    ],
+    'forklift': [
+        '["industrial"~"machine_shop|logistics|equipment"]',
+        '["shop"~"trade|industrial"]',
+        '["name"~"Forklift|Manutention|Stapler|Gabelstapler|Carrelli|Heftruck|İstif",i]',
+    ],
+    'ambalaj': [
+        '["industrial"~"packaging|plastic|printing"]',
+        '["shop"~"packaging|copyshop"]',
+    ],
+    'matbaa': [
+        '["craft"~"printer|signmaker"]',
+        '["shop"~"copyshop|stationery"]',
+    ],
+    'guvenlik': [
+        '["office"="security"]',
+        '["shop"~"security|locksmith"]',
+    ],
+    'temizlik': [
+        '["office"~"cleaning|pest_control"]',
+        '["shop"~"laundry|dry_cleaning|chemist"]',
     ],
 }
 
@@ -581,6 +658,35 @@ UNIQUE_DISTRICT_PROVINCE: dict[str, str] = {
 }
 FOLDED_ALIASES = {fold(k): v for k, v in ALIASES.items()}
 
+# Prepositions / articles / conjunctions across TR, EN, FR, DE, IT, ES, NL
+_MULTI_STOPWORDS = frozenset({
+    've', 'ile', 'icin', 'de', 'da', 'den', 'dan',
+    'of', 'and', 'for', 'the', 'in', 'to', 'by', 'on', 'at', 'with',
+    'du', 'des', 'la', 'le', 'les', 'et', 'en', 'au', 'aux', 'd', 'l', 'sur', 'pour',
+    'und', 'der', 'die', 'das', 'den', 'dem', 'fur', 'fuer', 'von', 'mit', 'im',
+    'di', 'del', 'della', 'delle', 'dei', 'degli', 'ed', 'per', 'con',
+    'el', 'los', 'las', 'del', 'por', 'para', 'y',
+    'van', 'het', 'een', 'voor', 'met',
+})
+
+# Generic corporate/activity words that should not broaden a specific sector noun to unrelated factories/stores
+_GENERIC_SECTOR_KEYS = frozenset({'imalat', 'market'})
+_GENERIC_MODIFIER_WORDS = frozenset({
+    'imalat', 'imalati', 'imalatci', 'imalatcisi', 'imalatcilari', 'uretim', 'uretici', 'ureticisi', 'ureticileri',
+    'fabrika', 'fabrikasi', 'fabrikalari', 'sanayi', 'ticaret', 'toptan', 'perakende', 'satis', 'bayi', 'bayii',
+    'magaza', 'magazasi', 'magazalari', 'dukkan', 'atolye', 'atolyesi', 'merkezi', 'hizmet', 'hizmetleri',
+    'sistem', 'sistemleri', 'urun', 'urunleri', 'malzeme', 'malzemeleri', 'ekipman', 'ekipmanlari',
+    'sirket', 'sirketi', 'firma', 'firmasi', 'firmalari', 'grup', 'kurumsal',
+    'manufacturer', 'manufacturers', 'manufacturing', 'maker', 'makers', 'factory', 'factories',
+    'wholesaler', 'wholesalers', 'wholesale', 'supplier', 'suppliers', 'supply', 'supplies',
+    'store', 'stores', 'shop', 'shops', 'company', 'companies', 'service', 'services', 'equipment',
+    'fabricant', 'fabricants', 'fabrication', 'usine', 'usines', 'grossiste', 'grossistes',
+    'fournisseur', 'fournisseurs', 'magasin', 'magasins', 'entreprise', 'entreprises', 'societe',
+    'hersteller', 'fabrik', 'grosshandel', 'haendler', 'handler', 'geschaeft', 'unternehmen', 'firma',
+    'produttore', 'produttori', 'fabbrica', 'ingrosso', 'fornitore', 'negozio', 'impresa', 'azienda',
+    'fabricante', 'fabricantes', 'mayorista', 'proveedor', 'tienda', 'empresa',
+})
+
 
 def text(v: Any, limit: int = 500) -> str:
     return v.strip()[:limit] if isinstance(v, str) else ''
@@ -590,8 +696,99 @@ def _stem_tr(word: str) -> str:
     """Strip Turkish occupational/plural suffixes (e.g. mobilyacilar -> mobilya, insaatcilar -> insaat)."""
     s = word.strip()
     s = re.sub(r'(?:cilar|ciler|cular|culer|çilar|çiler|lar[iı]|ler[iı]|lar|ler)$', '', s).strip()
-    s = re.sub(r'(?:ci|cu|c|lik|luk)$', '', s).strip() if len(s) >= 6 and s not in FOLDED_ALIASES else s
+    s = re.sub(r'(?:ci|cu|c|lik|luk|si|su)$', '', s).strip() if len(s) >= 6 and s not in FOLDED_ALIASES else s
     return s or word.strip()
+
+
+def _stem_intl(word: str) -> str:
+    """Strip common EN/FR/DE/IT/ES/NL plural and German compound corporate suffixes."""
+    s = word.strip()
+    if len(s) < 5:
+        return s
+    for de_suf in ('hersteller', 'grosshandel', 'großhandel', 'industrie', 'fabrik', 'handel', 'werke', 'werk'):
+        if s.endswith(de_suf) and len(s) - len(de_suf) >= 4:
+            s = s[:-len(de_suf)]
+            break
+    if len(s) < 5:
+        return s
+    if s.endswith('ies') and len(s) >= 6:
+        return s[:-3] + 'y'
+    if s.endswith('aux') and len(s) >= 6:
+        return s[:-3] + 'al'
+    if s.endswith(('eurs', 'euses')) and len(s) >= 7:
+        return s[:-1]
+    if s.endswith('en') and len(s) >= 7 and s[:-2] in ('moebel', 'mobel', 'kuech', 'tuer', 'farb', 'maschin'):
+        return s[:-2] + ('e' if s[:-2] == 'maschin' else '')
+    if s.endswith('es') and len(s) >= 6 and s[:-1] in ('meuble', 'cuisine', 'porte', 'fenetre', 'usine', 'entreprise'):
+        return s[:-1]
+    if s.endswith('s') and not s.endswith(('ss', 'is', 'us')):
+        return s[:-1]
+    return s
+
+
+def _build_reverse_alias_index() -> dict[str, list[str]]:
+    rev: dict[str, list[str]] = {}
+    for raw_canon, alias_pipe in ALIASES.items():
+        canon = fold(raw_canon)
+        if not canon:
+            continue
+        rev.setdefault(canon, []).append(canon)
+        for item in alias_pipe.split('|'):
+            fi = fold(item)
+            if not fi:
+                continue
+            if canon not in rev.setdefault(fi, []):
+                rev[fi].append(canon)
+            si = _stem_intl(_stem_tr(fi))
+            if si and len(si) >= 4 and canon not in rev.setdefault(si, []):
+                rev[si].append(canon)
+            # Also index distinctive single-word nouns from 2-word aliases if not generic
+            toks = [t for t in fi.split() if len(t) >= 4 and t not in _MULTI_STOPWORDS and t not in _GENERIC_MODIFIER_WORDS]
+            if len(toks) == 1:
+                w0 = toks[0]
+                if canon not in rev.setdefault(w0, []):
+                    rev[w0].append(canon)
+                sw0 = _stem_intl(_stem_tr(w0))
+                if sw0 and len(sw0) >= 4 and canon not in rev.setdefault(sw0, []):
+                    rev[sw0].append(canon)
+    return rev
+
+
+REVERSE_TERM_TO_CANONICAL: dict[str, list[str]] = _build_reverse_alias_index()
+
+
+def _meaningful_tokens(folded_phrase: str) -> list[str]:
+    return [t for t in folded_phrase.split() if len(t) >= 3 and t not in _MULTI_STOPWORDS]
+
+
+def _resolve_canonical_sectors(folded_phrase: str) -> list[str]:
+    """Map any Turkish, French, English, German, Italian, Spanish or Dutch phrase to canonical sector keys."""
+    if not folded_phrase:
+        return []
+    direct: list[str] = []
+    for cand in (folded_phrase, _stem_tr(folded_phrase), _stem_intl(folded_phrase)):
+        if cand in FOLDED_ALIASES and cand not in direct:
+            direct.append(cand)
+        for mapped in REVERSE_TERM_TO_CANONICAL.get(cand, ()):
+            if mapped not in direct:
+                direct.append(mapped)
+    if direct:
+        specific = [k for k in direct if k not in _GENERIC_SECTOR_KEYS]
+        return specific or direct
+
+    toks = _meaningful_tokens(folded_phrase)
+    matched: list[str] = []
+    for tok in toks:
+        for variant in (tok, _stem_tr(tok), _stem_intl(tok), _stem_intl(_stem_tr(tok))):
+            if not variant:
+                continue
+            if variant in FOLDED_ALIASES and variant not in matched:
+                matched.append(variant)
+            for mapped in REVERSE_TERM_TO_CANONICAL.get(variant, ()):
+                if mapped not in matched:
+                    matched.append(mapped)
+    specific = [k for k in matched if k not in _GENERIC_SECTOR_KEYS]
+    return specific or matched
 
 
 def terms(query: str) -> list[str]:
@@ -601,20 +798,29 @@ def terms(query: str) -> list[str]:
         fp = fold(part)
         if not fp:
             continue
-        stem = _stem_tr(fp)
-        expanded = part + '|' + FOLDED_ALIASES.get(fp, '')
-        if stem and stem != fp:
-            expanded += '|' + stem
-            if stem in FOLDED_ALIASES:
-                expanded += '|' + FOLDED_ALIASES[stem]
-        for first_word in fp.split():
-            first_stem = _stem_tr(first_word)
-            if first_word in FOLDED_ALIASES and first_word != fp:
-                expanded += '|' + FOLDED_ALIASES[first_word]
-            elif first_stem in FOLDED_ALIASES and first_stem != fp:
-                expanded += '|' + FOLDED_ALIASES[first_stem]
-        out += [fold(p) for p in expanded.split('|') if fold(p)]
-    return list(dict.fromkeys(out))[:120]
+        out.append(fp)
+        stem = _stem_intl(_stem_tr(fp))
+        if stem and stem != fp and len(stem) >= 3:
+            out.append(stem)
+
+        canon_keys = _resolve_canonical_sectors(fp)
+        for ck in canon_keys:
+            out.append(ck)
+            if ck in FOLDED_ALIASES:
+                out.extend(fold(x) for x in FOLDED_ALIASES[ck].split('|') if fold(x))
+
+        # Decompose multi-word manual queries into domain-specific words so "FABRICANTS DE MEUBLES" or "bambu sandalye"
+        # matches single-word company/category names without requiring exact 3-word adjacency.
+        m_toks = _meaningful_tokens(fp)
+        non_generic = [t for t in m_toks if t not in _GENERIC_MODIFIER_WORDS and _stem_intl(_stem_tr(t)) not in _GENERIC_MODIFIER_WORDS]
+        token_pool = non_generic if non_generic else (m_toks if not canon_keys else [])
+        for tok in token_pool:
+            if len(tok) >= 3:
+                out.append(tok)
+            ts = _stem_intl(_stem_tr(tok))
+            if ts and ts != tok and len(ts) >= 3:
+                out.append(ts)
+    return list(dict.fromkeys(x for x in out if x))[:140]
 
 
 def bounds(value: Any, max_area: float = 4.0) -> tuple[float, float, float, float]:
@@ -998,12 +1204,19 @@ def _resolve_osm_filters(sector: str) -> list[str]:
         return []
     fsec = fold(sector.split('|')[0])
     stem = _stem_tr(fsec)
-    if fsec in OSM_SECTOR_FILTERS:
-        return list(OSM_SECTOR_FILTERS[fsec])
-    if stem in OSM_SECTOR_FILTERS:
-        return list(OSM_SECTOR_FILTERS[stem])
-    for w in fsec.split():
-        ws = _stem_tr(w)
+    for cand in (fsec, stem, _stem_intl(fsec)):
+        if cand in OSM_SECTOR_FILTERS:
+            return list(OSM_SECTOR_FILTERS[cand])
+    for ck in _resolve_canonical_sectors(fsec):
+        if ck in OSM_SECTOR_FILTERS:
+            return list(OSM_SECTOR_FILTERS[ck])
+        ck_fold = fold(ck)
+        if ck_fold in OSM_SECTOR_FILTERS:
+            return list(OSM_SECTOR_FILTERS[ck_fold])
+    for w in _meaningful_tokens(fsec):
+        if w in _GENERIC_MODIFIER_WORDS:
+            continue
+        ws = _stem_intl(_stem_tr(w))
         if w in OSM_SECTOR_FILTERS:
             return list(OSM_SECTOR_FILTERS[w])
         if ws in OSM_SECTOR_FILTERS:
@@ -1037,7 +1250,15 @@ def _build_overpass_query(w: float, s: float, e: float, n: float, sector: str = 
         # Full-scan regex on ["name"~...] times out on large province bboxes; keep indexed tag queries fast.
         filters = [flt for flt in filters if not flt.startswith('["name"~')]
     if not filters and sector:
-        toks = [re.sub(r'[^A-Za-z0-9ÇĞİÖŞÜçğıöşü ]', '', p.strip()) for p in sector.split('|') if len(p.strip()) >= 3][:4]
+        raw_toks: list[str] = []
+        for p in sector.split('|'):
+            clean_p = re.sub(r'[^A-Za-z0-9ÇĞİÖŞÜçğıöşüÀ-ÿ ]', '', p.strip())
+            if len(clean_p) >= 3:
+                raw_toks.append(clean_p)
+            for wt in _meaningful_tokens(fold(p)):
+                if wt not in _GENERIC_MODIFIER_WORDS and len(wt) >= 4 and wt not in raw_toks:
+                    raw_toks.append(wt)
+        toks = raw_toks[:5]
         if toks and area <= 1.2:
             pat = '|'.join(toks)
             filters = [f'["name"~"{pat}",i]', '["shop"]', '["craft"]', '["office"]']
@@ -1505,6 +1726,18 @@ def _tr_variants(s: str) -> list[str]:
     return list(dict.fromkeys(x for x in (v, tr_ti, tr_lo, tr_up, fold(v)) if x))
 
 
+def is_wildcard_region(region: str) -> tuple[bool, str]:
+    """Detect '__all__, <Country>' or 'Tüm Şehirler, <Country>' nationwide/country-wide region specifiers."""
+    reg = text(region, 200)
+    if not reg:
+        return False, ''
+    city_part, sep, country_part = reg.partition(',')
+    fc = fold(city_part)
+    if fc in ('all', 'all country', 'tum sehirler', 'tum iller', 'tum ulke') or city_part.strip() in ('__all__', '__all_country__') or fc.startswith('tum '):
+        return True, (country_part.strip() if sep else 'Türkiye') or 'Türkiye'
+    return False, ''
+
+
 def condition(
     sector: str,
     region: str,
@@ -1529,20 +1762,35 @@ def condition(
                     like_parts.append('p.search_text LIKE ?')
                     args.append(f'% {v} %')
             clauses.append('(' + ' OR '.join(like_parts) + ')')
-    if region:
+    is_wild, country_part = is_wildcard_region(region)
+    if is_wild:
+        clauses.append('p.region LIKE ?')
+        args.append(f'%, {country_part}')
+    elif region:
         clauses.append('p.region=?')
         args.append(text(region, 200))
     d_vars = _tr_variants(district)
     if d_vars:
         ph = ','.join('?' for _ in d_vars)
         addr_likes = ' OR '.join('p.address LIKE ?' for _ in d_vars[:4])
-        clauses.append(
-            f'(EXISTS(SELECT 1 FROM place_meta dm WHERE dm.place_id=p.id AND dm.district IN ({ph})) '
-            f'OR p.search_text LIKE ? OR {addr_likes})'
-        )
-        args.extend(d_vars)
-        args.append(f'% {fold(district)} %')
-        args.extend(f'%{dv}%' for dv in d_vars[:4])
+        if is_wild:
+            clauses.append(
+                f'(EXISTS(SELECT 1 FROM place_meta dm WHERE dm.place_id=p.id AND (dm.district IN ({ph}) OR dm.province IN ({ph}))) '
+                f'OR p.region LIKE ? OR p.search_text LIKE ? OR {addr_likes})'
+            )
+            args.extend(d_vars)
+            args.extend(d_vars)
+            args.append(f'{district.strip()}, %')
+            args.append(f'% {fold(district)} %')
+            args.extend(f'%{dv}%' for dv in d_vars[:4])
+        else:
+            clauses.append(
+                f'(EXISTS(SELECT 1 FROM place_meta dm WHERE dm.place_id=p.id AND dm.district IN ({ph})) '
+                f'OR p.search_text LIKE ? OR {addr_likes})'
+            )
+            args.extend(d_vars)
+            args.append(f'% {fold(district)} %')
+            args.extend(f'%{dv}%' for dv in d_vars[:4])
     try:
         min_f = float(minimum)
     except (TypeError, ValueError) as exc:
@@ -1581,6 +1829,7 @@ def portfolio_listing(
     offset = max(0, offset)
 
     target_k = offset + limit
+    is_wild, wild_country = is_wildcard_region(region)
     is_unfiltered_region = (
         bool(region.strip())
         and not sector.strip()
@@ -1592,8 +1841,9 @@ def portfolio_listing(
 
     with store.db() as c:
         if is_unfiltered_region:
-            reg_clean = text(region, 200)
-            reg_cnt = c.execute('SELECT count(*) FROM places WHERE region=?', (reg_clean,)).fetchone()[0]
+            reg_clean = f'%, {wild_country}' if is_wild else text(region, 200)
+            reg_op = 'LIKE' if is_wild else '='
+            reg_cnt = c.execute(f'SELECT count(*) FROM places WHERE region {reg_op} ?', (reg_clean,)).fetchone()[0]
             if reg_cnt > 5000:
                 db_path = getattr(store, 'path', None)
                 wal_mtime = 0
@@ -1607,23 +1857,24 @@ def portfolio_listing(
                 summary = _REGION_SUMMARY_CACHE.get(cache_key)
                 if summary is None:
                     agg = c.execute(
-                        '''SELECT count(*),
+                        f'''SELECT count(*),
                                   coalesce(sum(p.website != ''), 0),
                                   coalesce(sum(m.emails != '' AND m.emails != '[]'), 0),
                                   coalesce(sum(m.phones != '' AND m.phones != '[]'), 0),
                                   coalesce(sum(m.emails != '' AND m.emails != '[]' AND m.phones != '' AND m.phones != '[]'), 0),
                                   coalesce(sum(m.phones LIKE '%+905%'), 0)
                            FROM places p LEFT JOIN place_meta m ON m.place_id = p.id
-                           WHERE p.region = ?''',
+                           WHERE p.region {reg_op} ?''',
                         (reg_clean,),
                     ).fetchone()
+                    group_col = 'm.province' if is_wild else 'm.district'
                     top_dists = [
                         (r[0], int(r[1]))
                         for r in c.execute(
-                            '''SELECT m.district, count(*) c
+                            f'''SELECT {group_col}, count(*) c
                                FROM places p JOIN place_meta m ON m.place_id = p.id
-                               WHERE p.region = ? AND m.district != ''
-                               GROUP BY m.district ORDER BY c DESC LIMIT 16''',
+                               WHERE p.region {reg_op} ? AND {group_col} != ''
+                               GROUP BY {group_col} ORDER BY c DESC LIMIT 16''',
                             (reg_clean,),
                         ).fetchall()
                     ]
@@ -1644,11 +1895,11 @@ def portfolio_listing(
 
                 excluded = {r[0] for r in c.execute('SELECT email FROM suppression')}
                 fast_rows = c.execute(
-                    '''SELECT p.id, p.name, p.category, p.region, p.address, p.lat, p.lon,
+                    f'''SELECT p.id, p.name, p.category, p.region, p.address, p.lat, p.lon,
                               p.website, p.confidence, p.source,
                               m.province, m.district, m.emails, m.phones
                        FROM places p LEFT JOIN place_meta m ON m.place_id = p.id
-                       WHERE p.region = ?
+                       WHERE p.region {reg_op} ?
                        ORDER BY p.confidence DESC
                        LIMIT ? OFFSET ?''',
                     (reg_clean, limit, offset),
@@ -1775,8 +2026,9 @@ def portfolio_listing(
                     with_efatura += 1
                 if tech:
                     with_tech += 1
-                if dist:
-                    dist_counts[dist] = dist_counts.get(dist, 0) + 1
+                bucket_lbl = (prov or reg.split(',')[0].strip()) if is_wild else dist
+                if bucket_lbl:
+                    dist_counts[bucket_lbl] = dist_counts.get(bucket_lbl, 0) + 1
 
                 q_score = (int(he and hp), int(he), int(hw and hp), int(hw), int(hp), float(conf or 0.0))
                 entry = (q_score, -idx, r, ems, phs, wa_num, is_efat, tech)

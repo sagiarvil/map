@@ -549,9 +549,9 @@ class Handler(BaseHTTPRequestHandler):
             'Content-Security-Policy',
             "default-src 'self'; script-src 'self' https://unpkg.com blob:; worker-src 'self' blob:; child-src blob:; "
             "style-src 'self' 'unsafe-inline' https://unpkg.com; "
-            "connect-src 'self' https://dns.google https://crt.sh https://nominatim.openstreetmap.org "
+            "connect-src 'self' https://dns.google https://crt.sh https://api.certspotter.com https://nominatim.openstreetmap.org "
             "https://photon.komoot.io https://api.openstreetmap.org "
-            "https://maps.mail.ru https://overpass-api.de https://overpass.private.coffee https://unpkg.com "
+            "https://maps.mail.ru https://overpass-api.de https://overpass.private.coffee https://overpass.kumi.systems https://unpkg.com "
             "https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://tiles.openfreemap.org; "
             "img-src 'self' data: blob: https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com; "
             "font-src 'self' data: https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://tiles.openfreemap.org; "
@@ -656,10 +656,12 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 return
             if p.path == '/api/industrial/status':
-                self.out(industrial_engine.get_engine_status())
+                force_st = q.get('selftest', ['0'])[0] in ('1', 'true', 'yes')
+                self.out(industrial_engine.get_engine_status(force_selftest=force_st))
                 return
             if p.path == '/api/industrial/analytics':
-                self.out(industrial_engine.get_database_analytics(DATA / 'leads.sqlite3'))
+                force_an = q.get('refresh', ['0'])[0] in ('1', 'true', 'yes')
+                self.out(industrial_engine.get_database_analytics(DATA / 'leads.sqlite3', force_refresh=force_an))
                 return
             if p.path == '/api/industrial/h3_clusters':
                 reg = q.get('region', ['İstanbul, Türkiye'])[0]
@@ -688,7 +690,7 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception as exc:
                     self.out({'error': str(exc)}, 500)
                     return
-                self.out({'query': query_str, 'count': len(logs), 'domains': logs})
+                self.out({'query': query_str, 'count': len(logs), 'domains': logs, 'records': logs})
                 return
             if p.path == '/api/export.xlsx':
                 with tempfile.TemporaryDirectory(prefix='lead_export_') as tmp:
@@ -798,11 +800,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.out({'count': len(places), 'places': places})
                 return
             if p == '/api/industrial/global_search':
-                city_str = str(d.get('city', '')).strip()[:100]
+                city_str = str(d.get('city', '')).strip()[:100] or '__all__'
                 country_str = str(d.get('country', 'Türkiye')).strip()[:100] or 'Türkiye'
                 sector_str = str(d.get('sector', '')).strip()[:200]
-                if not city_str:
-                    raise ValueError('Şehir adı gerekli')
                 if not self.server.discovery.acquire(timeout=45.0):  # type: ignore[attr-defined]
                     self.out({'error': 'Önceki küresel tarama tamamlanıyor, birkaç saniye sonra tekrar deneyin'}, 409)
                     return
@@ -917,6 +917,14 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+class IndustrialHTTPServer(ThreadingHTTPServer):
+    """High-concurrency local HTTP server with 128-socket SYN backlog (prevents macOS listen(5) TCP resets)."""
+
+    request_queue_size = 128
+    daemon_threads = True
+    allow_reuse_address = True
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=8765)
@@ -934,10 +942,10 @@ def main() -> None:
             sys.exit('Bu veri tabanı için başka bir uygulama çalışıyor.')
         store = Store(DATA / 'leads.sqlite3')
         fetch = Fetcher()
-        server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
+        server = IndustrialHTTPServer(('127.0.0.1', args.port), Handler)
         server.store = store  # type: ignore[attr-defined]
         server.fetch = fetch  # type: ignore[attr-defined]
-        server.discovery = threading.BoundedSemaphore(1)  # type: ignore[attr-defined]
+        server.discovery = threading.BoundedSemaphore(4)  # type: ignore[attr-defined]
         workers = Workers(store, fetch, args.workers)
         workers.start()
         print(

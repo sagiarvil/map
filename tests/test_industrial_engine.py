@@ -14,9 +14,10 @@ import industrial_engine
 
 class IndustrialEngineTests(unittest.TestCase):
     def test_get_engine_status_all_nine_active(self):
-        st = industrial_engine.get_engine_status()
+        st = industrial_engine.get_engine_status(force_selftest=True)
         self.assertEqual(st.get("status"), "active")
-        self.assertEqual(st.get("version"), "7.0-pro")
+        self.assertTrue(str(st.get("version", "")).startswith("7."))
+        self.assertTrue(st.get("selftest_verified"))
         self.assertEqual(st.get("active_engines"), 9)
         self.assertEqual(st.get("total_engines"), 9)
         engines = st.get("engines", {})

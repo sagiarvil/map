@@ -15,19 +15,38 @@ import catalog  # noqa: E402
 
 
 def slugify_city(region: str) -> str:
-    head = region.split(',')[0].strip()
-    prov = catalog.province_of(head) or head
-    return catalog.fold(prov).replace(' ', '-')
+    parts = [p.strip() for p in region.split(',') if p.strip()]
+    head = parts[0] if parts else region.strip()
+    country = parts[-1] if len(parts) >= 2 else 'Türkiye'
+    if country == 'Türkiye':
+        prov = catalog.province_of(head) or head
+        return catalog.fold(prov).replace(' ', '-')
+    iso = catalog.country_iso_of_region(region).lower()
+    city_slug = catalog.fold(head).replace(' ', '-')
+    return f'intl-{iso}-{city_slug}'
 
 
-def build_shards(db_path: Path, out_dir: Path, min_rows: int = 0, only_tr: bool = False) -> dict[str, object]:
+def build_shards(
+    db_path: Path,
+    out_dir: Path,
+    min_rows: int = 0,
+    only_tr: bool = False,
+    append_intl_only: bool = False,
+) -> dict[str, object]:
     out_dir.mkdir(parents=True, exist_ok=True)
-    for stale in list(out_dir.glob('*.json')) + list(out_dir.glob('*.gz')):
-        if stale.name != 'manifest.json':
+    existing_manifest: dict[str, object] = {}
+    manifest_file = out_dir / 'manifest.json'
+    if append_intl_only and manifest_file.exists():
+        existing_manifest = json.loads(manifest_file.read_text(encoding='utf-8'))
+        for stale in out_dir.glob('intl-*.gz'):
             stale.unlink()
+    else:
+        for stale in list(out_dir.glob('*.json')) + list(out_dir.glob('*.gz')):
+            if stale.name != 'manifest.json':
+                stale.unlink()
     if not db_path.exists():
         manifest = {'version': 4, 'shards': {}, 'districts': {}, 'taxonomy': {}}
-        (out_dir / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False), encoding='utf-8')
+        manifest_file.write_text(json.dumps(manifest, ensure_ascii=False), encoding='utf-8')
         return manifest
 
     conn = sqlite3.connect(db_path, timeout=30.0)
@@ -48,7 +67,12 @@ def build_shards(db_path: Path, out_dir: Path, min_rows: int = 0, only_tr: bool 
         ):
             place_phones[pid].add(ph)
 
-        where_clause = "WHERE region LIKE '%, Türkiye'" if only_tr else ''
+        if append_intl_only:
+            where_clause = "WHERE region NOT LIKE '%, Türkiye' AND region LIKE '%, %'"
+        elif only_tr:
+            where_clause = "WHERE region LIKE '%, Türkiye'"
+        else:
+            where_clause = ''
         regions = [
             r[0]
             for r in conn.execute(
@@ -56,10 +80,21 @@ def build_shards(db_path: Path, out_dir: Path, min_rows: int = 0, only_tr: bool 
                 (min_rows,),
             )
         ]
-        shards_meta: dict[str, dict[str, object]] = {}
+        shards_meta: dict[str, dict[str, object]] = (
+            {
+                k: v
+                for k, v in dict(existing_manifest.get('shards', {})).items()  # type: ignore[arg-type]
+                if not k.startswith('intl-')
+            }
+            if append_intl_only
+            else {}
+        )
         discovered_districts: dict[str, set[str]] = {
             k: set(v) for k, v in catalog.PROVINCE_DISTRICTS.items()
         }
+        if append_intl_only and isinstance(existing_manifest.get('districts'), dict):
+            for dk, dv in existing_manifest['districts'].items():  # type: ignore[union-attr]
+                discovered_districts.setdefault(dk, set()).update(dv)
 
         for reg in regions:
             slug = slugify_city(reg)
@@ -162,8 +197,12 @@ def build_shards(db_path: Path, out_dir: Path, min_rows: int = 0, only_tr: bool 
             shard_file = out_dir / f'{slug}.json.gz'
             shard_file.write_bytes(gz_bytes)
 
+            reg_parts = [p.strip() for p in reg.split(',') if p.strip()]
+            country_label = reg_parts[-1] if len(reg_parts) >= 2 else 'Türkiye'
             shards_meta[slug] = {
                 'city': city_name,
+                'country': country_label,
+                'iso': catalog.country_iso_of_region(reg),
                 'region': reg,
                 'file': f'/data/{slug}.json.gz',
                 'count': len(rows_out),
@@ -195,13 +234,22 @@ def build_shards(db_path: Path, out_dir: Path, min_rows: int = 0, only_tr: bool 
 
 
 if __name__ == '__main__':
-    res = build_shards(ROOT / 'data' / 'leads.sqlite3', ROOT / 'hosting' / 'data', min_rows=1, only_tr=True)
+    intl_append = '--intl-append' in sys.argv
+    only_tr_flag = '--only-tr' in sys.argv
+    res = build_shards(
+        ROOT / 'data' / 'leads.sqlite3',
+        ROOT / 'hosting' / 'data',
+        min_rows=1,
+        only_tr=only_tr_flag,
+        append_intl_only=intl_append,
+    )
     total_firms = 0
     for slug, info in res.get('shards', {}).items():  # type: ignore[union-attr]
         total_firms += int(info['count'])  # type: ignore[arg-type]
-        print(
-            f"Shard [{slug}]: {info['count']:,} firma | "
-            f"Site: {info['websites']:,} | E-posta: {info['emails']:,} | Tel: {info['phones']:,} | "
-            f"Gzip CDN: {info['gzip_bytes']/1048576:.2f} MB"
-        )
-    print(f'TOPLAM CDN HAZIR FİRMA: {total_firms:,}')
+        if slug.startswith('intl-') or not intl_append:
+            print(
+                f"Shard [{slug}]: {info['count']:,} firma | "
+                f"Site: {info['websites']:,} | E-posta: {info['emails']:,} | Tel: {info['phones']:,} | "
+                f"Gzip CDN: {info['gzip_bytes']/1048576:.3f} MB"
+            )
+    print(f'TOPLAM CDN HAZIR FİRMA: {total_firms:,} ({len(res.get("shards", {}))} shard)')

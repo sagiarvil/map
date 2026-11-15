@@ -558,8 +558,11 @@ class V4CleanlinessAndLexborTests(unittest.TestCase):
             self.assertIn('domain', ct_results[0])
             self.assertTrue(ct_results[0]['domain'].endswith('.tr'))
 
-        # Deliberate failure test: ensure engine handles network/http error gracefully without crash
-        with patch('httpx.AsyncClient.get', side_effect=RuntimeError('Network unavailable')):
+        # Deliberate failure test: ensure engine handles network/http/tls error gracefully without crash
+        with (
+            patch('httpx.AsyncClient.get', side_effect=RuntimeError('Network unavailable')),
+            patch('engine._inspect_live_tls_cert', return_value=[]),
+        ):
             failed_ct = asyncio.run(engine.fetch_ct_logs('test', limit=5))
             self.assertEqual(failed_ct, [])
 

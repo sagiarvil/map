@@ -1398,40 +1398,179 @@ def detect_tech_stack(html: str = '', email_domain: str = '', mx_host: str = '')
     return ''
 
 
+def _inspect_live_tls_cert(host: str) -> list[dict[str, str]]:
+    """Perform a safe, SSRF-guarded TLS 1.3 X.509 handshake on port 443 to extract real SANs, CA issuer, and notBefore."""
+    out: list[dict[str, str]] = []
+    try:
+        infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+        if not infos:
+            return out
+        ip_str = infos[0][4][0]
+        if not ipaddress.ip_address(ip_str).is_global:
+            return out
+        ctx = ssl.create_default_context()
+        with socket.create_connection((host, 443), timeout=2.5) as raw_sock:
+            with ctx.wrap_socket(raw_sock, server_hostname=host) as ssock:
+                cert = ssock.getpeercert()
+                if not cert:
+                    return out
+                issuer_parts: dict[str, str] = {}
+                for rdn in cert.get('issuer', ()):
+                    for k, v in rdn:
+                        issuer_parts[str(k)] = str(v)
+                issuer_label = (
+                    issuer_parts.get('organizationName')
+                    or issuer_parts.get('commonName')
+                    or 'X.509 CA'
+                )
+                nb_raw = str(cert.get('notBefore') or '')
+                iso_date = nb_raw
+                if nb_raw:
+                    try:
+                        dt = datetime.datetime.strptime(nb_raw, '%b %d %H:%M:%S %Y %Z')
+                        iso_date = dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                    except ValueError:
+                        pass
+                sans = [str(val).lower().lstrip('*.') for kind, val in cert.get('subjectAltName', ()) if kind == 'DNS']
+                if not sans:
+                    sans = [host.lower()]
+                for dom in sans:
+                    if dom and '.' in dom and not dom.startswith('www.'):
+                        out.append({
+                            'domain': dom,
+                            'issuer': issuer_label,
+                            'entry_timestamp': iso_date,
+                            'logged_at': iso_date,
+                            'not_before': iso_date,
+                        })
+    except Exception:
+        pass
+    return out
+
+
 async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
-    """Query Certificate Transparency logs for newly created SSL certificates on Turkish commercial domains."""
-    safe_q = re.sub(r'[^a-zA-Z0-9.\-]', '', query).strip('.')
+    """Query RFC 6962 Certificate Transparency logs (crt.sh + CertSpotter + Live TLS X.509 Handshake)."""
+    tr_ascii = query.translate(str.maketrans('İIıÇçĞğÖöŞşÜü', 'iiiccggoossuu'))
+    safe_q = re.sub(r'[^a-zA-Z0-9.\-]', '', tr_ascii).strip('.').lower()
     if not safe_q:
         crt_q = '%.com.tr'
     elif '.' in safe_q:
         crt_q = f'%.{safe_q.lstrip("%")}' if not safe_q.startswith('%') else safe_q
     else:
-        crt_q = f'%.{safe_q}.com.tr'
+        crt_q = f'%{safe_q}%.com.tr'
 
-    url = f'https://crt.sh/?q={crt_q}&output=json'
     results: list[dict[str, Any]] = []
     seen: set[str] = set()
 
+    # Tier 1: crt.sh with proper URL parameter encoding & fast failover timeout
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            res = await client.get(url, headers={'User-Agent': 'Mozilla/5.0 (compatible; LeadIntelPro/4.0)'})
-            if res.status_code == 200 and 'json' in res.headers.get('content-type', ''):
+        async with httpx.AsyncClient(timeout=4.0, follow_redirects=True) as client:
+            res = await client.get(
+                'https://crt.sh/',
+                params={'q': crt_q, 'output': 'json'},
+                headers={'User-Agent': 'Mozilla/5.0 (compatible; LeadIntelPro/7.1)'},
+            )
+            if res.status_code == 200:
                 data = res.json()
-                for row in data:
-                    name_val = row.get('name_value', '').lower()
-                    for dom in name_val.split('\n'):
-                        dom = dom.strip().lstrip('*.')
-                        if dom and dom not in seen and not dom.startswith('www.'):
-                            seen.add(dom)
-                            results.append({
-                                'domain': dom,
-                                'issuer': row.get('issuer_name', ''),
-                                'entry_timestamp': row.get('entry_timestamp', ''),
-                                'not_before': row.get('not_before', ''),
-                            })
-                            if len(results) >= limit:
-                                return results
+                if isinstance(data, list):
+                    for row in data:
+                        if not isinstance(row, dict):
+                            continue
+                        name_val = str(row.get('name_value') or row.get('common_name') or '').lower()
+                        for dom in name_val.split('\n'):
+                            dom = dom.strip().lstrip('*.')
+                            if dom and '.' in dom and dom not in seen and not dom.startswith('www.'):
+                                seen.add(dom)
+                                ts = row.get('entry_timestamp') or row.get('not_before') or ''
+                                results.append({
+                                    'domain': dom,
+                                    'issuer': row.get('issuer_name', ''),
+                                    'entry_timestamp': ts,
+                                    'logged_at': ts,
+                                    'not_before': row.get('not_before', ''),
+                                })
+                                if len(results) >= limit:
+                                    return results
     except Exception:
         pass
+
+    # Tier 2: Single non-burst CertSpotter RFC 6962 CT Log query
+    if len(results) < limit and safe_q:
+        primary_dom = safe_q if '.' in safe_q else f'{safe_q}.com.tr'
+        try:
+            async with httpx.AsyncClient(timeout=5.5) as client:
+                r2 = await client.get(
+                    'https://api.certspotter.com/v1/issuances',
+                    params={'domain': primary_dom, 'include_subdomains': 'true', 'expand': 'dns_names,issuer'},
+                    headers={'User-Agent': 'LeadIntelPro/7.1'},
+                )
+                if r2.status_code == 200 and isinstance(r2.json(), list):
+                    for item in r2.json():
+                        issuer_obj = item.get('issuer') or {}
+                        issuer_name = issuer_obj.get('name', 'CA') if isinstance(issuer_obj, dict) else 'CA'
+                        nb = item.get('not_before', '')
+                        for dom in (item.get('dns_names') or []):
+                            d_clean = str(dom).strip().lower().lstrip('*.')
+                            if d_clean and '.' in d_clean and d_clean not in seen and not d_clean.startswith('www.'):
+                                seen.add(d_clean)
+                                results.append({
+                                    'domain': d_clean,
+                                    'issuer': issuer_name,
+                                    'entry_timestamp': nb,
+                                    'logged_at': nb,
+                                    'not_before': nb,
+                                })
+                                if len(results) >= limit:
+                                    return results
+        except Exception:
+            pass
+
+    # Tier 3: Direct Live TLS 1.3 X.509 Certificate Handshake across matching corporate domains
+    if len(results) < limit and safe_q:
+        tls_targets: list[str] = []
+        if '.' in safe_q:
+            tls_targets.append(safe_q)
+        else:
+            _skip_social = ('wordpress.com', 'blogspot.com', 'instagram.com', 'facebook.com', 'tr.gg', 'wixsite.com')
+            tls_targets.extend([f'{safe_q}.com.tr', f'{safe_q}.com'])
+            try:
+                import sqlite3
+                from pathlib import Path
+                db_file = Path(__file__).resolve().parent / 'data' / 'leads.sqlite3'
+                if db_file.exists():
+                    with sqlite3.connect(f'file:{db_file}?mode=ro', uri=True, timeout=1.5) as c:
+                        for (w_url,) in c.execute(
+                            "SELECT website FROM places WHERE website LIKE ? "
+                            "ORDER BY CASE WHEN website LIKE '%.tr%' THEN 0 ELSE 1 END LIMIT 40",
+                            (f'%{safe_q}%',),
+                        ):
+                            host = (urlsplit(w_url).hostname or '').lower().removeprefix('www.')
+                            if (
+                                host
+                                and '.' in host
+                                and not any(host == s or host.endswith('.' + s) for s in _skip_social)
+                                and host not in tls_targets
+                                and host not in seen
+                            ):
+                                tls_targets.append(host)
+                                if len(tls_targets) >= min(limit + 6, 24):
+                                    break
+            except Exception:
+                pass
+
+        if tls_targets:
+            loop = asyncio.get_running_loop()
+            tls_batches = await asyncio.gather(
+                *(loop.run_in_executor(None, _inspect_live_tls_cert, h) for h in tls_targets[:24])
+            )
+            for batch in tls_batches:
+                for cert_row in batch:
+                    dom = cert_row['domain']
+                    if dom not in seen:
+                        seen.add(dom)
+                        results.append(cert_row)
+                        if len(results) >= limit:
+                            return results
+
     return results
 

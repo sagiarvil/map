@@ -140,6 +140,7 @@ def generate(
                     p['province']
                     or catalog.province_of(w_prov)
                     or catalog.province_of(p['region'].split(',')[0])
+                    or p['region'].split(',')[0].strip()
                 )
                 district = p['district'] or w_dist or ''
                 address = p['address'] or w_addr or ''
@@ -160,7 +161,11 @@ def generate(
                 if sector:
                     sql += ' AND j.sector=?'
                     params.append(sector)
-                if region:
+                is_wild_reg, wild_country = catalog.is_wildcard_region(region)
+                if is_wild_reg:
+                    sql += ' AND j.region LIKE ?'
+                    params.append(f'%, {wild_country}')
+                elif region:
                     sql += ' AND j.region=?'
                     params.append(region)
 
@@ -185,6 +190,7 @@ def generate(
                         city = (
                             catalog.province_of(j['w_prov'] or '')
                             or catalog.province_of(j['region'].split(',')[0])
+                            or j['region'].split(',')[0].strip()
                         )
                         write(
                             j['title'] or j['domain'],
