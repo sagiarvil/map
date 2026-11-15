@@ -775,7 +775,7 @@
     if (!rows.length) {
       const tr = el('tr');
       const td = el('td', 'Bu filtreye uygun firma kaydı bulunamadı. İletişim filtresini "Tüm Firmalar" yapabilir veya farklı ilçe/sektör seçebilirsiniz.', 'empty-state');
-      td.colSpan = 6;
+      td.colSpan = 7;
       tr.append(td);
       tbody.append(tr);
       return;
@@ -880,7 +880,15 @@
       linkStack.append(mapsA);
       tdLinks.append(linkStack);
 
-      tr.append(tdName, tdCat, tdLoc, tdEmail, tdPhone, tdLinks);
+      // 7. ERP Hızlı Cari İşlemi (Madde 3)
+      const tdErp = el('td');
+      const erpBtn = el('button', '+ Cari Kart Oluştur', 'btn-quick-party');
+      erpBtn.type = 'button';
+      erpBtn.title = 'HTMLANDHTML ERP Cari Kartı Oluştur (Müşteri/Tedarikçi)';
+      erpBtn.addEventListener('click', () => openQuickPartyModal(r, f));
+      tdErp.append(erpBtn);
+
+      tr.append(tdName, tdCat, tdLoc, tdEmail, tdPhone, tdLinks, tdErp);
       tbody.append(tr);
     }
   }
@@ -1341,8 +1349,344 @@
     setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
+  // =========================================================================
+  // AppFlow V10.2 Navigation & Workspace Controller
+  // =========================================================================
+  const WORKSPACES = {
+    launchpad: { id: 'viewLaunchpad', breadcrumb: 'Haritalar İstihbarat Fabrikası', title: 'Uygulamalarım' },
+    search: { id: 'viewSearch', breadcrumb: 'Uygulamalarım / İstihbarat', title: '01. Firma & İstihbarat Arama' },
+    export: { id: 'viewExport', breadcrumb: 'Uygulamalarım / Veri İhracatı', title: '02. Toplu Excel & Veri İhracatı' },
+    enrich: { id: 'viewEnrich', breadcrumb: 'Uygulamalarım / İletişim', title: '03. Derin Web & İletişim Tarama' },
+    ct_logs: { id: 'viewCtLogs', breadcrumb: 'Uygulamalarım / Güvenlik & Tescil', title: '04. Sertifika Günlükleri (CT Logs)' },
+    database: { id: 'viewDatabase', breadcrumb: 'Uygulamalarım / Veri Havuzu', title: '05. Bölgesel Veri Havuzu' },
+    desktop: { id: 'viewDesktop', breadcrumb: 'Uygulamalarım / Altyapı', title: '06. Masaüstü Hızlandırıcı & Çevrimdışı Paket' }
+  };
+
+  let activeWorkspace = 'launchpad';
+  const workspaceHistory = [];
+
+  function openWorkspace(key, pushHistory = true) {
+    const ws = WORKSPACES[key];
+    if (!ws) return;
+
+    if (pushHistory && activeWorkspace !== key) {
+      workspaceHistory.push(activeWorkspace);
+    }
+    activeWorkspace = key;
+
+    for (const k of Object.keys(WORKSPACES)) {
+      const elSection = $(WORKSPACES[k].id);
+      if (elSection) elSection.hidden = (k !== key);
+    }
+
+    if (key === 'launchpad') {
+      document.body.classList.add('flow-home');
+      $('flowBackBtn').hidden = true;
+    } else {
+      document.body.classList.remove('flow-home');
+      $('flowBackBtn').hidden = false;
+    }
+
+    $('amBreadcrumb').textContent = ws.breadcrumb;
+    $('pageTitle').textContent = ws.title;
+
+    if (key === 'database') {
+      renderDatabaseStats();
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function goHome() {
+    openWorkspace('launchpad');
+  }
+
+  function flowBack() {
+    if (workspaceHistory.length > 0) {
+      const prev = workspaceHistory.pop();
+      openWorkspace(prev, false);
+    } else {
+      goHome();
+    }
+  }
+
+  function renderDatabaseStats() {
+    const grid = $('dbStatsGrid');
+    if (!grid) return;
+    grid.replaceChildren();
+
+    const shards = (manifest && manifest.shards) || {};
+    const cities = Object.keys(shards).length > 0 ? Object.keys(shards) : TR_PROVINCES;
+
+    for (const city of cities) {
+      const shardInfo = shards[city];
+      const count = shardInfo ? (shardInfo.total || shardInfo.count || 0) : 0;
+      const card = el('div', null, 'db-stat-card');
+      const title = el('span', city, 'db-stat-city');
+      const sub = el('span', count ? `${fmt(count)} firma` : 'Hazır Shard', 'db-stat-count');
+      card.append(title, sub);
+
+      card.addEventListener('click', () => {
+        $('countrySelect').value = 'Türkiye';
+        $('countrySelect').dispatchEvent(new Event('change'));
+        $('citySelect').value = city;
+        populateDistricts(city);
+        $('districtSelect').value = '';
+        currentOffset = 0;
+        openWorkspace('search');
+        executeSearch(true);
+      });
+
+      grid.append(card);
+    }
+  }
+
+  // =========================================================================
+  // RFC 6962 CT Logs Query Handler
+  // =========================================================================
+  let ctQueryInFlight = false;
+  async function handleCtQuery() {
+    if (ctQueryInFlight) return;
+    const q = ($('ctQueryInput').value || '').trim();
+    if (!q) {
+      alert('Lütfen aranacak bir anahtar kelime veya alan adı kökü girin.');
+      return;
+    }
+    const limit = parseInt($('ctLimitSelect').value || '50', 10);
+    const wrap = $('ctResultsWrap');
+    const tbody = $('ctResultsBody');
+    const btn = $('ctQueryBtn');
+
+    ctQueryInFlight = true;
+    btn.disabled = true;
+    btn.textContent = 'Sorgulanıyor…';
+    tbody.replaceChildren();
+    const loadingRow = el('tr');
+    const loadingTd = el('td', 'Sertifika şeffaflık günlükleri taranıyor…', 'contact-empty');
+    loadingTd.colSpan = 4;
+    loadingRow.append(loadingTd);
+    tbody.append(loadingRow);
+    wrap.hidden = false;
+
+    let records = [];
+    try {
+      let handled = false;
+      if (turboConnected) {
+        try {
+          const res = await fetch(`${LOCAL_API}/api/ct_logs?query=${encodeURIComponent(q)}&limit=${limit}`, {
+            headers: turboToken ? { 'X-Secret-Token': turboToken } : {}
+          });
+          if (res.ok) {
+            const data = await res.json();
+            records = data.records || [];
+            handled = true;
+          }
+        } catch {}
+      }
+
+      if (!handled) {
+        const safeQ = q.includes('.') ? q : `%.${q}.com.tr`;
+        const res = await fetch(`https://crt.sh/?q=${encodeURIComponent(safeQ)}&output=json`);
+        if (res.ok) {
+          const raw = await res.json();
+          const seen = new Set();
+          for (const item of raw) {
+            const domain = String(item.common_name || item.name_value || '').toLowerCase().trim();
+            if (!domain || seen.has(domain)) continue;
+            seen.add(domain);
+            records.push({
+              domain,
+              issuer: item.issuer_name || 'Let\'s Encrypt',
+              logged_at: item.entry_timestamp || item.not_before || ''
+            });
+            if (records.length >= limit) break;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('CT logs error:', err);
+    } finally {
+      ctQueryInFlight = false;
+      btn.disabled = false;
+      btn.textContent = 'Yeni Sertifikaları Sorgula';
+    }
+
+    tbody.replaceChildren();
+    if (!records.length) {
+      const emptyRow = el('tr');
+      const emptyTd = el('td', 'Bu sorgu için sertifika günlüğü kaydı bulunamadı.', 'empty-state');
+      emptyTd.colSpan = 4;
+      emptyRow.append(emptyTd);
+      tbody.append(emptyRow);
+      return;
+    }
+
+    for (const rec of records) {
+      const tr = el('tr');
+      const tdDom = el('td');
+      tdDom.append(el('strong', rec.domain));
+
+      const tdIssuer = el('td', rec.issuer ? rec.issuer.split(',')[0].replace(/^C=.*CN=/, '') : 'CA');
+      const tdDate = el('td', rec.logged_at ? rec.logged_at.split('T')[0] : '—');
+
+      const tdLink = el('td');
+      const a = el('a', 'Siteyi Aç ↗', 'ext-link');
+      a.href = `https://${rec.domain}`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      tdLink.append(a);
+
+      tr.append(tdDom, tdIssuer, tdDate, tdLink);
+      tbody.append(tr);
+    }
+  }
+
+  // =========================================================================
+  // Quick Party Modal (HTMLANDHTML ERP Standard - Madde 3)
+  // =========================================================================
+  function openQuickPartyModal(firm, f) {
+    const dialog = $('quickPartyDialog');
+    if (!dialog) return;
+
+    $('partySuccessNotice').style.display = 'none';
+
+    const cityCode = fold(firm.city || f.city || 'TR').slice(0, 3).toUpperCase();
+    const randCode = String(Math.floor(1000 + Math.random() * 9000));
+    const autoCode = `CARI-${cityCode}-${randCode}`;
+
+    $('partyNameInput').value = firm.name || '';
+    $('partyTypeSelect').value = 'Müşteri';
+    $('partyCodeInput').value = autoCode;
+    $('partyCityInput').value = firm.city || f.city || '';
+    $('partyDistrictInput').value = firm.district || f.district || '';
+    $('partyAddressInput').value = firm.address || '';
+    $('partyPhoneInput').value = (firm.phones && firm.phones[0]) || '';
+    $('partyEmailInput').value = (firm.emails && firm.emails[0]) || '';
+
+    const naceCode = firm.nace_code || (firm.nace && firm.nace.code) || '';
+    const naceTitle = firm.nace_title || (firm.nace && firm.nace.title) || '';
+    $('partyNaceInput').value = naceCode ? `${naceCode} - ${naceTitle}` : 'Belirtilmedi';
+
+    $('partyEfaturaInput').value = (firm.isEfatura || firm.efatura) ? 'Evet (e-Fatura Mükellefi)' : 'Belirtilmedi';
+
+    dialog.showModal();
+  }
+
+  function getPartyFormData() {
+    return {
+      id: 'party_' + Date.now(),
+      code: $('partyCodeInput').value.trim(),
+      name: $('partyNameInput').value.trim(),
+      type: $('partyTypeSelect').value,
+      city: $('partyCityInput').value.trim(),
+      district: $('partyDistrictInput').value.trim(),
+      address: $('partyAddressInput').value.trim(),
+      phone: $('partyPhoneInput').value.trim(),
+      email: $('partyEmailInput').value.trim(),
+      nace: $('partyNaceInput').value.trim(),
+      efatura: $('partyEfaturaInput').value.trim(),
+      source: 'haritalar_lead_intelligence',
+      created_at: new Date().toISOString()
+    };
+  }
+
+  function handleSaveParty() {
+    const party = getPartyFormData();
+    if (!party.name) {
+      alert('Lütfen firma ünvanı girin.');
+      return;
+    }
+
+    try {
+      const stored = JSON.parse(localStorage.getItem('erp_parties') || '[]');
+      stored.unshift(party);
+      localStorage.setItem('erp_parties', JSON.stringify(stored));
+      const notice = $('partySuccessNotice');
+      notice.textContent = `✓ Cari kart (${party.code} - ${party.name}) yerel ERP veritabanına kaydedildi!`;
+      notice.style.display = 'block';
+    } catch (err) {
+      alert('Kaydetme hatası: ' + err.message);
+    }
+  }
+
+  function handleExportPartyJson() {
+    const party = getPartyFormData();
+    const blob = new Blob([JSON.stringify(party, null, 2)], { type: 'application/json' });
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = u;
+    a.download = `${party.code || 'cari'}_erp_party.json`;
+    a.click();
+    URL.revokeObjectURL(u);
+  }
+
+  async function handleCopyParty() {
+    const party = getPartyFormData();
+    const text = [
+      `Cari Kodu: ${party.code}`,
+      `Firma: ${party.name}`,
+      `Tür: ${party.type}`,
+      `İl/İlçe: ${party.city} / ${party.district}`,
+      `Adres: ${party.address}`,
+      `Telefon: ${party.phone}`,
+      `E-posta: ${party.email}`,
+      `NACE: ${party.nace}`,
+      `e-Fatura: ${party.efatura}`
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('Cari kart panoya kopyalandı!');
+    } catch {
+      prompt('Kopyalamak için Ctrl+C / Cmd+C yapın:', text);
+    }
+  }
+
   // Wire Event Listeners
   function bindEvents() {
+    // AppFlow V10.2 Navigation
+    document.querySelectorAll('[data-open-workspace]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        openWorkspace(btn.getAttribute('data-open-workspace'));
+      });
+    });
+
+    $('flowHomeBtn').addEventListener('click', goHome);
+    $('flowBackBtn').addEventListener('click', flowBack);
+    $('headerSearchJumpBtn').addEventListener('click', () => openWorkspace('search'));
+    $('headerExportJumpBtn').addEventListener('click', () => {
+      openWorkspace('export');
+    });
+
+    // Export Workspace buttons
+    const expWsXlsx = $('exportWorkspaceXlsxBtn');
+    if (expWsXlsx) expWsXlsx.addEventListener('click', handleExportXlsx);
+    const expWsCsv = $('exportWorkspaceCsvBtn');
+    if (expWsCsv) expWsCsv.addEventListener('click', handleExportCsv);
+
+    // CT Logs buttons
+    const ctBtn = $('ctQueryBtn');
+    if (ctBtn) ctBtn.addEventListener('click', handleCtQuery);
+    const ctInput = $('ctQueryInput');
+    if (ctInput) {
+      ctInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') handleCtQuery();
+      });
+    }
+
+    // Quick Party Dialog
+    const quickClose = $('quickCloseBtn');
+    if (quickClose) quickClose.addEventListener('click', () => $('quickPartyDialog').close());
+    const partySave = $('partySaveBtn');
+    if (partySave) partySave.addEventListener('click', handleSaveParty);
+    const partyExportJson = $('partyExportJsonBtn');
+    if (partyExportJson) partyExportJson.addEventListener('click', handleExportPartyJson);
+    const partyCopy = $('partyCopyBtn');
+    if (partyCopy) partyCopy.addEventListener('click', handleCopyParty);
+
+    // Enrich Workspace
+    const enrichStart = $('enrichStartBtn');
+    if (enrichStart) enrichStart.addEventListener('click', handleEnrich);
     $('countrySelect').addEventListener('change', () => {
       const isTr = $('countrySelect').value === 'Türkiye';
       $('citySelect').hidden = !isTr;

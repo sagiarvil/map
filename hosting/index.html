@@ -3,32 +3,146 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Haritalar — Kurumsal Firma &amp; İletişim Rehberi</title>
-  <meta name="description" content="Sektör, il, ilçe ve iletişim filtreleriyle kurumsal firma listeleme ve tek sayfa Excel (.xlsx) indirme sistemi.">
+  <title>Haritalar — AppFlow V10.2 B2B İstihbarat &amp; ERP Keşif Fabrikası</title>
+  <meta name="description" content="HTMLANDHTML V10.2 AppFlow mimarisiyle 81 ilde kurumsal firma arama, NACE Rev. 2, WhatsApp, e-Fatura istihbaratı ve ERP cari oluşturma merkezi.">
   <link rel="stylesheet" href="/style.css">
   <script src="/xlsx-engine.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
-<body>
-  <div class="shell">
-    <header class="topbar reveal">
-      <div class="brand-wrap">
-        <div class="brand-mark" aria-hidden="true">H</div>
+<body class="flow-home">
+  <!-- AppFlow Header Bar -->
+  <header class="app-header no-print">
+    <div class="am-heading">
+      <button id="flowHomeBtn" class="btn btn-secondary" type="button" aria-label="Tüm uygulamalar" title="Uygulamalarım Ana Ekranı">⌂ Uygulamalar</button>
+      <button id="flowBackBtn" class="btn btn-secondary" type="button" aria-label="Önceki ekrana dön" hidden>← Geri</button>
+      <div class="am-heading-text">
+        <small id="amBreadcrumb">Haritalar İstihbarat Fabrikası</small>
+        <strong id="pageTitle" tabindex="-1">Uygulamalarım</strong>
+      </div>
+    </div>
+    <div class="am-head-actions">
+      <span id="engineBadge" class="engine-badge cloud" role="status" title="Motor Durumu">
+        <span class="dot"></span>
+        <span id="engineText">Hazır</span>
+      </span>
+      <button id="headerSearchJumpBtn" type="button" class="btn btn-secondary am-global-search">
+        <span aria-hidden="true">⌕</span>
+        <span>Hızlı Keşif</span>
+      </button>
+      <button id="headerExportJumpBtn" type="button" class="btn btn-primary flow-backup">↓ Excel İndir</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- Status Banner for operations -->
+    <section id="statusBanner" class="status-banner" aria-live="polite" hidden>
+      <div class="status-row">
+        <span id="statusText"></span>
+        <span id="statusSub" class="badge"></span>
+      </div>
+      <div class="progress-track" id="progressTrack" hidden>
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 0: AppFlow V10.2 Launchpad (Uygulamalarım)               -->
+    <!-- ============================================================= -->
+    <section id="viewLaunchpad" class="flow-launch reveal">
+      <div class="flow-intro">
         <div>
-          <h1 class="brand-title">Haritalar</h1>
-          <p class="brand-sub">Kurumsal Firma Arama &amp; Doğrulanmış İletişim Rehberi</p>
+          <p class="flow-eyebrow">HTMLANDHTML V10.2 · B2B LEAD INTELLIGENCE OS</p>
+          <h1>Uygulamalarım</h1>
+          <p>Gerçekleştirmek istediğiniz kurumsal istihbarat ve veri işlemini seçin.</p>
         </div>
       </div>
-      <div class="top-actions">
-        <span id="engineBadge" class="engine-badge cloud" role="status">
-          <span class="dot"></span>
-          <span id="engineText">Hazır</span>
-        </span>
-      </div>
-    </header>
 
-    <main>
-      <section class="card search-card reveal" aria-label="Firma arama filtreleri">
+      <div class="flow-section-title">
+        <h2>Günlük İstihbarat &amp; Müşteri/Tedarikçi Keşfi</h2>
+      </div>
+      <div class="flow-grid">
+        <!-- 01. Firma & İstihbarat Arama -->
+        <button type="button" class="flow-tile" style="--app-color:#0284c7" data-open-workspace="search">
+          <span class="flow-symbol" style="--app-color:#0284c7">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M3 7v14M21 7v14M6 10h2M11 10h2M16 10h2M6 14h2M11 14h2M16 14h2M6 18h2M11 18h2M16 18h2M3 7l9-4 9 4"/></svg>
+          </span>
+          <span class="flow-tile-name">Firma &amp; İstihbarat Arama</span>
+          <small>81 İl, NACE Rev. 2, WhatsApp, e-Fatura ve kurumsal e-posta filtreleri</small>
+          <span class="flow-number">01</span>
+        </button>
+
+        <!-- 02. Toplu Excel İhracatı -->
+        <button type="button" class="flow-tile" style="--app-color:#168054" data-open-workspace="export">
+          <span class="flow-symbol" style="--app-color:#168054">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+          </span>
+          <span class="flow-tile-name">Toplu Excel &amp; Veri İhracatı</span>
+          <small>Tek sayfada 1.048.575 satır kapasiteli saf OOXML (.xlsx) &amp; CSV indirme</small>
+          <span class="flow-number">02</span>
+        </button>
+
+        <!-- 03. Derin Web & E-posta Tarama -->
+        <button type="button" class="flow-tile" style="--app-color:#7452bd" data-open-workspace="enrich">
+          <span class="flow-symbol" style="--app-color:#7452bd">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </span>
+          <span class="flow-tile-name">Derin Web &amp; İletişim Tarama</span>
+          <small>128-korutin HTTP/2 ile sitelerden KVKK uyumlu yetkili e-posta madenciliği</small>
+          <span class="flow-number">03</span>
+        </button>
+      </div>
+
+      <div class="flow-section-title">
+        <h2>Veri Havuzu &amp; Sistem Altyapısı</h2>
+      </div>
+      <div class="flow-grid">
+        <!-- 04. Sertifika Günlükleri -->
+        <button type="button" class="flow-tile" style="--app-color:#f59e0b" data-open-workspace="ct_logs">
+          <span class="flow-symbol" style="--app-color:#f59e0b">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <span class="flow-tile-name">Sertifika Günlükleri (CT Logs)</span>
+          <small>RFC 6962 SSL loglarından yeni tescillenen Türk şirket ve alan adları</small>
+          <span class="flow-number">04</span>
+        </button>
+
+        <!-- 05. Bölgesel Veri Havuzu -->
+        <button type="button" class="flow-tile" style="--app-color:#17658d" data-open-workspace="database">
+          <span class="flow-symbol" style="--app-color:#17658d">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </span>
+          <span class="flow-tile-name">Bölgesel Veri Havuzu</span>
+          <small>81 İl, 1.021.465 temiz firma harita dağılımı ve arındırılmış sınırlar</small>
+          <span class="flow-number">05</span>
+        </button>
+
+        <!-- 06. Masaüstü Hızlandırıcı & Çevrimdışı Paket -->
+        <button type="button" class="flow-tile" style="--app-color:#51647d" data-open-workspace="desktop">
+          <span class="flow-symbol" style="--app-color:#51647d">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+          </span>
+          <span class="flow-tile-name">Masaüstü Paketi &amp; Hızlandırıcı</span>
+          <small>Çevrimdışı SQLite veritabanı, Mac Turbo LaunchAgent servisi ve ZIP paketi</small>
+          <span class="flow-number">06</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 1: Firma & İstihbarat Arama Çalışma Alanı                -->
+    <!-- ============================================================= -->
+    <section id="viewSearch" class="flow-workspace" hidden>
+      <details class="flow-help">
+        <summary>Bu Ekran Nasıl Kullanılır?</summary>
+        <div class="flow-help-body">
+          <p><strong>Ne için:</strong> 81 il genelinde sektör, ilçe, kurumsal düzey ve iletişim kanalına göre doğrulanmış firma listesi hazırlamak ve anında ERP cari kartına dönüştürmek için.</p>
+          <p><strong>Gereken:</strong> Sektör adı ve İl/Şehir seçin. İsteğe bağlı olarak ilçe ve iletişim türü belirleyin.</p>
+          <p><strong>İstihbarat Rozetleri:</strong> Tabloda <span class="badge efatura">🏢 e-Fatura</span> kurumsal ciro büyüklüğünü, <span class="badge nace">NACE</span> resmi faaliyet kodunu, <span class="badge m365">Kurumsal Mail</span> şirket posta altyapısını ve <a class="wa-btn" href="#">💬 WhatsApp</a> doğrudan canlı sohbet hattını ifade eder.</p>
+          <p><strong>Hızlı Cari:</strong> Tablodaki her firmanın yanındaki <strong>+ Cari Kart Oluştur</strong> butonu, bilgileri ERP standardında cari karta dönüştürür.</p>
+        </div>
+      </details>
+
+      <div class="card search-card">
         <div class="form-grid">
           <div class="field">
             <label for="sectorInput">Sektör / Faaliyet Alanı</label>
@@ -110,19 +224,9 @@
             <button id="exportCsvBtn" type="button" disabled>CSV İndir</button>
           </div>
         </div>
-      </section>
+      </div>
 
-      <section id="statusBanner" class="status-banner" aria-live="polite" hidden>
-        <div class="status-row">
-          <span id="statusText"></span>
-          <span id="statusSub" class="badge"></span>
-        </div>
-        <div class="progress-track" id="progressTrack" hidden>
-          <div class="progress-bar" id="progressBar"></div>
-        </div>
-      </section>
-
-      <section id="emptyPrompt" class="empty-hero reveal">
+      <section id="emptyPrompt" class="empty-hero">
         <p class="empty-title">Aramaya Başlayın</p>
         <p class="empty-desc">Yukarıdan <strong>Sektör</strong> ve <strong>İl / Şehir</strong> seçip <strong>Firmaları Listele</strong> butonuna basın.</p>
       </section>
@@ -156,23 +260,262 @@
             <thead>
               <tr>
                 <th>Firma Adı &amp; Adres</th>
-                <th>Sektör</th>
+                <th>Sektör &amp; NACE</th>
                 <th>İl / İlçe</th>
-                <th>E-posta</th>
-                <th>Telefon</th>
+                <th>Kurumsal E-posta</th>
+                <th>Telefon &amp; WhatsApp</th>
                 <th>Web &amp; Harita</th>
+                <th>ERP İşlemi</th>
               </tr>
             </thead>
             <tbody id="resultsBody"></tbody>
           </table>
         </div>
       </section>
-    </main>
+    </section>
 
-    <footer class="footer">
-      <span>Haritalar Kurumsal Firma Rehberi · Açık Coğrafi Veri (Overture &amp; OpenStreetMap)</span>
-      <a href="/downloads/lead-intelligence-pro.zip" class="footer-link" download>Masaüstü Hızlandırıcı (.zip)</a>
-    </footer>
-  </div>
+    <!-- ============================================================= -->
+    <!-- VIEW 2: Toplu Excel & Veri İhracatı Çalışma Alanı             -->
+    <!-- ============================================================= -->
+    <section id="viewExport" class="flow-workspace" hidden>
+      <details class="flow-help">
+        <summary>Bu Ekran Nasıl Kullanılır?</summary>
+        <div class="flow-help-body">
+          <p><strong>Ne için:</strong> İşletme portföyünü Microsoft Excel'in tek sayfa sınırı olan 1.048.575 satıra kadar temiz, hücre taşması yapmayan, donmuş başlıklı ve formül enjeksiyon korumalı olarak dışa aktarmak için.</p>
+          <p><strong>Özellikler:</strong> NACE Rev. 2 resmi kodları, WhatsApp doğrudan sohbet bağlantıları, e-Fatura mükelleflik rozetleri ve altyapı bilgileri her satırda bağımsız kolon olarak üretilir.</p>
+        </div>
+      </details>
+
+      <div class="card">
+        <h3>Tek Sayfa "Firmalar" Excel (.xlsx) Yapılandırması</h3>
+        <p class="text-muted">Seçili il ve sektördeki tüm doğrulanmış verileri anında tek sayfada paketleyin.</p>
+        <div class="export-spec-grid">
+          <div class="spec-card">
+            <strong>Maksimum Kapasite</strong>
+            <span>1.048.575 Satır (Tek Excel Sayfası)</span>
+          </div>
+          <div class="spec-card">
+            <strong>Güvenlik Standardı</strong>
+            <span>OWASP / Formül Enjeksiyonu Korumalı</span>
+          </div>
+          <div class="spec-card">
+            <strong>Sütunlar</strong>
+            <span>NACE, WhatsApp, e-Fatura, E-posta, Tel, Adres</span>
+          </div>
+        </div>
+        <div class="action-bar" style="margin-top:20px">
+          <button id="exportWorkspaceXlsxBtn" type="button" class="btn btn-primary">Seçili Listeyi Excel (.xlsx) İndir</button>
+          <button id="exportWorkspaceCsvBtn" type="button" class="btn btn-secondary">CSV Olarak İndir</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 3: Derin Web & E-posta Tarama Çalışma Alanı              -->
+    <!-- ============================================================= -->
+    <section id="viewEnrich" class="flow-workspace" hidden>
+      <details class="flow-help">
+        <summary>Bu Ekran Nasıl Kullanılır?</summary>
+        <div class="flow-help-body">
+          <p><strong>Ne için:</strong> Yerel bilgisayarınızda çalışan 128 eşzamanlı HTTP/2 korutin motoru ile kurumsal web sitelerinden KVKK uyumlu yetkili e-posta ve telefon madenciliği yapmak için.</p>
+          <p><strong>Not:</strong> Bu işlem arka planda yerel port 8765 üzerinde çalışır ve Firebase Hosting ile otomatik eşzamanlanır.</p>
+        </div>
+      </details>
+
+      <div class="card">
+        <h3>128-Korutin Asenkron Web İletişim Tarayıcısı</h3>
+        <p class="text-muted">Seçilen il ve sektördeki web sitelerinden KVKK iletişim sayfalarını tarayarak doğrulanmış e-posta ve telefon havuzunu genişletin.</p>
+        <div class="action-bar" style="margin-top:16px">
+          <button id="enrichStartBtn" type="button" class="btn btn-primary">Taramayı Başlat &amp; Kuyruğa Ekle</button>
+          <button id="enrichPauseBtn" type="button" class="btn btn-secondary" disabled>Duraklat</button>
+        </div>
+        <div id="enrichLiveStatus" style="margin-top:14px; font-weight:550; color:var(--text-muted)">
+          Durum: Yerel turbo motor beklemede.
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 4: Sertifika Günlükleri (CT Logs) Çalışma Alanı           -->
+    <!-- ============================================================= -->
+    <section id="viewCtLogs" class="flow-workspace" hidden>
+      <details class="flow-help">
+        <summary>Bu Ekran Nasıl Kullanılır?</summary>
+        <div class="flow-help-body">
+          <p><strong>Ne için:</strong> RFC 6962 Certificate Transparency kamuya açık SSL sertifika günlüklerini sorgulayarak Türkiye'de yeni tescillenen alan adlarını ve yeni kurulan şirketleri tespit etmek için.</p>
+          <p><strong>Örnek:</strong> <code>mobilya</code> yazdığınızda yeni SSL sertifikası çıkartılmış <code>*.mobilya.com.tr</code> alan adları listelenir.</p>
+        </div>
+      </details>
+
+      <div class="card">
+        <h3>Sertifika Günlükleri (Certificate Transparency) Arama</h3>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field" style="grid-column: span 2">
+            <label for="ctQueryInput">Anahtar Kelime veya Alan Adı Kökü</label>
+            <input id="ctQueryInput" type="text" value="mobilya" placeholder="Örn: mobilya, lojistik, insaat…">
+          </div>
+          <div class="field">
+            <label for="ctLimitSelect">Kayıt Limiti</label>
+            <select id="ctLimitSelect">
+              <option value="25">25 Alan Adı</option>
+              <option value="50" selected>50 Alan Adı</option>
+              <option value="100">100 Alan Adı</option>
+            </select>
+          </div>
+        </div>
+        <div class="action-bar" style="margin-top:16px">
+          <button id="ctQueryBtn" type="button" class="btn btn-primary">Yeni Sertifikaları Sorgula</button>
+        </div>
+
+        <div id="ctResultsWrap" style="margin-top:20px" hidden>
+          <h4>Bulunan Alan Adları &amp; Sertifika Kayıtları</h4>
+          <div class="table-wrap" style="margin-top:10px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Alan Adı</th>
+                  <th>Sertifika Veren (CA)</th>
+                  <th>Geçerlilik Başlangıcı</th>
+                  <th>Web Bağlantısı</th>
+                </tr>
+              </thead>
+              <tbody id="ctResultsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 5: Bölgesel Veri Havuzu & Şehirler Çalışma Alanı          -->
+    <!-- ============================================================= -->
+    <section id="viewDatabase" class="flow-workspace" hidden>
+      <details class="flow-help">
+        <summary>Bu Ekran Nasıl Kullanılır?</summary>
+        <div class="flow-help-body">
+          <p><strong>Ne için:</strong> 81 il genelinde arındırılmış veri havuzunun il bazında kota ve hazır CDN shard dağılımını incelemek ve tek tıkla ilgili ili aramaya aktarmak için.</p>
+        </div>
+      </details>
+
+      <div class="card">
+        <h3>81 İl &amp; 1.021.465 Kurumsal Firma Havuzu Dağılımı</h3>
+        <div class="db-stats-grid" id="dbStatsGrid" style="margin-top:16px">
+          <!-- Populated dynamically via manifest -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 6: Masaüstü Paketi & Hızlandırıcı Çalışma Alanı           -->
+    <!-- ============================================================= -->
+    <section id="viewDesktop" class="flow-workspace" hidden>
+      <details class="flow-help">
+        <summary>Bu Ekran Nasıl Kullanılır?</summary>
+        <div class="flow-help-body">
+          <p><strong>Ne için:</strong> İnternet olmadan da bilgisayarınızda yerel SQLite veritabanı ve 128-korutin tarayıcı çalıştırmak için masaüstü paketini kurma rehberi.</p>
+        </div>
+      </details>
+
+      <div class="card">
+        <h3>Masaüstü Turbo Paketi (Mac &amp; Windows)</h3>
+        <p class="text-muted">Tek tıkla masaüstü hızlandırıcı ZIP dosyasını indirin ve yerel olarak çalıştırın.</p>
+        <div style="margin-top:16px">
+          <a href="/downloads/lead-intelligence-pro.zip" class="btn btn-primary" download style="display:inline-flex; align-items:center; gap:8px; text-decoration:none">
+            <span>↓ Masaüstü Hızlandırıcı (.zip) İndir</span>
+          </a>
+        </div>
+        <div style="margin-top:20px; font-size:12.5px; color:var(--text-muted); line-height:1.7">
+          <strong>Mac Kurulumu:</strong> ZIP'i açın ve terminalde <code>bash install-mac-service.command</code> komutunu çalıştırın.<br>
+          Yerel servis arka planda <code>http://127.0.0.1:8765</code> üzerinden devreye girer.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: AppFlow V10.2 Hızlı Cari Kart Oluşturma (Madde 3)      -->
+  <!-- ============================================================= -->
+  <dialog id="quickPartyDialog" class="quick-dialog">
+    <div class="quick-head">
+      <div>
+        <strong>+ ERP Cari Kartı Oluştur</strong>
+        <p>Seçili firmayı HTMLANDHTML ERP sistemine yeni Müşteri veya Tedarikçi cari kartı olarak kaydedin.</p>
+      </div>
+      <button id="quickCloseBtn" type="button" class="quick-close" aria-label="Kapat">×</button>
+    </div>
+
+    <form id="partyForm" onsubmit="return false;">
+      <div id="partySuccessNotice" class="badge mx-ok" style="display:none; padding:8px 12px; margin-bottom:12px; width:100%; border-radius:8px">
+        ✓ Cari kart yerel ERP veritabanına başarıyla kaydedildi!
+      </div>
+
+      <div class="form-grid">
+        <div class="field" style="grid-column: span 2">
+          <label for="partyNameInput">Firma Ünvanı</label>
+          <input id="partyNameInput" type="text" required>
+        </div>
+
+        <div class="field">
+          <label for="partyTypeSelect">Cari Türü</label>
+          <select id="partyTypeSelect">
+            <option value="Müşteri" selected>Müşteri</option>
+            <option value="Tedarikçi">Tedarikçi</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="partyCodeInput">Cari Kodu</label>
+          <input id="partyCodeInput" type="text" placeholder="Örn: CARI-001">
+        </div>
+
+        <div class="field">
+          <label for="partyCityInput">İl</label>
+          <input id="partyCityInput" type="text">
+        </div>
+
+        <div class="field">
+          <label for="partyDistrictInput">İlçe</label>
+          <input id="partyDistrictInput" type="text">
+        </div>
+
+        <div class="field" style="grid-column: span 2">
+          <label for="partyAddressInput">Adres</label>
+          <input id="partyAddressInput" type="text">
+        </div>
+
+        <div class="field">
+          <label for="partyPhoneInput">Telefon</label>
+          <input id="partyPhoneInput" type="text">
+        </div>
+
+        <div class="field">
+          <label for="partyEmailInput">Kurumsal E-posta</label>
+          <input id="partyEmailInput" type="email">
+        </div>
+
+        <div class="field">
+          <label for="partyNaceInput">NACE Rev. 2 Kodu</label>
+          <input id="partyNaceInput" type="text" readonly>
+        </div>
+
+        <div class="field">
+          <label for="partyEfaturaInput">e-Fatura Mükellefiyeti</label>
+          <input id="partyEfaturaInput" type="text" readonly>
+        </div>
+      </div>
+
+      <div class="action-bar" style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap">
+        <button id="partySaveBtn" type="button" class="btn btn-primary" style="flex:1">ERP Cari Kartı Olarak Kaydet</button>
+        <button id="partyExportJsonBtn" type="button" class="btn btn-secondary">JSON İndir</button>
+        <button id="partyCopyBtn" type="button" class="btn btn-secondary">Panoya Kopyala</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>Haritalar B2B Lead Intelligence OS · HTMLANDHTML V10.2 AppFlow Standardı</span>
+    <a href="/downloads/lead-intelligence-pro.zip" class="footer-link" download>Masaüstü Hızlandırıcı (.zip)</a>
+  </footer>
 </body>
 </html>
