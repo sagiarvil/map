@@ -210,6 +210,25 @@ class IndustrialEngineTests(unittest.TestCase):
                 t.join()
                 store.close()
 
+    def test_multilingual_sector_stemming_and_osm_regex_tags(self):
+        import catalog
+        import industrial_engine as ie
+
+        expanded = catalog.terms("Mobilyacılar")
+        self.assertIn("mobilya", expanded)
+        self.assertIn("meuble", expanded)
+        self.assertIn("mobilier", expanded)
+        self.assertIn("furniture store", expanded)
+
+        filters = catalog._resolve_osm_filters("mobilyacılar")
+        kv_tags = catalog._extract_osm_kv_tags(filters)
+        self.assertIn("shop:furniture", kv_tags)
+        self.assertIn("craft:carpenter", kv_tags)
+
+        # Must match French furniture store ('Meubles') and reject French mobility station ('MOBILITES')
+        self.assertTrue(ie._matches_sector_terms(" galerie meubles paris ", expanded))
+        self.assertFalse(ie._matches_sector_terms(" totalenergies mobilites paris ", expanded))
+
 
 if __name__ == "__main__":
     unittest.main()

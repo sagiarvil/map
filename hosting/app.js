@@ -262,13 +262,8 @@
     turboPageData = null;
     $('resultsSection').hidden = true;
     if ($('searchMapWrap')) $('searchMapWrap').hidden = true;
+    if ($('toggleSearchMapBtn')) $('toggleSearchMapBtn').textContent = '🗺️ Haritada Göster';
     $('emptyPrompt').hidden = false;
-    $('enrichBtn').disabled = true;
-    $('exportXlsxBtn').disabled = true;
-    $('exportCsvBtn').disabled = true;
-    if ($('toggleSearchMapBtn')) $('toggleSearchMapBtn').disabled = true;
-    if ($('splinkDedupBtn')) $('splinkDedupBtn').disabled = true;
-    if ($('rapidFuzzBtn')) $('rapidFuzzBtn').disabled = true;
     $('districtStrip').replaceChildren();
     $('resultsBody').replaceChildren();
 
@@ -325,26 +320,77 @@
     }
   }
 
+  const CLIENT_SECTOR_ALIASES = {
+    mobilya: ['furniture', 'furniture store', 'cabinet maker', 'carpenter', 'meuble', 'meubles', 'mobilier', 'menuiserie', 'literie', 'moebel', 'schreinerei', 'tischlerei', 'mobili', 'arredamento', 'muebles', 'carpinteria', 'meubel', 'interieur', 'koltuk', 'yatak', 'marangoz'],
+    mutfak: ['kitchen', 'kitchen furniture', 'cabinet maker', 'cuisine', 'cuisiniste', 'kueche', 'keuken', 'cucine', 'cocinas', 'ankastre'],
+    ahsap: ['carpenter', 'woodworking', 'timber', 'menuiserie', 'bois', 'holz', 'schreinerei', 'legno', 'madera', 'hout', 'marangoz', 'kereste'],
+    dekorasyon: ['interior design', 'home decor', 'decoration', 'luminaire', 'inneneinrichtung', 'arredamento', 'decoracion', 'interieur', 'perde', 'hali'],
+    insaat: ['construction', 'contractor', 'building materials', 'batiment', 'travaux', 'bau', 'baustoffe', 'edilizia', 'costruzioni', 'construccion', 'bouw', 'yapi', 'muteahhit'],
+    muteahhit: ['general contractor', 'construction company', 'batiment', 'travaux', 'bauunternehmen', 'costruzioni', 'construccion', 'bouwbedrijf', 'insaat'],
+    tadilat: ['renovation', 'remodeling', 'travaux', 'sanierung', 'innenausbau', 'ristrutturazione', 'reformas', 'renovatie', 'dekorasyon'],
+    mimar: ['architect', 'architecture', 'interior design', 'architecte', 'architekt', 'architetto', 'arquitecto', 'mimarlik'],
+    mimarlik: ['architect', 'architecture', 'interior design', 'architecte', 'architekt', 'architetto', 'arquitecto'],
+    metal: ['metal fabrication', 'steel', 'welder', 'metallerie', 'acier', 'metallbau', 'stahlbau', 'carpenteria metallica', 'metalurgia', 'celik', 'torna'],
+    makina: ['machinery', 'machine shop', 'automation', 'mecanique', 'maschinenbau', 'meccanica', 'maquinaria', 'machinefabriek', 'endustriyel'],
+    plastik: ['plastics', 'packaging', 'plasturgie', 'plastique', 'kunststoff', 'materie plastiche', 'plasticos', 'kunststof', 'ambalaj'],
+    tekstil: ['textile', 'fabric', 'garment', 'tissu', 'confection', 'stoffe', 'tessuti', 'tejidos', 'textiel', 'konfeksiyon', 'kumas'],
+    giyim: ['clothing', 'apparel', 'boutique', 'vetement', 'mode', 'bekleidung', 'abbigliamento', 'ropa', 'kleding', 'butik'],
+    lojistik: ['logistics', 'transport', 'freight', 'warehouse', 'logistique', 'spedition', 'logistik', 'trasporti', 'transporte', 'logistiek', 'nakliyat', 'kargo'],
+    otomotiv: ['automotive', 'auto repair', 'auto parts', 'car dealer', 'automobile', 'garage', 'autohaus', 'autowerkstatt', 'autofficina', 'taller', 'oto'],
+    gida: ['food', 'bakery', 'wholesaler', 'supermarket', 'agroalimentaire', 'boulangerie', 'lebensmittel', 'alimentari', 'alimentacion', 'voeding'],
+    restoran: ['restaurant', 'bistro', 'brasserie', 'ristorante', 'restaurante', 'cafe', 'lokanta'],
+    otel: ['hotel', 'resort', 'hostel', 'lodging', 'auberge', 'albergo', 'konaklama'],
+    elektrik: ['electrician', 'electronics', 'solar', 'electricite', 'elektrotechnik', 'elettricista', 'electricidad', 'enerji', 'aydinlatma'],
+    medikal: ['medical', 'clinic', 'hospital', 'dentist', 'materiel medical', 'clinique', 'medizintechnik', 'klinik', 'ortopedia', 'saglik'],
+    kozmetik: ['cosmetics', 'perfume', 'beauty', 'cosmetique', 'parfumerie', 'kosmetik', 'profumeria', 'perfumeria'],
+    kuyumcu: ['jewelry', 'jeweler', 'watch', 'bijouterie', 'joaillerie', 'juwelier', 'gioielleria', 'joyeria'],
+    kimya: ['chemical', 'paint', 'chimie', 'chemie', 'chimica', 'quimica', 'boya'],
+    mermer: ['marble', 'granite', 'stone', 'marbrerie', 'marbre', 'naturstein', 'marmi', 'marmoles', 'dogaltas'],
+    cam: ['glass', 'glazier', 'window', 'vitrerie', 'glaserei', 'vetreria', 'cristaleria'],
+    boya: ['paint', 'hardware', 'peinture', 'quincaillerie', 'farben', 'ferramenta', 'pinturas', 'ferreteria'],
+    isitma: ['hvac', 'heating', 'plumbing', 'air conditioning', 'chauffage', 'climatisation', 'heizung', 'klimatechnik', 'termoidraulica', 'klima'],
+    yazilim: ['software', 'information technology', 'it service', 'logiciel', 'informatique', 'softwarehaus', 'informatica', 'bilisim'],
+    banka: ['bank', 'finance', 'banque', 'sparkasse', 'banca', 'banco', 'finans'],
+    tutun: ['tobacco', 'tabac', 'tabak', 'tabaccheria', 'estanco', 'tekel'],
+    avukat: ['lawyer', 'law firm', 'notary', 'avocat', 'rechtsanwalt', 'kanzlei', 'avvocato', 'abogado', 'hukuk'],
+    emlak: ['real estate', 'property', 'immobilier', 'immobilien', 'immobiliare', 'inmobiliaria', 'makelaar', 'gayrimenkul'],
+    sigorta: ['insurance', 'assurance', 'versicherung', 'assicurazioni', 'seguros', 'verzekering']
+  };
+
+  function stemTr(word) {
+    let s = String(word || '').trim();
+    s = s.replace(/(?:cilar|ciler|cular|culer|lar[i]?|ler[i]?)$/, '').trim();
+    if (s.length >= 6 && !CLIENT_SECTOR_ALIASES[s]) {
+      s = s.replace(/(?:ci|cu|lik|luk)$/, '').trim();
+    }
+    return s || String(word || '').trim();
+  }
+
   function expandSectorTerms(sectorRaw) {
     const parts = String(sectorRaw || '').split(/[|,;]+/).map(fold).filter(Boolean);
     const out = [];
     for (const p of parts) {
       out.push(p);
-      const aliases = manifest.taxonomy && manifest.taxonomy[p];
-      if (Array.isArray(aliases)) {
-        for (const a of aliases) out.push(a);
+      const directAliases = (manifest.taxonomy && manifest.taxonomy[p]) || CLIENT_SECTOR_ALIASES[p];
+      if (Array.isArray(directAliases)) {
+        for (const a of directAliases) out.push(fold(a));
       }
-      // Turkish plural / suffix stem (e.g. bankalar -> banka, oteller -> otel)
-      const stem = p.replace(/(?:lar[ıi]|ler[iı]|lar|ler|c[ıiuü]|c[ıiuü]ler|c[ıiuü]lar)$/, '').trim();
+      if (CLIENT_SECTOR_ALIASES[p]) {
+        for (const a of CLIENT_SECTOR_ALIASES[p]) out.push(fold(a));
+      }
+      const stem = stemTr(p);
       if (stem && stem !== p) {
         out.push(stem);
-        const stemAliases = manifest.taxonomy && manifest.taxonomy[stem];
-        if (Array.isArray(stemAliases)) {
-          for (const a of stemAliases) out.push(a);
+        const stemTax = manifest.taxonomy && manifest.taxonomy[stem];
+        if (Array.isArray(stemTax)) {
+          for (const a of stemTax) out.push(fold(a));
+        }
+        if (CLIENT_SECTOR_ALIASES[stem]) {
+          for (const a of CLIENT_SECTOR_ALIASES[stem]) out.push(fold(a));
         }
       }
     }
-    return Array.from(new Set(out));
+    return Array.from(new Set(out.filter(Boolean)));
   }
 
   function matchesTerms(searchText, termList) {
@@ -352,7 +398,7 @@
     for (const t of termList) {
       if (t.includes(' ')) {
         if (searchText.includes(` ${t} `)) return true;
-      } else if (t.length >= 5) {
+      } else if (t.length >= 7) {
         if (searchText.includes(` ${t}`)) return true;
       } else {
         if (searchText.includes(` ${t} `)) return true;
@@ -457,6 +503,7 @@
     const defCity = (meta.cities && meta.cities[0]) || 'İstanbul';
     if (!selectEl) return defCity;
     const raw = selectEl.value;
+    if (raw === '__all_country__') return '__all_country__';
     if (raw === '__custom__') {
       const typed = customEl ? customEl.value.trim() : '';
       return typed || defCity;
@@ -466,13 +513,15 @@
 
   function currentFilters() {
     const country = $('countrySelect').value || 'Türkiye';
-    const city = resolveSelectedCity(country, $('citySelect'), $('cityCustomInput'));
+    const cityRaw = resolveSelectedCity(country, $('citySelect'), $('cityCustomInput'));
+    const city = cityRaw === '__all_country__' ? '__all_country__' : cityRaw;
+    const cityDisplay = city === '__all_country__' ? `Tüm ${country}` : city;
     const district = $('districtSelect').value.trim();
     const sector = $('sectorInput').value.trim();
     const contactMode = $('contactModeSelect').value;
     const quick = fold($('quickSearchInput').value);
     const region = `${city}, ${country}`;
-    return { country, city, district, sector, contactMode, quick, region };
+    return { country, city, cityDisplay, district, sector, contactMode, quick, region };
   }
 
   // Apple Motion Architecture
@@ -505,17 +554,23 @@
     nodes.forEach(n => io.observe(n));
   }
 
-  // Populate UI Selects (Supports both Türkiye 81 Provinces & 45+ Global Export Countries)
-  function populateCitiesForCountry(countryVal, sel, customInput) {
+  // Populate UI Selects (Supports both Türkiye 81 Provinces & 46 Global Export Countries)
+  function populateCitiesForCountry(countryVal, sel, customInput, forceReset = false) {
     if (!sel) return;
     const isTr = countryVal === 'Türkiye';
     const meta = GLOBAL_COUNTRIES[countryVal] || { cities: ['Berlin'] };
     const cityList = isTr ? TR_PROVINCES : (meta.cities || []);
-    let prev = sel.value;
-    if (!prev || (!cityList.includes(prev) && prev !== '__custom__')) {
-      prev = isTr ? 'İstanbul' : (cityList[0] || '__custom__');
+    let prev = forceReset ? '' : sel.value;
+    if (!prev || (!cityList.includes(prev) && prev !== '__custom__' && prev !== '__all_country__')) {
+      prev = isTr ? 'İstanbul' : (cityList[0] || '__all_country__');
     }
     sel.replaceChildren();
+    if (!isTr) {
+      const allCountryOpt = el('option', `🌍 Tüm ${countryVal} (Ana Ticaret Şehirleri)`);
+      allCountryOpt.value = '__all_country__';
+      if (prev === '__all_country__') allCountryOpt.selected = true;
+      sel.append(allCountryOpt);
+    }
     for (const cName of cityList) {
       const opt = el('option', cName);
       opt.value = cName;
@@ -530,10 +585,11 @@
     }
     sel.value = prev;
     if (sel.selectedIndex < 0 && sel.options.length > 0) {
-      sel.selectedIndex = 0;
+      sel.selectedIndex = isTr ? 0 : Math.min(1, sel.options.length - 1);
     }
     sel.hidden = false;
     if (customInput) {
+      if (forceReset) customInput.value = '';
       customInput.hidden = (sel.value !== '__custom__');
     }
   }
@@ -809,13 +865,31 @@
     const bbParam = `${w.toFixed(4)},${s.toFixed(4)},${e.toFixed(4)},${n.toFixed(4)}`;
     const kvTags = [];
     for (const c of tagClauses) {
-      const m = c.match(/^\["([^"]+)"="([^"]+)"\]$/);
-      if (m) kvTags.push(`${m[1]}:${m[2]}`);
+      const mEq = c.match(/^\["([^"]+)"="([^"]+)"\]$/);
+      if (mEq) {
+        kvTags.push(`${mEq[1]}:${mEq[2]}`);
+        continue;
+      }
+      const mRx = c.match(/^\["([^"]+)"~"([^"]+)"\]$/);
+      if (mRx && mRx[1] !== 'name') {
+        for (const v of mRx[2].split('|').slice(0, 4)) {
+          const vc = v.trim();
+          if (/^[a-z_]+$/.test(vc)) kvTags.push(`${mRx[1]}:${vc}`);
+        }
+      }
     }
+    const uniqueKv = Array.from(new Set(kvTags));
     const expanded = expandSectorTerms(sector || '');
-    const intlTerm = expanded.find(t => /^[a-z ]+$/.test(t) && t.length >= 4 && t !== fold(sector || '')) || sector || 'company';
+    const kwCandidates = [];
+    for (const t of expanded) {
+      if (!t.includes(' ') && /^[a-z]+$/.test(t) && t.length >= 4 && !kwCandidates.includes(t)) {
+        kwCandidates.push(t);
+        if (kwCandidates.length >= 6) break;
+      }
+    }
+    if (!kwCandidates.length && sector) kwCandidates.push(fold(sector).split(' ')[0] || 'company');
 
-    const queries = kvTags.slice(0, 4).map(kv => {
+    const queries = uniqueKv.slice(0, 5).map(kv => {
       const u = new URL('https://photon.komoot.io/api/');
       u.searchParams.set('q', city);
       u.searchParams.set('bbox', bbParam);
@@ -823,11 +897,13 @@
       u.searchParams.set('limit', '50');
       return u.toString();
     });
-    const kwUrl = new URL('https://photon.komoot.io/api/');
-    kwUrl.searchParams.set('q', `${intlTerm} ${city}`);
-    kwUrl.searchParams.set('bbox', bbParam);
-    kwUrl.searchParams.set('limit', '50');
-    queries.push(kwUrl.toString());
+    for (const kw of kwCandidates.slice(0, 5)) {
+      const kwUrl = new URL('https://photon.komoot.io/api/');
+      kwUrl.searchParams.set('q', kw);
+      kwUrl.searchParams.set('bbox', bbParam);
+      kwUrl.searchParams.set('limit', '50');
+      queries.push(kwUrl.toString());
+    }
 
     const settled = await Promise.allSettled(queries.map(async u => {
       const ctrl = new AbortController();
@@ -849,13 +925,15 @@
         const p = f && f.properties;
         const coords = f && f.geometry && f.geometry.coordinates;
         if (!p || !p.name || !Array.isArray(coords) || coords.length < 2) continue;
+        const lon = Number(coords[0]);
+        const lat = Number(coords[1]);
+        if (!(lon >= w && lon <= e && lat >= s && lat <= n)) continue;
         const osmType = p.osm_type;
         const osmId = p.osm_id;
         if (!osmId || (osmType !== 'N' && osmType !== 'W')) continue;
-        // Skip residential/highway noise when keyword query runs
-        if (p.osm_key === 'highway' || p.osm_key === 'place' || p.osm_key === 'boundary' || p.osm_key === 'railway') continue;
+        if (p.osm_key === 'highway' || p.osm_key === 'place' || p.osm_key === 'boundary' || p.osm_key === 'railway' || p.osm_key === 'public_transport') continue;
         const key = `${osmType}:${osmId}`;
-        if (!featMap.has(key)) featMap.set(key, { p, lon: Number(coords[0]), lat: Number(coords[1]) });
+        if (!featMap.has(key)) featMap.set(key, { p, lon, lat });
       }
     }
     if (!featMap.size) return null;
@@ -918,6 +996,31 @@
   }
 
   async function fetchLiveOverpassCity(city, country, sector) {
+    if (city === '__all_country__' && country !== 'Türkiye' && GLOBAL_COUNTRIES[country]) {
+      const hubs = GLOBAL_COUNTRIES[country].cities.slice(0, 3);
+      const multiKey = `osm:all:${slugify(country)}:${fold(sector || 'all')}`;
+      if (shardCache.has(multiKey)) return shardCache.get(multiKey);
+      const hubResults = await Promise.allSettled(hubs.map(h => fetchLiveOverpassCity(h, country, sector)));
+      const merged = [];
+      const distSet = new Set();
+      const seenNames = new Set();
+      for (const hr of hubResults) {
+        if (hr.status !== 'fulfilled' || !hr.value) continue;
+        for (const r of hr.value.records || []) {
+          const k = `${fold(r.name)}:${r.city}`;
+          if (seenNames.has(k)) continue;
+          seenNames.add(k);
+          const copy = Object.assign({}, r, { district: r.district || r.city });
+          distSet.add(copy.district);
+          merged.push(copy);
+        }
+      }
+      populateDistricts(`Tüm ${country}`, Array.from(distSet));
+      const packedAll = { city: `Tüm ${country}`, region: `Tüm ${country}`, records: merged };
+      shardCache.set(multiKey, packedAll);
+      return packedAll;
+    }
+
     const cacheKey = `osm:${slugify(city)}:${slugify(country)}:${fold(sector || 'all')}`;
     if (shardCache.has(cacheKey)) return shardCache.get(cacheKey);
 
@@ -926,7 +1029,7 @@
     const bb = `(${s},${w},${n},${e})`;
     const area = Math.abs((e - w) * (n - s));
     const fsec = fold((sector || '').split('|')[0]);
-    const stemSec = fsec.replace(/(?:lar[ıi]|ler[iı]|lar|ler|c[ıiuü]|lik|luk)$/, '').trim();
+    const stemSec = stemTr(fsec);
     const exactTags = OSM_SECTOR_TAGS[fsec] || OSM_SECTOR_TAGS[stemSec];
     const hasExactSectorTags = Boolean(exactTags && exactTags.length);
     let tagClauses = hasExactSectorTags ? [...exactTags] : [];
@@ -942,14 +1045,14 @@
       tagClauses = ['["shop"]', '["craft"]', '["office"]', '["industrial"]'];
     }
 
-    const body = `[out:json][timeout:12];(${tagClauses.slice(0, 5).map(t => `nw${t}${bb};`).join('')});out center tags 400;`;
+    const body = `[out:json][timeout:10];(${tagClauses.slice(0, 5).map(t => `nw${t}${bb};`).join('')});out center tags 400;`;
     setStatus(`${city} (${country}) için küresel harita kümeleri taranıyor…`, 'Küresel Keşif', false, 55);
 
     let elements = null;
     const controllers = OVERPASS_MIRRORS.map(() => new AbortController());
     try {
       elements = await Promise.any(OVERPASS_MIRRORS.map(async (endpoint, idx) => {
-        const timer = setTimeout(() => controllers[idx].abort(), 6500);
+        const timer = setTimeout(() => controllers[idx].abort(), 4800);
         try {
           const res = await fetch(endpoint, {
             method: 'POST',
@@ -1114,12 +1217,12 @@
   function renderTableRows(rows, totalCount, stats) {
     $('emptyPrompt').hidden = true;
     $('resultsSection').hidden = false;
-    $('enrichBtn').disabled = totalCount <= 0;
-    $('exportXlsxBtn').disabled = totalCount <= 0;
-    $('exportCsvBtn').disabled = totalCount <= 0;
-    if ($('toggleSearchMapBtn')) $('toggleSearchMapBtn').disabled = rows.length <= 0;
-    if ($('splinkDedupBtn')) $('splinkDedupBtn').disabled = rows.length < 2 || !turboConnected;
-    if ($('rapidFuzzBtn')) $('rapidFuzzBtn').disabled = rows.length < 2;
+    $('enrichBtn').disabled = false;
+    $('exportXlsxBtn').disabled = false;
+    $('exportCsvBtn').disabled = false;
+    if ($('toggleSearchMapBtn')) $('toggleSearchMapBtn').disabled = false;
+    if ($('splinkDedupBtn')) $('splinkDedupBtn').disabled = false;
+    if ($('rapidFuzzBtn')) $('rapidFuzzBtn').disabled = false;
 
     $('kpiTotal').textContent = fmt(stats.total);
     if ($('kpiWhatsapp')) $('kpiWhatsapp').textContent = fmt(stats.with_whatsapp || 0);
@@ -1130,7 +1233,8 @@
     if ($('kpiBoth')) $('kpiBoth').textContent = fmt(stats.with_both || 0);
 
     const f = currentFilters();
-    const locLabel = f.country === 'Türkiye' ? f.city : `${f.city} (${f.country})`;
+    const cityLabel = f.cityDisplay || f.city;
+    const locLabel = f.country === 'Türkiye' ? cityLabel : `${cityLabel} (${f.country})`;
     $('activeFilterSummary').textContent =
       `${locLabel}${f.district ? ' / ' + f.district : ''} · ${f.sector || 'Tüm Sektörler'}`;
 
@@ -1163,11 +1267,13 @@
       const tdName = el('td');
       const nameRow = el('div', null, 'firm-name-row');
       nameRow.append(el('span', r.name, 'firm-name'));
-      if (r.cluster_id) {
-        nameRow.append(el('span', `🔗 Küme #${r.cluster_id}`, 'badge splink'));
+      if (r.merged_count && r.merged_count > 1) {
+        nameRow.append(el('span', `🔗 ${r.merged_count} Şube Birleşti`, 'badge splink'));
+      } else if (r.cluster_id) {
+        nameRow.append(el('span', `🔗 Tekil #${r.cluster_id}`, 'badge splink'));
       }
       if (typeof r.fuzzy_score === 'number') {
-        nameRow.append(el('span', `⚡ %${Math.round(r.fuzzy_score)}`, 'badge nace'));
+        nameRow.append(el('span', `⚡ %${Math.round(r.fuzzy_score)} Uyum`, 'badge nace'));
       }
       if (r.isEfatura || r.efatura) {
         nameRow.append(el('span', '🏢 e-Fatura', 'badge efatura'));
@@ -1188,7 +1294,7 @@
 
       // 3. İl / İlçe
       const tdLoc = el('td');
-      tdLoc.append(el('div', r.city || f.city, 'loc-city'));
+      tdLoc.append(el('div', r.city || cityLabel, 'loc-city'));
       if (r.district) tdLoc.append(el('span', r.district, 'badge dist'));
 
       // 4. E-posta & Altyapı
@@ -1208,6 +1314,10 @@
           list.append(el('span', r.tech || 'Kurumsal Mail', 'badge m365'));
         }
         if (emails.length > 3) list.append(el('span', `+${emails.length - 3} e-posta daha`, 'contact-empty'));
+        tdEmail.append(list);
+      } else if (r.tech) {
+        const list = el('div', null, 'contact-list');
+        list.append(el('span', r.tech, 'badge m365'));
         tdEmail.append(list);
       } else {
         tdEmail.append(el('span', '—', 'contact-empty'));
@@ -1368,7 +1478,7 @@
     });
 
     setStatus(
-      `${f.city} kataloğunda "${f.sector || 'Tüm Sektörler'}" için ${fmt(finalRows.length)} temiz firma listelendi (${fmt(with_whatsapp)} WhatsApp, ${fmt(with_phone)} telefonlu, ${fmt(with_email)} e-postalı).`,
+      `${f.cityDisplay || f.city} kataloğunda "${f.sector || 'Tüm Sektörler'}" için ${fmt(finalRows.length)} temiz firma listelendi (${fmt(with_whatsapp)} WhatsApp, ${fmt(with_phone)} telefonlu, ${fmt(with_email)} e-postalı).`,
       'Hazır',
       false,
       null
@@ -1393,6 +1503,7 @@
       $('citySelect').value = 'İstanbul';
     }
     const f = currentFilters();
+    const cityLabel = f.cityDisplay || f.city;
     if ($('exportSectorInput')) $('exportSectorInput').value = f.sector;
     if ($('exportCitySelect') && TR_PROVINCES.includes(f.city)) $('exportCitySelect').value = f.city;
     const slug = slugify(f.city);
@@ -1403,7 +1514,7 @@
         $('districtStrip').replaceChildren();
       }
       setStatus(
-        `${f.city} kataloğunda "${f.sector || 'Tüm Sektörler'}" taranıyor…`,
+        `${cityLabel} kataloğunda "${f.sector || 'Tüm Sektörler'}" taranıyor…`,
         'Taranıyor',
         false,
         35
@@ -1415,7 +1526,7 @@
         if (f.country !== 'Türkiye') {
           try {
             setStatus(
-              `${f.city}, ${f.country} için küresel B2B veri kaynakları (Overture S3 + OSM) taranıyor…`,
+              `${cityLabel}, ${f.country} için küresel B2B veri kaynakları (Overture S3 + OSM) taranıyor…`,
               'Küresel Keşif',
               false,
               45
@@ -1434,13 +1545,13 @@
               turboPageData = gRes;
               renderTableRows(gRes.rows, gRes.total || 0, gRes);
               if (Array.isArray(gRes.districts) && gRes.districts.length) {
-                populateDistricts(f.city, gRes.districts.map(d => d[0]));
+                populateDistricts(cityLabel, gRes.districts.map(d => d[0]));
                 renderDistrictCounts(gRes.districts, gRes.total || 0, f.district);
               } else {
                 $('districtStrip').replaceChildren();
               }
               setStatus(
-                `${f.city} (${f.country}) kataloğunda "${f.sector || 'Tüm Sektörler'}" için ${fmt(gRes.total || 0)} uluslararası firma listelendi.`,
+                `${cityLabel} (${f.country}) kataloğunda "${f.sector || 'Tüm Sektörler'}" için ${fmt(gRes.total || 0)} uluslararası firma listelendi.`,
                 'Küresel Pro Aktif',
                 false,
                 null
@@ -1537,50 +1648,144 @@
     }
   }
 
-  // Enrich Action
+  function computeRowsStats(rows) {
+    let websites = 0, with_email = 0, with_phone = 0, with_both = 0, with_whatsapp = 0, with_efatura = 0;
+    for (const r of rows) {
+      const he = Array.isArray(r.emails) && r.emails.length > 0;
+      const hp = Array.isArray(r.phones) && r.phones.length > 0;
+      if (r.website) websites++;
+      if (he) with_email++;
+      if (hp) with_phone++;
+      if (he && hp) with_both++;
+      if (r.hasWhatsapp || r.whatsapp || r.whatsappUrl) with_whatsapp++;
+      if (r.isEfatura || r.efatura) with_efatura++;
+    }
+    return { total: rows.length, websites, with_email, with_phone, with_both, with_whatsapp, with_efatura };
+  }
+
+  async function ensureResultsLoaded() {
+    const curRows = activeMode === 'turbo-db'
+      ? ((turboPageData && turboPageData.rows) || [])
+      : activeRecords;
+    if (!hasStartedSearch || !curRows.length) {
+      await executeSearch(true);
+    }
+  }
+
+  // Enrich Action (Auto-loads results if needed; live crawls visible websites in Turbo Mode; checks MX on emails + websites in Cloud Mode)
   async function handleEnrich() {
+    await ensureResultsLoaded();
     const f = currentFilters();
+    const cityLabel = f.cityDisplay || f.city;
 
     if (turboConnected) {
       try {
         $('enrichBtn').disabled = true;
-        setStatus(`${f.city} web siteleri taranmaya hazırlanıyor…`, 'Hazırlanıyor', false, 20);
+        setStatus(`${cityLabel} web siteleri canlı iletişim taramasına alındı…`, 'Hazırlanıyor', false, 20);
         const qRes = await turboApi('places/queue', {
           sector: f.sector || 'İşletme',
           region: f.region,
           district: f.district,
           limit: 5000,
           authorized: true
-        });
-        await turboApi('pause', { paused: false });
-        setStatus(
-          `${fmt(qRes.added)} yeni web sitesi taranıyor…`,
-          'Taranıyor',
-          false,
-          35
-        );
-        startTurboLiveMonitor();
+        }).catch(() => ({ added: 0 }));
+        await turboApi('pause', { paused: false }).catch(() => {});
+
+        // Immediately enrich visible rows that have a website so user sees live emails/MX right away
+        const currentRows = activeMode === 'turbo-db'
+          ? ((turboPageData && turboPageData.rows) || [])
+          : activeRecords;
+        const targets = currentRows.filter(r => r.website && (!r.emails || !r.emails.length)).slice(0, 10);
+        let foundEmails = 0;
+        if (targets.length) {
+          let doneLive = 0;
+          await Promise.allSettled(targets.map(async row => {
+            try {
+              const cr = await turboApi('industrial/crawl', { url: row.website }, 14000);
+              if (cr && Array.isArray(cr.emails) && cr.emails.length) {
+                row.emails = Array.from(new Set([...(row.emails || []), ...cr.emails]));
+                foundEmails += cr.emails.length;
+              }
+              if (cr && Array.isArray(cr.phones) && cr.phones.length) {
+                const e164s = cr.phones.map(p => (typeof p === 'string' ? p : p.e164)).filter(Boolean);
+                row.phones = Array.from(new Set([...(row.phones || []), ...e164s]));
+                if (!row.whatsapp && !row.whatsappUrl) {
+                  const waHit = cr.phones.find(p => p && typeof p === 'object' && p.whatsapp_url);
+                  if (waHit) row.whatsapp = waHit.whatsapp_url;
+                }
+              }
+              if (cr && cr.domain_intel && cr.domain_intel.provider && cr.domain_intel.provider !== 'MX Yok') {
+                row.tech = cr.domain_intel.provider;
+              }
+            } catch {}
+            doneLive++;
+            setStatus(
+              `Canlı Web İletişim Taraması: ${doneLive}/${targets.length} site incelendi (${foundEmails} yeni kurumsal e-posta çıkarıldı)…`,
+              'Canlı Tarama',
+              false,
+              Math.round((doneLive * 100) / targets.length)
+            );
+          }));
+          if (activeMode === 'turbo-db' && turboPageData) {
+            const st = computeRowsStats(turboPageData.rows);
+            turboPageData.with_email = Math.max(turboPageData.with_email || 0, st.with_email);
+            renderTableRows(turboPageData.rows, turboPageData.total || turboPageData.rows.length, turboPageData);
+          } else {
+            renderTableRows(activeRecords.slice(currentOffset, currentOffset + PAGE_SIZE), activeRecords.length, computeRowsStats(activeRecords));
+          }
+        }
+
+        if (qRes && qRes.added > 0) {
+          setStatus(
+            `${fmt(qRes.added)} arka plan web sitesi kuyruğa alındı${foundEmails ? ` · Ekranda +${foundEmails} e-posta anında çıkarıldı` : ''}…`,
+            'Taranıyor',
+            false,
+            45
+          );
+          startTurboLiveMonitor();
+        } else {
+          setStatus(
+            targets.length
+              ? `${targets.length} kurumsal web sitesi canlı tarandı: ${foundEmails} yeni e-posta ve posta altyapısı tabloya işlendi.`
+              : `${cityLabel} listesindeki web sitelerinin iletişim taraması tamamlandı.`,
+            'Tamamlandı',
+            false,
+            null
+          );
+        }
       } catch (err) {
-        setStatus(err.message, 'Hata', true, null);
+        setStatus(err.message || 'Tarama hatası', 'Hata', true, null);
       } finally {
         $('enrichBtn').disabled = false;
       }
       return;
     }
 
-    // Cloud Mode: Live DNS-over-HTTPS MX verification via dns.google
-    const domains = new Set();
+    // Cloud Mode: Live DNS-over-HTTPS MX & Provider verification on BOTH email domains AND website domains
+    const domainMap = new Map();
     for (const r of activeRecords) {
       for (const em of r.emails || []) {
-        const d = em.split('@')[1];
-        if (d && !mxCache.has(d)) domains.add(d);
+        const d = (em.split('@')[1] || '').toLowerCase().trim();
+        if (d) {
+          if (!domainMap.has(d)) domainMap.set(d, []);
+          domainMap.get(d).push(r);
+        }
+      }
+      if (r.website) {
+        try {
+          const d = new URL(r.website).hostname.replace(/^www\./i, '').toLowerCase();
+          if (d) {
+            if (!domainMap.has(d)) domainMap.set(d, []);
+            domainMap.get(d).push(r);
+          }
+        } catch {}
       }
     }
-    const domList = Array.from(domains);
+    const domList = Array.from(domainMap.keys()).slice(0, 120);
     if (!domList.length) {
       setStatus(
-        'Mevcut listedeki tüm e-posta alan adlarının DNS MX kayıtları doğrulandı. Web sitelerinin iç sayfalarını taramak için Mac Turbo Servisi kullanılabilir.',
-        'MX Doğrulandı',
+        'Mevcut listede doğrulanacak web sitesi veya kurumsal alan adı bulunamadı.',
+        'Bilgi',
         false,
         null
       );
@@ -1599,16 +1804,27 @@
           try {
             const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(dom)}&type=MX`);
             const j = await r.json();
-            const hasMx = j.Status === 0 && Array.isArray(j.Answer) && j.Answer.some(a => a.type === 15);
+            const mxAns = (j.Status === 0 && Array.isArray(j.Answer)) ? j.Answer.filter(a => a.type === 15) : [];
+            const hasMx = mxAns.length > 0;
             mxCache.set(dom, hasMx ? 'mx' : 'none');
-            if (hasMx) validMx++;
+            if (hasMx) {
+              validMx++;
+              const mxStr = mxAns.map(a => String(a.data || '').toLowerCase()).join(' ');
+              let prov = 'Kurumsal MX Aktif';
+              if (mxStr.includes('outlook') || mxStr.includes('protection.outlook')) prov = 'Microsoft 365';
+              else if (mxStr.includes('google') || mxStr.includes('googlemail')) prov = 'Google Workspace';
+              else if (mxStr.includes('ovh') || mxStr.includes('yandex') || mxStr.includes('proton')) prov = 'Kurumsal Mail (MX)';
+              for (const rowObj of (domainMap.get(dom) || [])) {
+                if (!rowObj.tech) rowObj.tech = prov;
+              }
+            }
           } catch {
             mxCache.set(dom, 'unknown');
           }
           done++;
-          if (done % 12 === 0 || done === domList.length) {
+          if (done % 10 === 0 || done === domList.length) {
             setStatus(
-              `Kurumsal DNS MX kayıtları doğrulanıyor: ${fmt(done)} / ${fmt(domList.length)} domain (${fmt(validMx)} aktif MX)…`,
+              `Kurumsal Web & DNS MX Taraması: ${fmt(done)} / ${fmt(domList.length)} domain (${fmt(validMx)} aktif posta sunucusu)…`,
               'DNS-over-HTTPS',
               false,
               Math.round((100 * done) / domList.length)
@@ -1617,10 +1833,10 @@
         }
       }
       await Promise.all(Array.from({ length: Math.min(concurrency, domList.length) }, () => worker()));
-      await executeSearch(false);
+      renderTableRows(activeRecords.slice(currentOffset, currentOffset + PAGE_SIZE), activeRecords.length, computeRowsStats(activeRecords));
       setStatus(
-        `${fmt(domList.length)} kurumsal alan adı Google DoH ile kontrol edildi: ${fmt(validMx)} aktif MX doğrulandı.`,
-        'MX Tamamlandı',
+        `${fmt(domList.length)} şirket alan adı tarandı: ${fmt(validMx)} aktif kurumsal posta sunucusu (MX / M365 / Google Workspace) doğrulandı.`,
+        'Tarama Tamamlandı',
         false,
         null
       );
@@ -1835,98 +2051,178 @@
     setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
-  // Splink 5.0 Probabilistic Entity Clustering on DuckDB
+  function collapseClusteredRecords(records) {
+    const groups = new Map();
+    let seq = 1;
+    for (const r of records) {
+      let cid = r.cluster_id;
+      if (cid == null || cid === '') {
+        let dom = '';
+        if (r.website) {
+          try { dom = new URL(r.website).hostname.replace(/^www\./i, '').toLowerCase(); } catch {}
+        }
+        const brand = fold(r.name || '')
+          .replace(/\b(?:sarl|sas|sa|sasu|eurl|gmbh|ag|kg|ltd|inc|llc|spa|srl|bv|nv|as|sti|san|tic|paris|france|turkiye)\b/g, '')
+          .trim();
+        const ph0 = (r.phones && r.phones[0]) || '';
+        cid = dom ? `dom:${dom}` : (ph0 ? `ph:${ph0}` : (brand ? `br:${brand}` : `row:${seq++}`));
+      }
+      if (!groups.has(cid)) {
+        groups.set(cid, Object.assign({}, r, {
+          cluster_id: groups.size + 1,
+          merged_count: 1,
+          emails: [...(r.emails || [])],
+          phones: [...(r.phones || [])]
+        }));
+      } else {
+        const master = groups.get(cid);
+        master.merged_count += 1;
+        for (const em of (r.emails || [])) {
+          if (!master.emails.includes(em)) master.emails.push(em);
+        }
+        for (const ph of (r.phones || [])) {
+          if (!master.phones.includes(ph)) master.phones.push(ph);
+        }
+        if (!master.website && r.website) master.website = r.website;
+        if (!master.whatsapp && (r.whatsapp || r.whatsappUrl)) {
+          master.whatsapp = r.whatsapp || r.whatsappUrl;
+          master.hasWhatsapp = true;
+        }
+        if (!master.tech && r.tech) master.tech = r.tech;
+      }
+    }
+    return Array.from(groups.values());
+  }
+
+  // Splink 5.0 Probabilistic Entity Clustering on DuckDB (with deterministic Cloud fallback & branch merging)
   async function handleSplinkDedup() {
-    if (!turboConnected) {
-      alert('AI Tekilleştirme için yerel masaüstü motorunun bağlı olması gerekir.');
+    await ensureResultsLoaded();
+    const currentRows = activeMode === 'turbo-db'
+      ? (turboPageData && turboPageData.rows ? turboPageData.rows : [])
+      : activeRecords;
+    if (!currentRows || !currentRows.length) {
+      setStatus('Tekilleştirilecek firma kaydı bulunamadı.', 'Bilgi', false, null);
       return;
     }
-    const currentRows = activeMode === 'turbo-db' ? (turboPageData && turboPageData.rows ? turboPageData.rows : []) : activeRecords;
-    if (!currentRows || currentRows.length < 2) return;
 
-    setStatus('DuckDB üzerinde Splink 5.0 ile şubeler ve olasılıksal eşleşmeler kümeleniyor…', 'AI Tekilleştirme', false, 50);
+    const btn = $('splinkDedupBtn');
+    if (btn) btn.disabled = true;
+    const beforeCount = currentRows.length;
+    setStatus('Splink 5.0 ile çoklu şubeler ve mükerrer firma kayıtları birleştiriliyor…', 'AI Tekilleştirme', false, 55);
     try {
-      const res = await turboApi('industrial/dedup', { records: currentRows });
-      if (res && Array.isArray(res.records)) {
-        if (activeMode === 'turbo-db') {
-          turboPageData.rows = res.records;
-          renderTableRows(turboPageData.rows, turboPageData.total, turboPageData);
-        } else {
-          activeRecords = res.records;
-          renderTableRows(activeRecords.slice(currentOffset, currentOffset + PAGE_SIZE), activeRecords.length, { total: activeRecords.length, websites: 0, with_email: 0, with_phone: 0 });
+      let clustered = null;
+      let engineUsed = 'Splink 5.0 (DuckDB)';
+      if (turboConnected && currentRows.length >= 2) {
+        try {
+          const res = await turboApi('industrial/dedup', { records: currentRows }, 18000);
+          if (res && Array.isArray(res.records) && res.records.length) {
+            clustered = res.records;
+          }
+        } catch (e) {
+          console.warn('Splink local fallback to client entity resolution:', e);
         }
-        const uniqueClusters = new Set(res.records.map(r => r.cluster_id)).size;
-        setStatus(`Splink 5.0 ile ${fmt(res.records.length)} kayıt başarıyla kümelendi: ${fmt(uniqueClusters)} tekil ana işletme doğrulandı.`, 'Tekilleştirildi', false, null);
       }
+      if (!clustered) {
+        engineUsed = 'Kurumsal Varlık Birleştirici';
+        clustered = currentRows.map(r => Object.assign({}, r));
+      }
+
+      const mergedList = collapseClusteredRecords(clustered);
+      const collapsedBranches = Math.max(0, beforeCount - mergedList.length);
+
+      if (activeMode === 'turbo-db' && turboPageData) {
+        turboPageData.rows = mergedList;
+        const st = computeRowsStats(mergedList);
+        renderTableRows(mergedList, mergedList.length, Object.assign({}, turboPageData, st, { total: mergedList.length }));
+      } else {
+        activeRecords = mergedList;
+        currentOffset = 0;
+        renderTableRows(mergedList.slice(0, PAGE_SIZE), mergedList.length, computeRowsStats(mergedList));
+      }
+      setStatus(
+        `${engineUsed}: ${fmt(beforeCount)} kayıt incelendi → ${fmt(mergedList.length)} tekil ana işletme kaldı (${fmt(collapsedBranches)} mükerrer şube birleştirildi).`,
+        'Tekilleştirildi',
+        false,
+        null
+      );
     } catch (err) {
       setStatus('Tekilleştirme sırasında hata: ' + (err.message || err), 'Hata', true, null);
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
   // RapidFuzz C++ SIMD WRatio Ranking (with client-side fallback in Cloud Mode)
   async function handleRapidFuzzRank() {
+    await ensureResultsLoaded();
     const f = currentFilters();
-    const queryStr = ($('quickSearchInput').value || f.sector || '').trim();
-    if (!queryStr) {
-      setStatus('Sıralama için sektör veya tablo içi arama kutusuna bir terim yazın.', 'Bilgi', false, null);
-      return;
-    }
+    const queryStr = ($('quickSearchInput').value || f.sector || f.cityDisplay || f.city || 'Firma').trim();
     const currentRows = activeMode === 'turbo-db'
       ? (turboPageData && turboPageData.rows ? turboPageData.rows : [])
       : activeRecords.slice(0, 1500);
-    if (!currentRows || currentRows.length < 2) return;
-
-    if (turboConnected) {
-      try {
-        setStatus(`RapidFuzz C++ SIMD (WRatio) ile "${queryStr}" benzerlik sıralaması yapılıyor…`, 'RapidFuzz C++', false, 50);
-        const res = await turboApi('industrial/fuzzy_match', {
-          records: currentRows,
-          query: queryStr,
-          limit: currentRows.length
-        });
-        if (res && Array.isArray(res.records) && res.records.length) {
-          if (activeMode === 'turbo-db') {
-            turboPageData.rows = res.records;
-            renderTableRows(turboPageData.rows, turboPageData.total, turboPageData);
-          } else {
-            activeRecords = res.records;
-            currentOffset = 0;
-            renderTableRows(activeRecords.slice(0, PAGE_SIZE), activeRecords.length, {
-              total: activeRecords.length, websites: 0, with_email: 0, with_phone: 0
-            });
-          }
-          setStatus(`RapidFuzz C++ SIMD ile ${fmt(res.records.length)} firma "${queryStr}" ilgisine göre sıralandı.`, 'Sıralandı', false, null);
-          return;
-        }
-      } catch (err) {
-        console.warn('RapidFuzz fallback:', err);
-      }
+    if (!currentRows || !currentRows.length) {
+      setStatus('Sıralanacak firma kaydı bulunamadı.', 'Bilgi', false, null);
+      return;
     }
 
-    // Pure-JS token similarity fallback for Cloud Mode
-    const qFold = fold(queryStr);
-    const qTokens = qFold.split(' ').filter(Boolean);
-    const scored = currentRows.map(r => {
-      const hay = fold(`${r.name || ''} ${r.category || ''} ${r.district || ''}`);
-      let score = hay.includes(qFold) ? 88 : 45;
-      for (const t of qTokens) {
-        if (fold(r.name || '').startsWith(t)) score += 10;
-        else if (hay.includes(t)) score += 6;
+    const btn = $('rapidFuzzBtn');
+    if (btn) btn.disabled = true;
+    try {
+      if (turboConnected && currentRows.length >= 2) {
+        try {
+          setStatus(`RapidFuzz C++ SIMD (WRatio) ile "${queryStr}" benzerlik sıralaması yapılıyor…`, 'RapidFuzz C++', false, 50);
+          const res = await turboApi('industrial/fuzzy_match', {
+            records: currentRows,
+            query: queryStr,
+            limit: currentRows.length,
+            score_cutoff: 0
+          }, 15000);
+          if (res && Array.isArray(res.records) && res.records.length) {
+            if (activeMode === 'turbo-db' && turboPageData) {
+              turboPageData.rows = res.records;
+              renderTableRows(turboPageData.rows, turboPageData.total || res.records.length, turboPageData);
+            } else {
+              activeRecords = res.records;
+              currentOffset = 0;
+              renderTableRows(activeRecords.slice(0, PAGE_SIZE), activeRecords.length, computeRowsStats(activeRecords));
+            }
+            setStatus(`RapidFuzz C++ SIMD ile ${fmt(res.records.length)} firma "${queryStr}" ilgisine göre (% uyum puanıyla) sıralandı.`, 'Sıralandı', false, null);
+            return;
+          }
+        } catch (err) {
+          console.warn('RapidFuzz fallback:', err);
+        }
       }
-      return Object.assign({}, r, { fuzzy_score: Math.min(100, score) });
-    }).sort((a, b) => b.fuzzy_score - a.fuzzy_score);
 
-    activeRecords = scored;
-    currentOffset = 0;
-    renderTableRows(scored.slice(0, PAGE_SIZE), scored.length, {
-      total: scored.length,
-      websites: scored.filter(x => x.website).length,
-      with_email: scored.filter(x => (x.emails || []).length).length,
-      with_phone: scored.filter(x => (x.phones || []).length).length,
-      with_whatsapp: scored.filter(x => x.hasWhatsapp || x.whatsapp).length,
-      with_efatura: scored.filter(x => x.isEfatura || x.efatura).length
-    });
-    setStatus(`${fmt(scored.length)} firma "${queryStr}" benzerliğine göre sıralandı.`, 'Sıralandı', false, null);
+      // Pure-JS token + alias similarity fallback for Cloud Mode
+      const expandedTerms = expandSectorTerms(queryStr);
+      const qFold = fold(queryStr);
+      const qTokens = qFold.split(' ').filter(Boolean);
+      const scored = currentRows.map(r => {
+        const nameF = fold(r.name || '');
+        const hay = fold(`${r.name || ''} ${r.category || ''} ${r.district || ''}`);
+        let score = hay.includes(qFold) ? 90 : (matchesTerms(` ${hay} `, expandedTerms) ? 82 : 52);
+        for (const t of qTokens) {
+          if (nameF.startsWith(t)) score += 8;
+          else if (nameF.includes(t)) score += 5;
+        }
+        if (r.website) score += 2;
+        if (r.emails && r.emails.length) score += 2;
+        return Object.assign({}, r, { fuzzy_score: Math.min(100, score) });
+      }).sort((a, b) => b.fuzzy_score - a.fuzzy_score);
+
+      if (activeMode === 'turbo-db' && turboPageData) {
+        turboPageData.rows = scored;
+        renderTableRows(scored, turboPageData.total || scored.length, turboPageData);
+      } else {
+        activeRecords = scored;
+        currentOffset = 0;
+        renderTableRows(scored.slice(0, PAGE_SIZE), scored.length, computeRowsStats(scored));
+      }
+      setStatus(`${fmt(scored.length)} firma "${queryStr}" ilgisine göre (% uyum puanıyla) sıralandı.`, 'Sıralandı', false, null);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 
   // Single URL Live Corporate Intelligence (curl_cffi + Lexbor + Trafilatura + MX/SPF/DMARC)
@@ -2048,19 +2344,26 @@
     return ring;
   }
 
-  function toggleSearchMap() {
+  async function toggleSearchMap() {
     const wrap = $('searchMapWrap');
     if (!wrap) return;
-    wrap.hidden = !wrap.hidden;
-    const btn = $('toggleSearchMapBtn');
-    if (btn) {
-      btn.textContent = wrap.hidden ? '🗺️ Haritada Göster' : '🗺️ Haritayı Gizle';
-    }
-    if (!wrap.hidden) {
+    if (wrap.hidden) {
+      await ensureResultsLoaded();
+      wrap.hidden = false;
+      const btn = $('toggleSearchMapBtn');
+      if (btn) btn.textContent = '🗺️ Haritayı Gizle';
       const rows = activeMode === 'turbo-db'
         ? ((turboPageData && turboPageData.rows) || [])
         : activeRecords.slice(currentOffset, currentOffset + PAGE_SIZE);
       renderSearchVectorMap(rows, currentFilters());
+      requestAnimationFrame(() => {
+        if (searchMapInstance) searchMapInstance.resize();
+      });
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      wrap.hidden = true;
+      const btn = $('toggleSearchMapBtn');
+      if (btn) btn.textContent = '🗺️ Haritada Göster';
     }
   }
 
@@ -2068,12 +2371,12 @@
     const canvas = $('searchMapCanvas');
     if (!canvas || typeof window.maplibregl === 'undefined') return;
     const valid = (rows || []).filter(r => typeof r.lat === 'number' && typeof r.lon === 'number' && Math.abs(r.lat) <= 90 && Math.abs(r.lon) <= 180);
-    if (!valid.length) return;
-
+    const cityLabel = f.cityDisplay || f.city;
     const titleEl = $('searchMapTitle');
     if (titleEl) {
-      titleEl.textContent = `🗺️ ${f.city} (${f.country}) · ${f.sector || 'Tüm Sektörler'} — ${valid.length} Konum`;
+      titleEl.textContent = `🗺️ ${cityLabel} (${f.country}) · ${f.sector || 'Tüm Sektörler'} — ${valid.length} Konum`;
     }
+    if (!valid.length) return;
 
     if (!searchMapInstance) {
       searchMapInstance = new window.maplibregl.Map({
@@ -2898,7 +3201,7 @@
     // Export Country/City Sync
     if ($('exportCountrySelect')) {
       $('exportCountrySelect').addEventListener('change', () => {
-        populateCitiesForCountry($('exportCountrySelect').value, $('exportCitySelect'), $('exportCityCustomInput'));
+        populateCitiesForCountry($('exportCountrySelect').value, $('exportCitySelect'), $('exportCityCustomInput'), true);
       });
     }
     if ($('exportCitySelect')) {
@@ -2914,7 +3217,7 @@
     if (enrichStart) enrichStart.addEventListener('click', handleEnrich);
     $('countrySelect').addEventListener('change', () => {
       const countryVal = $('countrySelect').value || 'Türkiye';
-      populateCitiesForCountry(countryVal, $('citySelect'), $('cityCustomInput'));
+      populateCitiesForCountry(countryVal, $('citySelect'), $('cityCustomInput'), true);
       const activeCity = resolveSelectedCity(countryVal, $('citySelect'), $('cityCustomInput'));
       populateDistricts(countryVal === 'Türkiye' ? activeCity : '');
       currentOffset = 0;
@@ -3040,7 +3343,7 @@
     resetResultsView();
 
     try {
-      const res = await fetch('/data/manifest.json?v=7.0.1', { cache: 'no-cache' });
+      const res = await fetch('/data/manifest.json?v=7.0.2', { cache: 'no-cache' });
       if (res.ok) {
         manifest = await res.json();
         populateDistricts($('citySelect') ? $('citySelect').value : 'İstanbul');

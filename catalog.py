@@ -131,78 +131,84 @@ ALIASES: dict[str, str] = {
         'children furniture store|bedroom furniture store|outdoor furniture store|'
         'mattress store|sofa store|bedding store|cabinet maker|cabinetry|carpenter|'
         'woodworking|millwork|joiner|upholstery service|upholsterer|'
-        'interior decor|home decor|kitchen furniture|koltuk|kanepe|yatak|baza|sandalye|'
+        'interior decor|home decor|kitchen furniture|meuble|meubles|mobilier|'
+        'ameublement|menuiserie|ebenisterie|literie|canape|moebel|mobel|einrichtung|'
+        'tischlerei|schreinerei|polster|mobili|arredamento|arredamenti|falegnameria|'
+        'muebles|mobiliario|carpinteria|ebanisteria|meubel|meubelen|interieur|'
+        'mebel|mobila|koltuk|kanepe|yatak|baza|sandalye|'
         'gardrop|vestiyer|marangoz|doseme|döşeme|buro mobilya|ofis mobilya|ahsap mobilya|mutfak dolabi'
     ),
     'mutfak': (
         'kitchen furniture|kitchen remodeler|kitchen supply store|kitchen and bath|'
         'cabinet maker|cabinetry|countertop store|countertop installer|mutfak dolabi|'
+        'cuisine|cuisiniste|kueche|kuche|keuken|cucine|cocinas|cocina|'
         'ankastre|mutfak tasarim|endustriyel mutfak|commercial kitchen equipment'
     ),
-    'banyo': 'bathroom remodeler|bathroom supply store|plumbing supply store|ceramic|seramik|vitrifiye|dusakabin',
-    'ahşap': 'carpenter|woodworking|lumber store|sawmill|timber|millwork|cabinet maker|marangoz|kereste|parke|kaplama',
-    'dekorasyon': 'interior design|interior designer|interior decor|home decor|painter|wallpaper|curtain|perde|hali|carpet store|lighting store|aydinlatma',
-    'müteahhit': 'general contractor|contractor|construction company|construction|building contractor|home builder|real estate developer|civil engineering|yapi|insaat',
-    'inşaat': 'construction|contractor|home builder|construction company|building supply store|building materials|yapi market|nalbur|beton|hafriyat|iskele',
-    'mimar': 'architect|architecture firm|architectural design|architectural designer|interior designer|interior design|mimarlik|ic mimar',
-    'mühendislik': 'engineering service|civil engineering|structural engineer|mechanical engineer|electrical engineer|muhendislik|proje ofisi',
-    'tekstil': 'textile|textile manufacturer|fabric store|clothing manufacturer|apparel manufacturer|garment|konfeksiyon|dokuma|orme|iplik|kumas|nakis|boya apre',
-    'giyim': 'clothing store|womens clothing|mens clothing|childrens clothing|apparel|fashion and apparel store|boutique|butik|hazir giyim|toptan giyim',
-    'ayakkabı': 'shoe store|footwear manufacturer|shoe repair|leather goods|deri|saraciye|terlik|canta',
-    'restoran': 'restaurant|turkish restaurant|fast food restaurant|kebab|kebap|lokanta|pide|lahmacun|balik restoran|steakhouse|food and drink',
-    'kafe': 'cafe|coffee shop|bakery|patisserie|pastane|kahve|tatlici|dessert shop',
-    'otel': 'hotel|lodging|resort|boutique hotel|motel|hostel|pansiyon|apart otel|konaklama',
-    'oto servis': 'auto repair|auto repair shop|car repair|auto service|auto body shop|mechanic|tire shop|oto tamir|kaporta|oto elektrik|oto yedek parca|lastik',
-    'otomotiv': 'car dealer|auto parts store|automotive|truck dealer|motorcycle dealer|oto galeri|yedek parca|otomotiv yan sanayi',
-    'lojistik': 'logistics|transportation service|freight forwarding|shipping company|trucking company|warehouse|cargo|nakliyat|nakliye|kargo|antrepo|depolama|gumruk',
-    'diş hekimi': 'dentist|dental clinic|dental care|orthodontist|oral surgeon|agiz ve dis|poliklinik',
-    'sağlık': 'hospital|medical center|clinic|doctor|health care|physiotherapy|laboratory|tip merkezi|hastane|klinik|medikal',
-    'medikal': 'medical supply store|medical equipment|orthotics|hearing aid|medikal|tibbi cihaz|ortopedi',
-    'eczane': 'pharmacy|drugstore|optician|optik',
-    'market': 'grocery store|supermarket|convenience store|hypermarket|wholesaler|toptan gida|bakkal|sarkuteri',
-    'gıda': 'food manufacturer|food wholesaler|food distributor|bakery|butcher|olive oil|dairy|gida uretim|baharat|kuruyemis|sut urunleri|et entegre|unlu mamuller',
-    'imalat': 'manufacturer|manufacturing|industrial manufacturing|factory|production|uretim|fabrika|sanayi',
-    'metal': 'metal fabrication|metal supplier|metalworking|steel manufacturer|iron works|welder|cnc|torna|dokum|celik|paslanmaz|aluminyum|demir dograma|lazer kesim',
-    'alüminyum': 'aluminum supplier|metal fabrication|window installation|siding|pvc|cam balkon|cephe sistemleri|aluminyum dograma',
-    'plastik': 'plastics manufacturer|plastic fabrication|injection molding|packaging|plastik enjeksiyon|kalip|kauçuk|pvc|polimer',
-    'ambalaj': 'packaging supply store|packaging company|paper mill|corrugated box|etiket|matbaa|koli|karton|poşet|baski',
-    'matbaa': 'print shop|commercial printer|graphic designer|advertising agency|reklam|tabela|dijital baski|promosyon',
-    'makina': 'machinery manufacturer|industrial equipment supplier|machine shop|automation|endustriyel makina|hidrolik|pnomatik|kalip|rulman|kompresor',
-    'elektrik': 'electrician|electrical supply store|lighting store|electronics manufacturer|solar energy|elektrik pano|otomasyon|kablo|aydinlatma|enerji|gunes enerjisi',
-    'elektronik': 'electronics store|computer store|security system supplier|telecommunications|kamera|alarm|bilgisayar|yazilim|teknoloji',
-    'yazılım': 'software company|information technology|web designer|marketing agency|it service|bilisim|yazilim|dijital ajans|veri merkezi',
-    'emlak': 'real estate agency|real estate agent|real estate|property management|gayrimenkul|emlak ofisi|konut',
-    'mermer': 'marble contractor|stone supplier|granite supplier|quarry|dogaltas|mermer|granit|traverten',
-    'kimya': 'chemical plant|chemical manufacturer|paint manufacturer|cosmetics|cleaning products|boya|deterjan|kozmetik|endustriyel kimya|gubre',
-    'tarım': 'agricultural service|farm equipment supplier|seed supplier|greenhouse|nursery|ziraat|tarim makinalari|fidancilik|sulama|hayvancilik|yem',
-    'eğitim': 'school|private school|language school|tutoring|driving school|kolej|kurs|kres|anaokulu|akademi',
-    'hukuk': 'attorney or law firm|lawyer|legal service|notary|avukat|hukuk burosu',
-    'muhasebe': 'accountant|tax consultant|financial consultant|auditor|mali musavir|denetim|danismanlik',
-    'güvenlik': 'security guard service|security system|fire protection|is guvenligi|osgb|yangin sondurme',
-    'temizlik': 'cleaning service|janitorial service|pest control|laundry|endustriyel temizlik|ilaclama',
-    'banka': 'bank|bank or credit union|atm|banka|sube|finans|kredi|katilim bankasi|kamu bankasi|finansal hizmetler|doviz',
-    'bank': 'bank|bank or credit union|atm|banka|sube|finans|kredi|katilim bankasi|kamu bankasi|finansal hizmetler|doviz',
-    'tobacco': 'tobacco shop|tobacco company|tobacco|tobocco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
-    'tobocco': 'tobacco shop|tobacco company|tobacco|tobocco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
-    'tütün': 'tobacco shop|tobacco company|tobacco|tobocco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
-    'tekel': 'tobacco shop|tobacco company|tobacco|tobocco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
-    'avukat': 'attorney or law firm|lawyer|legal service|notary|avukat|hukuk burosu|hukuk|baro|arabulucu',
-    'sigorta': 'insurance agency|insurance broker|insurance company|sigorta|sigorta acentesi|kasko|trafik sigortasi',
-    'veteriner': 'veterinary care|veterinarian|pet store|pet supply|veteriner|hayvancilik|yem|pet shop',
-    'kargo': 'courier service|delivery service|freight forwarding|kargo|kurye|nakliyat|lojistik',
-    'kuaför': 'hair salon|beauty salon|barber shop|kuafor|berber|guzellik merkezi',
-    'kırtasiye': 'stationery store|book store|kirtasiye|kitapci|fotokopi|ofis malzemeleri',
-    'enerji': 'energy supplier|solar energy|fuel supplier|petrol|akaryakit|istasyon|benzin|gunes enerjisi',
-    'kozmetik': 'cosmetics store|beauty supply|perfume store|kozmetik|parfum|kisisel bakim',
-    'kuyumcu': 'jewelry store|jeweler|goldsmith|watch store|kuyumcu|mucevherat|altin|saat',
-    'cam': 'glass and mirror shop|glazier|window installation|cam|ayna|cam balkon|isicam',
-    'boya': 'paint store|paint manufacturer|hardware store|boya|nalbur|izolasyon|yalitim',
-    'ısıtma': 'hvac contractor|heating|air conditioning|plumbing|kombi|klima|isitma|sogutma|havalandirma|tesisat',
-    'klima': 'hvac contractor|air conditioning|refrigeration|klima|sogutma|havalandirma|chiller',
-    'asansör': 'elevator service|elevator manufacturer|industrial equipment|asansor|yuruyen merdiven',
-    'madencilik': 'mining|quarry|stone supplier|coal|maden|ocak|cevher|mermer',
-    'denizcilik': 'marine supply|boat builder|shipyard|shipping company|tersane|yat|tekne|denizcilik|liman',
-    'turizm': 'travel agency|tour operator|hotel|resort|turizm|seyahat acentesi|acente|transfer',
+    'banyo': 'bathroom remodeler|bathroom supply store|plumbing supply store|ceramic|salle de bain|sanitair|badkamer|badezimmer|bagno|baño|seramik|vitrifiye|dusakabin',
+    'ahşap': 'carpenter|woodworking|lumber store|sawmill|timber|millwork|cabinet maker|menuiserie|bois|charpente|holz|schreinerei|legno|falegnameria|madera|hout|marangoz|kereste|parke|kaplama',
+    'dekorasyon': 'interior design|interior designer|interior decor|home decor|decoration|rideaux|tapis|luminaire|inneneinrichtung|raumausstattung|arredamento|decoracion|interieur|painter|wallpaper|curtain|perde|hali|carpet store|lighting store|aydinlatma',
+    'müteahhit': 'general contractor|contractor|construction company|construction|building contractor|home builder|real estate developer|civil engineering|batiment|travaux|entreprise generale|bauunternehmen|hochbau|impresa edile|costruzioni|construccion|bouwbedrijf|yapi|insaat',
+    'inşaat': 'construction|contractor|home builder|construction company|building supply store|building materials|batiment|travaux publics|materiaux|bau|baustoffe|edilizia|costruzioni|construccion|reformas|bouw|bouwmaterialen|yapi market|nalbur|beton|hafriyat|iskele',
+    'tadilat': 'remodeling|renovation|contractor|interior design|renovation interieure|travaux|sanierung|innenausbau|ristrutturazione|reformas|renovatie|tadilat|dekorasyon|boya|alci',
+    'mimar': 'architect|architecture firm|architectural design|architectural designer|interior designer|interior design|architecte|architekt|architetto|arquitecto|architektura|mimarlik|ic mimar',
+    'mühendislik': 'engineering service|civil engineering|structural engineer|mechanical engineer|electrical engineer|ingenierie|bureau etudes|ingenieurbuero|ingegneria|ingenieria|muhendislik|proje ofisi',
+    'tekstil': 'textile|textile manufacturer|fabric store|clothing manufacturer|apparel manufacturer|garment|tissu|confection|textil|stoffe|tessuti|confezioni|tejidos|textiel|konfeksiyon|dokuma|orme|iplik|kumas|nakis|boya apre',
+    'giyim': 'clothing store|womens clothing|mens clothing|childrens clothing|apparel|fashion and apparel store|boutique|vetement|pret a porter|mode|bekleidung|abbigliamento|ropa|kleding|butik|hazir giyim|toptan giyim',
+    'ayakkabı': 'shoe store|footwear manufacturer|shoe repair|leather goods|chaussure|maroquinerie|schuhe|scarpe|calzature|zapateria|calzado|schoenen|deri|saraciye|terlik|canta',
+    'restoran': 'restaurant|turkish restaurant|fast food restaurant|bistro|brasserie|trattoria|ristorante|restaurante|kebab|kebap|lokanta|pide|lahmacun|balik restoran|steakhouse|food and drink',
+    'kafe': 'cafe|coffee shop|bakery|patisserie|boulangerie|konditorei|baeckerei|pasticceria|panaderia|cafeteria|pastane|kahve|tatlici|dessert shop',
+    'otel': 'hotel|lodging|resort|boutique hotel|motel|hostel|auberge|gasthof|albergo|hospedaje|pansiyon|apart otel|konaklama',
+    'oto servis': 'auto repair|auto repair shop|car repair|auto service|auto body shop|mechanic|tire shop|garage automobile|carrosserie|autowerkstatt|kfz|autofficina|taller mecanico|autogarage|oto tamir|kaporta|oto elektrik|oto yedek parca|lastik',
+    'otomotiv': 'car dealer|auto parts store|automotive|truck dealer|motorcycle dealer|automobile|concessionnaire|autohaus|autoteile|autoricambi|automocion|oto galeri|yedek parca|otomotiv yan sanayi',
+    'lojistik': 'logistics|transportation service|freight forwarding|shipping company|trucking company|warehouse|cargo|logistique|transport|fret|entrepot|spedition|logistik|trasporti|logistica|transporte|logistiek|nakliyat|nakliye|kargo|antrepo|depolama|gumruk',
+    'diş hekimi': 'dentist|dental clinic|dental care|orthodontist|oral surgeon|dentiste|cabinet dentaire|zahnarzt|dentista|tandarts|agiz ve dis|poliklinik',
+    'sağlık': 'hospital|medical center|clinic|doctor|health care|physiotherapy|laboratory|clinique|hopital|medizin|klinik|ospedale|clinica|hospital|tip merkezi|hastane|medikal',
+    'medikal': 'medical supply store|medical equipment|orthotics|hearing aid|materiel medical|medizintechnik|sanitaetshaus|forniture mediche|ortopedia|suministros medicos|medikal|tibbi cihaz',
+    'eczane': 'pharmacy|drugstore|optician|pharmacie|apotheke|farmacia|apotheek|optik',
+    'market': 'grocery store|supermarket|convenience store|hypermarket|wholesaler|supermarche|epicerie|supermarkt|supermercato|supermercado|toptan gida|bakkal|sarkuteri',
+    'gıda': 'food manufacturer|food wholesaler|food distributor|bakery|butcher|olive oil|dairy|agroalimentaire|grossiste alimentaire|lebensmittel|alimentari|alimentacion|voeding|gida uretim|baharat|kuruyemis|sut urunleri|et entegre|unlu mamuller',
+    'imalat': 'manufacturer|manufacturing|industrial manufacturing|factory|production|fabrication|usine|industriel|hersteller|fabrik|produzione|fabbrica|fabricante|fabriek|uretim|sanayi',
+    'metal': 'metal fabrication|metal supplier|metalworking|steel manufacturer|iron works|welder|metallerie|sidérurgie|soudure|acier|metallbau|stahlbau|schlosserei|carpenteria metallica|metalurgia|cerrajeria|metaalbewerking|cnc|torna|dokum|celik|paslanmaz|aluminyum|demir dograma|lazer kesim',
+    'alüminyum': 'aluminum supplier|metal fabrication|window installation|siding|menuiserie aluminium|fenetre|fensterbau|aluminium|serramenti|infissi|carpinteria aluminio|pvc|cam balkon|cephe sistemleri|aluminyum dograma',
+    'plastik': 'plastics manufacturer|plastic fabrication|injection molding|packaging|plasturgie|plastique|kunststoff|materie plastiche|plasticos|kunststof|plastik enjeksiyon|kalip|kauçuk|pvc|polimer',
+    'ambalaj': 'packaging supply store|packaging company|paper mill|corrugated box|emballage|carton|verpackung|imballaggi|embalaje|verpakking|etiket|matbaa|koli|karton|poşet|baski',
+    'matbaa': 'print shop|commercial printer|graphic designer|advertising agency|imprimerie|signaletique|druckerei|werbetechnik|tipografia|stampa|imprenta|drukkerij|reklam|tabela|dijital baski|promosyon',
+    'makina': 'machinery manufacturer|industrial equipment supplier|machine shop|automation|machine outil|mecanique industrielle|maschinenbau|industrietechnik|macchine industriali|meccanica|maquinaria industrial|machinefabriek|endustriyel makina|hidrolik|pnomatik|kalip|rulman|kompresor',
+    'elektrik': 'electrician|electrical supply store|lighting store|electronics manufacturer|solar energy|electricite|electricien|elektrotechnik|elektriker|elettricista|impianti elettrici|electricidad|elektra|elektrik pano|otomasyon|kablo|aydinlatma|enerji|gunes enerjisi',
+    'elektronik': 'electronics store|computer store|security system supplier|telecommunications|electronique|informatique|elektronik|elettronica|electronica|kamera|alarm|bilgisayar|yazilim|teknoloji',
+    'yazılım': 'software company|information technology|web designer|marketing agency|it service|logiciel|informatique|agence digitale|softwarehaus|edv|informatica|desarrollo software|bilisim|yazilim|dijital ajans|veri merkezi',
+    'emlak': 'real estate agency|real estate agent|real estate|property management|agence immobiliere|immobilier|immobilien|makler|agenzia immobiliare|inmobiliaria|makelaar|gayrimenkul|emlak ofisi|konut',
+    'mermer': 'marble contractor|stone supplier|granite supplier|quarry|marbrerie|marbre|pierre naturelle|naturstein|marmor|marmi|graniti|marmoles|natuursteen|dogaltas|mermer|granit|traverten',
+    'kimya': 'chemical plant|chemical manufacturer|paint manufacturer|cosmetics|cleaning products|chimie|produits chimiques|chemie|chimica|quimica|boya|deterjan|kozmetik|endustriyel kimya|gubre',
+    'tarım': 'agricultural service|farm equipment supplier|seed supplier|greenhouse|nursery|agriculture|materiel agricole|landwirtschaft|landtechnik|agricoltura|agricola|landbouw|ziraat|tarim makinalari|fidancilik|sulama|hayvancilik|yem',
+    'eğitim': 'school|private school|language school|tutoring|driving school|ecole|formation|schule|bildung|scuola|escuela|kolej|kurs|kres|anaokulu|akademi',
+    'hukuk': 'attorney or law firm|lawyer|legal service|notary|avocat|cabinet juridique|notaire|rechtsanwalt|kanzlei|studio legale|avvocato|abogado|advocaat|avukat|hukuk burosu',
+    'muhasebe': 'accountant|tax consultant|financial consultant|auditor|expert comptable|comptabilite|steuerberater|buchhaltung|commercialista|asesoria fiscal|contabilidad|boekhouder|mali musavir|denetim|danismanlik',
+    'güvenlik': 'security guard service|security system|fire protection|securite|gardiennage|alarme|sicherheitsdienst|brandschutz|sicurezza|seguridad|beveiliging|is guvenligi|osgb|yangin sondurme',
+    'temizlik': 'cleaning service|janitorial service|pest control|laundry|nettoyage|proprete|gebaeudereinigung|reinigung|pulizie|limpieza|schoonmaak|endustriyel temizlik|ilaclama',
+    'banka': 'bank|bank or credit union|atm|banque|finance|sparkasse|volksbank|banca|banco|banka|sube|finans|kredi|katilim bankasi|kamu bankasi|finansal hizmetler|doviz',
+    'bank': 'bank|bank or credit union|atm|banque|finance|sparkasse|volksbank|banca|banco|banka|sube|finans|kredi|katilim bankasi|kamu bankasi|finansal hizmetler|doviz',
+    'tobacco': 'tobacco shop|tobacco company|tobacco|tobocco|tabac|civette|tabak|tabaccheria|estanco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
+    'tobocco': 'tobacco shop|tobacco company|tobacco|tobocco|tabac|civette|tabak|tabaccheria|estanco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
+    'tütün': 'tobacco shop|tobacco company|tobacco|tobocco|tabac|civette|tabak|tabaccheria|estanco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
+    'tekel': 'tobacco shop|tobacco company|tobacco|tobocco|tabac|civette|tabak|tabaccheria|estanco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
+    'avukat': 'attorney or law firm|lawyer|legal service|notary|avocat|notaire|rechtsanwalt|kanzlei|avvocato|abogado|advocaat|avukat|hukuk burosu|hukuk|baro|arabulucu',
+    'sigorta': 'insurance agency|insurance broker|insurance company|assurance|courtier assurance|versicherung|assicurazioni|seguros|verzekering|sigorta|sigorta acentesi|kasko|trafik sigortasi',
+    'veteriner': 'veterinary care|veterinarian|pet store|pet supply|veterinaire|tierarzt|veterinario|dierenarts|veteriner|hayvancilik|yem|pet shop',
+    'kargo': 'courier service|delivery service|freight forwarding|messagerie|colis|kurierdienst|paketdienst|corriere|mensajeria|koerier|kargo|kurye|nakliyat|lojistik',
+    'kuaför': 'hair salon|beauty salon|barber shop|coiffure|institut de beaute|friseur|kosmetikstudio|parrucchiere|peluqueria|kapper|kuafor|berber|guzellik merkezi',
+    'kırtasiye': 'stationery store|book store|papeterie|librairie|schreibwaren|buchhandlung|cartoleria|papeleria|kantoorboekhandel|kirtasiye|kitapci|fotokopi|ofis malzemeleri',
+    'enerji': 'energy supplier|solar energy|fuel supplier|energie|solaire|photovoltaique|solarenergie|energia solare|energia solar|petrol|akaryakit|istasyon|benzin|gunes enerjisi',
+    'kozmetik': 'cosmetics store|beauty supply|perfume store|cosmetique|parfumerie|kosmetik|parfuemerie|cosmetici|profumeria|cosmetica|perfumeria|kozmetik|parfum|kisisel bakim',
+    'kuyumcu': 'jewelry store|jeweler|goldsmith|watch store|bijouterie|joaillerie|horlogerie|juwelier|gioielleria|joyeria|juwelier|kuyumcu|mucevherat|altin|saat',
+    'cam': 'glass and mirror shop|glazier|window installation|vitrerie|miroiterie|glaserei|glasbau|vetreria|cristaleria|glashandel|cam|ayna|cam balkon|isicam',
+    'boya': 'paint store|paint manufacturer|hardware store|peinture|quincaillerie|farben|malerbedarf|colorificio|ferramenta|pinturas|ferreteria|verf|boya|nalbur|izolasyon|yalitim',
+    'ısıtma': 'hvac contractor|heating|air conditioning|plumbing|chauffage|climatisation|plomberie|heizung|sanitaer|klimatechnik|termoidraulica|climatizacion|calefaccion|verwarming|loodgieter|kombi|klima|isitma|sogutma|havalandirma|tesisat',
+    'klima': 'hvac contractor|air conditioning|refrigeration|climatisation|froid|klimatechnik|kaeltetechnik|climatizzazione|aire acondicionado|airconditioning|klima|sogutma|havalandirma|chiller',
+    'asansör': 'elevator service|elevator manufacturer|industrial equipment|ascenseur|aufzug|ascensori|ascensores|liften|asansor|yuruyen merdiven',
+    'madencilik': 'mining|quarry|stone supplier|coal|carriere|mines|bergbau|steinbruch|cava|mineria|maden|ocak|cevher|mermer',
+    'denizcilik': 'marine supply|boat builder|shipyard|shipping company|chantier naval|nautisme|maritime|werft|schifffahrt|cantiere navale|nautica|astillero|scheepswerf|tersane|yat|tekne|denizcilik|liman',
+    'turizm': 'travel agency|tour operator|hotel|resort|agence de voyage|tourisme|reisebuero|tourismus|agenzia viaggi|agencia de viajes|reisbureau|turizm|seyahat acentesi|acente|transfer',
 }
 
 # OSM tag filter builder for common sectors so Overpass fetches ultra-relevant POIs globally in <3s.
@@ -580,6 +586,14 @@ def text(v: Any, limit: int = 500) -> str:
     return v.strip()[:limit] if isinstance(v, str) else ''
 
 
+def _stem_tr(word: str) -> str:
+    """Strip Turkish occupational/plural suffixes (e.g. mobilyacilar -> mobilya, insaatcilar -> insaat)."""
+    s = word.strip()
+    s = re.sub(r'(?:cilar|ciler|cular|culer|çilar|çiler|lar[iı]|ler[iı]|lar|ler)$', '', s).strip()
+    s = re.sub(r'(?:ci|cu|c|lik|luk)$', '', s).strip() if len(s) >= 6 and s not in FOLDED_ALIASES else s
+    return s or word.strip()
+
+
 def terms(query: str) -> list[str]:
     query = text(query, 500)
     out: list[str] = []
@@ -587,18 +601,20 @@ def terms(query: str) -> list[str]:
         fp = fold(part)
         if not fp:
             continue
-        stem = re.sub(r'(?:lar[ıi]|ler[iı]|lar|ler|c[ıiuü]|c[ıiuü]ler|c[ıiuü]lar)$', '', fp).strip()
+        stem = _stem_tr(fp)
         expanded = part + '|' + FOLDED_ALIASES.get(fp, '')
-        if stem and stem != fp and stem in FOLDED_ALIASES:
-            expanded += '|' + FOLDED_ALIASES[stem]
+        if stem and stem != fp:
+            expanded += '|' + stem
+            if stem in FOLDED_ALIASES:
+                expanded += '|' + FOLDED_ALIASES[stem]
         for first_word in fp.split():
-            first_stem = re.sub(r'(?:lar[ıi]|ler[iı]|lar|ler)$', '', first_word).strip()
+            first_stem = _stem_tr(first_word)
             if first_word in FOLDED_ALIASES and first_word != fp:
                 expanded += '|' + FOLDED_ALIASES[first_word]
             elif first_stem in FOLDED_ALIASES and first_stem != fp:
                 expanded += '|' + FOLDED_ALIASES[first_stem]
         out += [fold(p) for p in expanded.split('|') if fold(p)]
-    return list(dict.fromkeys(out))[:80]
+    return list(dict.fromkeys(out))[:120]
 
 
 def bounds(value: Any, max_area: float = 4.0) -> tuple[float, float, float, float]:
@@ -977,11 +993,46 @@ def _stream_overture_arrow(store: Any, region: str, w: float, s: float, e: float
     }
 
 
+def _resolve_osm_filters(sector: str) -> list[str]:
+    if not sector:
+        return []
+    fsec = fold(sector.split('|')[0])
+    stem = _stem_tr(fsec)
+    if fsec in OSM_SECTOR_FILTERS:
+        return list(OSM_SECTOR_FILTERS[fsec])
+    if stem in OSM_SECTOR_FILTERS:
+        return list(OSM_SECTOR_FILTERS[stem])
+    for w in fsec.split():
+        ws = _stem_tr(w)
+        if w in OSM_SECTOR_FILTERS:
+            return list(OSM_SECTOR_FILTERS[w])
+        if ws in OSM_SECTOR_FILTERS:
+            return list(OSM_SECTOR_FILTERS[ws])
+    return []
+
+
+def _extract_osm_kv_tags(filters: list[str]) -> list[str]:
+    """Expand both ['k'='v'] and ['k'~'v1|v2'] Overpass filter expressions into Photon k:v tags."""
+    kv_tags: list[str] = []
+    for flt in filters:
+        m_eq = re.match(r'^\["([^"]+)"="([^"]+)"\]$', flt)
+        if m_eq and m_eq.group(1) != 'name':
+            kv_tags.append(f'{m_eq.group(1)}:{m_eq.group(2)}')
+            continue
+        m_rx = re.match(r'^\["([^"]+)"~"([^"]+)"(?:,i)?\]$', flt)
+        if m_rx and m_rx.group(1) != 'name':
+            k_name = m_rx.group(1)
+            for v_part in m_rx.group(2).split('|')[:4]:
+                v_clean = v_part.strip()
+                if v_clean and re.fullmatch(r'[a-z_]+', v_clean):
+                    kv_tags.append(f'{k_name}:{v_clean}')
+    return list(dict.fromkeys(kv_tags))
+
+
 def _build_overpass_query(w: float, s: float, e: float, n: float, sector: str = '') -> str:
     bb = f'({s},{w},{n},{e})'
     area = (e - w) * (n - s)
-    fsec = fold(sector.split('|')[0]) if sector else ''
-    filters = list(OSM_SECTOR_FILTERS.get(fsec) or [])
+    filters = _resolve_osm_filters(sector)
     if filters and area > 1.2:
         # Full-scan regex on ["name"~...] times out on large province bboxes; keep indexed tag queries fast.
         filters = [flt for flt in filters if not flt.startswith('["name"~')]
@@ -993,73 +1044,88 @@ def _build_overpass_query(w: float, s: float, e: float, n: float, sector: str = 
     if not filters:
         filters = ['["shop"]', '["craft"]', '["office"]', '["industrial"]']
     clauses = ''.join(f'nw{flt}{bb};' for flt in filters[:4])
-    return f'[out:json][timeout:12];({clauses});out center tags 500;'
+    return f'[out:json][timeout:10];({clauses});out center tags 500;'
 
 
-def _fetch_photon_osm_fallback(w: float, s: float, e: float, n: float, sector: str = '') -> list[dict[str, Any]]:
+def _fetch_photon_osm_fallback(
+    w: float, s: float, e: float, n: float, sector: str = '', city: str = ''
+) -> list[dict[str, Any]]:
     if not HAS_HTTPX:
         return []
-    fsec = fold(sector.split('|')[0]) if sector else ''
-    filters = list(OSM_SECTOR_FILTERS.get(fsec) or [])
-    kv_tags: list[str] = []
-    for flt in filters:
-        m = re.match(r'^\["([^"]+)"="([^"]+)"\]$', flt)
-        if m:
-            kv_tags.append(f'{m.group(1)}:{m.group(2)}')
+    filters = _resolve_osm_filters(sector)
+    kv_tags = _extract_osm_kv_tags(filters)
     bb_str = f'{w:.4f},{s:.4f},{e:.4f},{n:.4f}'
     cx, cy = (w + e) / 2.0, (s + n) / 2.0
     hdr = {'User-Agent': 'LeadIntelligencePro/7.0 (Geospatial Open Data)'}
     feat_map: dict[str, dict[str, Any]] = {}
     t_list = terms(sector)
-    kw = next((t for t in t_list if t.isascii() and len(t) >= 4 and t != fsec), sector or 'business')
+    fsec = fold(sector.split('|')[0]) if sector else ''
+    stem = _stem_tr(fsec)
 
-    params_list: list[dict[str, Any]] = [
-        {'q': kw, 'lat': round(cy, 4), 'lon': round(cx, 4), 'bbox': bb_str, 'limit': 50}
+    # Pick single-word multilingual native keywords (EN, FR, DE, IT, ES, NL, TR) so every country matches!
+    single_words = [
+        t for t in t_list
+        if ' ' not in t and len(t) >= 4 and t not in (fsec, stem)
     ]
-    for kv in kv_tags[:3]:
-        params_list.append({'q': kw, 'osm_tag': kv, 'bbox': bb_str, 'limit': 50})
+    native_kws = single_words[:6] if single_words else ([stem] if stem else ['shop'])
 
-    for prm in params_list:
+    params_list: list[dict[str, Any]] = []
+    if city:
+        for kv in kv_tags[:4]:
+            params_list.append({'q': city, 'osm_tag': kv, 'bbox': bb_str, 'limit': 50})
+    for kw in native_kws[:5]:
+        params_list.append({'q': kw, 'lat': round(cy, 4), 'lon': round(cx, 4), 'bbox': bb_str, 'limit': 50})
+
+    def _run_photon(prm: dict[str, Any]) -> list[dict[str, Any]]:
         try:
             r = httpx.get('https://photon.komoot.io/api/', params=prm, headers=hdr, timeout=5.0)
-            if r.status_code != 200:
-                continue
-            for f in r.json().get('features') or []:
+            if r.status_code == 200:
+                return list(r.json().get('features') or [])
+        except Exception:
+            pass
+        return []
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(6, max(1, len(params_list)))) as pool:
+        for feat_list in pool.map(_run_photon, params_list):
+            for f in feat_list:
                 p = f.get('properties') or {}
                 coords = (f.get('geometry') or {}).get('coordinates') or []
                 osm_type, osm_id = p.get('osm_type'), p.get('osm_id')
                 if not p.get('name') or len(coords) < 2 or osm_type not in ('N', 'W') or not osm_id:
                     continue
-                if p.get('osm_key') in ('highway', 'place', 'boundary', 'railway'):
+                if p.get('osm_key') in ('highway', 'place', 'boundary', 'railway', 'natural', 'waterway'):
+                    continue
+                lon_f, lat_f = float(coords[0]), float(coords[1])
+                if not (w - 0.05 <= lon_f <= e + 0.05 and s - 0.05 <= lat_f <= n + 0.05):
                     continue
                 key = f'{osm_type}:{osm_id}'
                 if key not in feat_map:
-                    feat_map[key] = {'p': p, 'lon': float(coords[0]), 'lat': float(coords[1])}
-        except Exception:
-            continue
+                    feat_map[key] = {'p': p, 'lon': lon_f, 'lat': lat_f}
 
     if not feat_map:
         return []
 
-    n_ids = [k.split(':')[1] for k in feat_map if k.startswith('N:')][:80]
-    w_ids = [k.split(':')[1] for k in feat_map if k.startswith('W:')][:80]
+    n_ids = [k.split(':')[1] for k in feat_map if k.startswith('N:')][:160]
+    w_ids = [k.split(':')[1] for k in feat_map if k.startswith('W:')][:160]
     rich_tags: dict[str, dict[str, Any]] = {}
     for kind, p_name, pfx, id_list in (('nodes', 'nodes', 'N', n_ids), ('ways', 'ways', 'W', w_ids)):
-        if not id_list:
-            continue
-        try:
-            ro = httpx.get(
-                f'https://api.openstreetmap.org/api/0.6/{kind}.json',
-                params={p_name: ','.join(id_list)},
-                headers=hdr,
-                timeout=5.5,
-            )
-            if ro.status_code == 200:
-                for el in ro.json().get('elements') or []:
-                    if isinstance(el.get('tags'), dict):
-                        rich_tags[f"{pfx}:{el.get('id')}"] = el['tags']
-        except Exception:
-            continue
+        for idx_chunk in range(0, len(id_list), 80):
+            chunk = id_list[idx_chunk:idx_chunk + 80]
+            if not chunk:
+                continue
+            try:
+                ro = httpx.get(
+                    f'https://api.openstreetmap.org/api/0.6/{kind}.json',
+                    params={p_name: ','.join(chunk)},
+                    headers=hdr,
+                    timeout=5.5,
+                )
+                if ro.status_code == 200:
+                    for el in ro.json().get('elements') or []:
+                        if isinstance(el.get('tags'), dict):
+                            rich_tags[f"{pfx}:{el.get('id')}"] = el['tags']
+            except Exception:
+                continue
 
     elements: list[dict[str, Any]] = []
     for k, info in feat_map.items():
@@ -1078,26 +1144,43 @@ def _fetch_photon_osm_fallback(w: float, s: float, e: float, n: float, sector: s
     return elements
 
 
-def _fetch_osm_overpass(w: float, s: float, e: float, n: float, sector: str = '') -> list[dict[str, Any]]:
+def _fetch_osm_overpass(
+    w: float, s: float, e: float, n: float, sector: str = '', city: str = ''
+) -> list[dict[str, Any]]:
     if not HAS_HTTPX or (e - w) * (n - s) > 12.0:
         return []
     q = _build_overpass_query(w, s, e, n, sector)
-    for endpoint in ('https://overpass-api.de/api/interpreter', *OVERPASS_ENDPOINTS):
-        try:
-            r = httpx.post(
-                endpoint,
-                headers={'User-Agent': 'LeadIntelligencePro/7.0 (Geospatial Open Data)'},
-                data={'data': q},
-                timeout=5.5,
-            )
-            if r.status_code == 200:
-                payload = r.json()
-                els = payload.get('elements')
-                if isinstance(els, list) and els:
-                    return els
-        except Exception:
-            continue
-    return _fetch_photon_osm_fallback(w, s, e, n, sector)
+    endpoints = ('https://overpass-api.de/api/interpreter', *OVERPASS_ENDPOINTS[:2])
+
+    def _try_ep(ep: str) -> list[dict[str, Any]]:
+        r = httpx.post(
+            ep,
+            headers={'User-Agent': 'LeadIntelligencePro/7.0 (Geospatial Open Data)'},
+            data={'data': q},
+            timeout=4.5,
+        )
+        if r.status_code == 200:
+            els = r.json().get('elements')
+            if isinstance(els, list) and els:
+                return els
+        raise RuntimeError('Overpass mirror unavailable')
+
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=len(endpoints))
+    futs = [pool.submit(_try_ep, ep) for ep in endpoints]
+    try:
+        for fut in concurrent.futures.as_completed(futs, timeout=5.0):
+            try:
+                res_els = fut.result()
+                if res_els:
+                    return res_els
+            except Exception:
+                continue
+    except Exception:
+        pass
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+
+    return _fetch_photon_osm_fallback(w, s, e, n, sector, city=city)
 
 
 def _ingest_osm_elements(
@@ -1259,6 +1342,9 @@ def _ingest_osm_elements(
     return {'osm_read': len(elements), 'osm_added': added, 'osm_merged': merged}
 
 
+_NO_PREFIX_TOKENS = frozenset({'mobili', 'mobile', 'banque', 'studio', 'garage'})
+
+
 def _fts_match_expression(term_list: list[str]) -> str:
     parts: list[str] = []
     for t in term_list:
@@ -1269,8 +1355,8 @@ def _fts_match_expression(term_list: list[str]) -> str:
             parts.append('"' + ' '.join(tokens) + '"')
         else:
             tok = tokens[0]
-            # Short tokens (<5 chars, e.g. 'car') use exact token match; >=5 stems match Turkish suffixes ('mobilya*').
-            parts.append(f'{tok}*' if len(tok) >= 5 else f'"{tok}"')
+            # Short or ambiguous tokens (<6 chars or 'mobili' vs 'mobilites') use exact token match; >=6 stems match Turkish suffixes ('mobilya*').
+            parts.append(f'{tok}*' if (len(tok) >= 6 and tok not in _NO_PREFIX_TOKENS) else f'"{tok}"')
     return ' OR '.join(dict.fromkeys(parts))
 
 
@@ -1436,7 +1522,7 @@ def condition(
         else:
             like_parts: list[str] = []
             for v in t:
-                if ' ' not in v and len(v) >= 5:
+                if ' ' not in v and len(v) >= 6 and v not in _NO_PREFIX_TOKENS:
                     like_parts.append('p.search_text LIKE ?')
                     args.append(f'% {v}%')
                 else:

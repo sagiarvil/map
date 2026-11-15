@@ -858,21 +858,39 @@ def deduplicate_records_splink(records: List[Dict[str, Any]]) -> List[Dict[str, 
         con.close()
 
 
-def fuzzy_rank_records(records: List[Dict[str, Any]], query: str, limit: int = 100) -> List[Dict[str, Any]]:
-    """Rank company records against a messy/typo query at C++ SIMD speed via RapidFuzz."""
+def fuzzy_rank_records(
+    records: List[Dict[str, Any]],
+    query: str,
+    limit: int = 100,
+    score_cutoff: float = 52.0,
+) -> List[Dict[str, Any]]:
+    """Rank company records against a messy/typo or multilingual sector query at C++ SIMD speed via RapidFuzz."""
     q = _clean_corp_name(query) or str(query or "").strip().lower()
     if not q or not records:
         return records[:limit]
 
+    import catalog
+
+    probe_terms = list(dict.fromkeys([q, *catalog.terms(query)[:18]]))
     choices = {
         idx: f"{_clean_corp_name(str(r.get('name', '')))} {str(r.get('category', '')).lower()} {str(r.get('district', '')).lower()}"
         for idx, r in enumerate(records)
     }
-    matches = process.extract(q, choices, scorer=fuzz.WRatio, limit=max(1, min(limit, 500)), score_cutoff=52.0)
+    best_scores: dict[int, float] = {}
+    lim = max(1, min(limit, 500))
+    for probe in probe_terms:
+        if not probe:
+            continue
+        for _, score, idx in process.extract(probe, choices, scorer=fuzz.WRatio, limit=len(choices), score_cutoff=score_cutoff):
+            sc = float(score)
+            if sc > best_scores.get(idx, -1.0):
+                best_scores[idx] = sc
+
+    ordered = sorted(best_scores.items(), key=lambda kv: kv[1], reverse=True)[:lim]
     ranked: list[Dict[str, Any]] = []
-    for _, score, idx in matches:
+    for idx, score in ordered:
         item = dict(records[idx])
-        item["fuzzy_score"] = round(float(score), 1)
+        item["fuzzy_score"] = round(score, 1)
         ranked.append(item)
     return ranked
 
@@ -1046,13 +1064,43 @@ def _matches_sector_terms(search_blob: str, term_list: List[str]) -> bool:
         if " " in t:
             if f" {t} " in search_blob:
                 return True
-        elif len(t) >= 5:
+        elif len(t) >= 7:
             if f" {t}" in search_blob:
                 return True
         else:
             if f" {t} " in search_blob:
                 return True
     return False
+
+
+COUNTRY_TOP_CITIES: Dict[str, List[str]] = {
+    "FR": ["Paris", "Lyon", "Marseille"],
+    "DE": ["Berlin", "München", "Hamburg"],
+    "GB": ["London", "Manchester", "Birmingham"],
+    "NL": ["Amsterdam", "Rotterdam", "Utrecht"],
+    "IT": ["Milano", "Roma", "Torino"],
+    "ES": ["Madrid", "Barcelona", "Valencia"],
+    "BE": ["Brussels", "Antwerp", "Ghent"],
+    "AT": ["Wien", "Graz", "Linz"],
+    "CH": ["Zürich", "Genève", "Basel"],
+    "PL": ["Warszawa", "Kraków", "Wrocław"],
+    "RO": ["București", "Cluj-Napoca", "Timișoara"],
+    "BG": ["Sofia", "Plovdiv", "Varna"],
+    "GR": ["Athens", "Thessaloniki"],
+    "AE": ["Dubai", "Abu Dhabi", "Sharjah"],
+    "SA": ["Riyadh", "Jeddah", "Dammam"],
+    "QA": ["Doha"],
+    "KW": ["Kuwait City"],
+    "IQ": ["Erbil", "Baghdad"],
+    "AZ": ["Bakü", "Ganja"],
+    "RU": ["Moscow", "Saint Petersburg"],
+    "US": ["New York", "Los Angeles", "Chicago"],
+    "CA": ["Toronto", "Montreal", "Vancouver"],
+    "CN": ["Shanghai", "Guangzhou", "Shenzhen"],
+    "EG": ["Cairo", "Alexandria"],
+    "MA": ["Casablanca", "Rabat"],
+    "DZ": ["Algiers", "Oran"],
+}
 
 
 def global_sector_city_search(
@@ -1070,13 +1118,80 @@ def global_sector_city_search(
     """High-speed global B2B discovery for ANY (sector, country, city) worldwide.
 
     Combines C++ PyArrow Overture Maps S3 GeoParquet (filtered on the fly by multilingual sector taxonomy)
-    + OpenStreetMap Overpass in parallel, validates global phones via Google libphonenumber, deduplicates,
+    + OpenStreetMap Overpass/Photon in parallel, validates global phones via Google libphonenumber, deduplicates,
     persists into SQLite for instant pagination/XLSX export, and returns enriched corporate rows.
     """
     city_clean = catalog.text(city, 120)
     country_clean = catalog.text(country, 120) or "Türkiye"
     if not city_clean:
         raise ValueError("Şehir adı gerekli")
+
+    iso_country = catalog.country_iso_of_region(f"Merkez, {country_clean}")
+
+    # Country-wide scan mode ("Tüm Ülke"): aggregate top commercial hubs of the country
+    if city_clean in ("__all_country__", "Tüm Ülke", "Tum Ulke"):
+        hubs = COUNTRY_TOP_CITIES.get(iso_country) or ["Capital"]
+        if hubs == ["Capital"]:
+            city_clean = catalog.country_english_name(country_clean)
+        else:
+            combined_rows: list[dict[str, Any]] = []
+            seen_keys: set[str] = set()
+            tot = web = w_em = w_ph = w_bo = w_wa = w_ef = w_tc = 0
+            dist_agg: dict[str, int] = {}
+            for hub in hubs[:3]:
+                sub = global_sector_city_search(
+                    store,
+                    city=hub,
+                    country=country_clean,
+                    sector=sector,
+                    contact_mode=contact_mode,
+                    district=district,
+                    offset=0,
+                    limit=200,
+                    force_refresh=force_refresh,
+                )
+                for r in sub.get("rows") or []:
+                    rk = f"{catalog.fold(r.get('name', ''))}:{r.get('city', '')}"
+                    if rk in seen_keys:
+                        continue
+                    seen_keys.add(rk)
+                    if not r.get("district"):
+                        r["district"] = hub
+                    combined_rows.append(r)
+                    dist_agg[hub] = dist_agg.get(hub, 0) + 1
+            tot = len(combined_rows)
+            for r in combined_rows:
+                he = bool(r.get("emails"))
+                hp = bool(r.get("phones"))
+                if r.get("website"):
+                    web += 1
+                if he:
+                    w_em += 1
+                if hp:
+                    w_ph += 1
+                if he and hp:
+                    w_bo += 1
+                if r.get("whatsapp"):
+                    w_wa += 1
+                if r.get("efatura"):
+                    w_ef += 1
+                if r.get("tech"):
+                    w_tc += 1
+            return {
+                "total": tot,
+                "websites": web,
+                "with_email": w_em,
+                "with_phone": w_ph,
+                "with_both": w_bo,
+                "with_whatsapp": w_wa,
+                "with_efatura": w_ef,
+                "with_tech": w_tc,
+                "districts": sorted(dist_agg.items(), key=lambda x: x[1], reverse=True),
+                "rows": combined_rows[offset : offset + limit],
+                "terms": catalog.terms(sector),
+                "country_iso": iso_country,
+                "source_engine": "multi-city-global-hybrid",
+            }
 
     region = f"{city_clean}, {country_clean}"
     iso_country = catalog.country_iso_of_region(region)
@@ -1092,19 +1207,28 @@ def global_sector_city_search(
             offset=offset,
             limit=limit,
         )
-        if existing["total"] >= 5:
+        if existing["total"] >= 25:
             existing["country_iso"] = iso_country
             existing["source_engine"] = "local-sqlite-cache"
             return existing
 
-    # Resolve metropolitan bounding box (clamped so megacities return in 2-5 seconds)
+    # Resolve metropolitan bounding box
     if box:
         w, s, e, n = catalog.bounds(box, max_area=16.0)
         cx, cy = (w + e) / 2.0, (s + n) / 2.0
-        w, e = max(w, cx - 0.22), min(e, cx + 0.22)
-        s, n = max(s, cy - 0.18), min(n, cy + 0.18)
+        w, e = max(w, cx - 0.18), min(e, cx + 0.18)
+        s, n = max(s, cy - 0.14), min(n, cy + 0.14)
     else:
         w, s, e, n = resolve_global_city_bbox(city_clean, country_clean)
+
+    # Tight core metro window for S3 GeoParquet so dense megacities (Paris, London, NYC) stream in ~5-6s
+    cx_m, cy_m = (w + e) / 2.0, (s + n) / 2.0
+    s3_bbox = (
+        round(max(w, cx_m - 0.14), 4),
+        round(max(s, cy_m - 0.11), 4),
+        round(min(e, cx_m + 0.14), 4),
+        round(min(n, cy_m + 0.11), 4),
+    )
 
     sector_terms = catalog.terms(sector)
     src_label = f"{catalog.SOURCE} / Global PyArrow S3 ({iso_country}), bbox {w},{s},{e},{n}"
@@ -1114,16 +1238,20 @@ def global_sector_city_search(
             return []
         import pyarrow.compute as pc  # C++ SIMD vectorized column filter
 
-        deadline = time.monotonic() + 8.5
+        deadline = time.monotonic() + 20.0
         reader = catalog.overture_core.record_batch_reader(
             "place",
-            bbox=(w, s, e, n),
-            connect_timeout=8,
-            request_timeout=10,
+            bbox=s3_bbox,
+            connect_timeout=14,
+            request_timeout=26,
         )
         if reader is None:
             return []
-        rx = "|".join(re.escape(t) for t in sector_terms[:40] if len(t) >= 3) if sector_terms else ""
+        rx = (
+            "|".join(re.escape(t).replace(r"\ ", "[ _]") for t in sector_terms[:60] if len(t) >= 3)
+            if sector_terms
+            else ""
+        )
         pairs: list[tuple[tuple[Any, ...], tuple[str, str, str, str, str]]] = []
         for batch in reader:
             if time.monotonic() > deadline:
@@ -1173,13 +1301,13 @@ def global_sector_city_search(
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
     try:
         ov_fut = pool.submit(_stream_sector_overture)
-        osm_fut = pool.submit(catalog._fetch_osm_overpass, w, s, e, n, sector)
+        osm_fut = pool.submit(catalog._fetch_osm_overpass, w, s, e, n, sector, city_clean)
         try:
-            osm_els = osm_fut.result(timeout=18.0)
+            osm_els = osm_fut.result(timeout=14.0)
         except Exception:
             pass
         try:
-            ov_pairs = ov_fut.result(timeout=9.5)
+            ov_pairs = ov_fut.result(timeout=21.0)
         except Exception:
             pass
     finally:

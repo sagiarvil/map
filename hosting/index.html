@@ -6,10 +6,10 @@
   <title>Haritalar — AppFlow V10.2 B2B İstihbarat &amp; ERP Keşif Fabrikası</title>
   <meta name="description" content="HTMLANDHTML V10.2 AppFlow mimarisiyle 81 ilde kurumsal firma arama, NACE Rev. 2, WhatsApp, e-Fatura istihbaratı ve ERP cari oluşturma merkezi.">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="/style.css?v=7.0.1">
+  <link rel="stylesheet" href="/style.css?v=7.0.2">
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer></script>
-  <script src="/xlsx-engine.js?v=7.0.1" defer></script>
-  <script src="/app.js?v=7.0.1" defer></script>
+  <script src="/xlsx-engine.js?v=7.0.2" defer></script>
+  <script src="/app.js?v=7.0.2" defer></script>
 </head>
 <body class="flow-home">
   <!-- AppFlow Header Bar -->
@@ -369,14 +369,14 @@
         <div class="action-bar">
           <div class="action-group">
             <button id="searchBtn" type="button" class="primary">Firmaları Listele</button>
-            <button id="toggleSearchMapBtn" type="button" class="btn btn-secondary" disabled title="Bulunan firmaları interaktif açık tema vektör haritada incele">🗺️ Haritada Göster</button>
-            <button id="enrichBtn" type="button" disabled>Web Sitelerinden E-posta Tara</button>
-            <button id="splinkDedupBtn" type="button" class="btn btn-secondary" disabled title="DuckDB üzerinde Splink 5.0 Fellegi-Sunter ile şube ve yazım varyasyonlarını kümele">🔗 AI Tekilleştir (Splink 5.0)</button>
-            <button id="rapidFuzzBtn" type="button" class="btn btn-secondary" disabled title="RapidFuzz C++ SIMD WRatio ile arama terimine en yakın firmaları en üste sırala">⚡ RapidFuzz Sırala</button>
+            <button id="toggleSearchMapBtn" type="button" class="btn btn-secondary" title="Bulunan firmaları interaktif açık tema vektör haritada incele">🗺️ Haritada Göster</button>
+            <button id="enrichBtn" type="button">Web Sitelerinden E-posta Tara</button>
+            <button id="splinkDedupBtn" type="button" class="btn btn-secondary" title="DuckDB üzerinde Splink 5.0 Fellegi-Sunter ile şube ve yazım varyasyonlarını birleştir">🔗 AI Tekilleştir (Splink 5.0)</button>
+            <button id="rapidFuzzBtn" type="button" class="btn btn-secondary" title="RapidFuzz C++ SIMD WRatio ile arama terimine en yakın firmaları en üste sırala">⚡ RapidFuzz Sırala</button>
           </div>
           <div class="action-group">
-            <button id="exportXlsxBtn" type="button" class="accent" disabled>Excel İndir (.xlsx)</button>
-            <button id="exportCsvBtn" type="button" disabled>CSV İndir</button>
+            <button id="exportXlsxBtn" type="button" class="accent">Excel İndir (.xlsx)</button>
+            <button id="exportCsvBtn" type="button">CSV İndir</button>
           </div>
         </div>
       </div>

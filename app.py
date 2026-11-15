@@ -550,6 +550,7 @@ class Handler(BaseHTTPRequestHandler):
             "default-src 'self'; script-src 'self' https://unpkg.com blob:; worker-src 'self' blob:; child-src blob:; "
             "style-src 'self' 'unsafe-inline' https://unpkg.com; "
             "connect-src 'self' https://dns.google https://crt.sh https://nominatim.openstreetmap.org "
+            "https://photon.komoot.io https://api.openstreetmap.org "
             "https://maps.mail.ru https://overpass-api.de https://overpass.private.coffee https://unpkg.com "
             "https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://tiles.openfreemap.org; "
             "img-src 'self' data: blob: https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com; "
@@ -775,7 +776,8 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(records, list) or len(records) > 50000:
                     raise ValueError('En çok 50.000 kayıt')
                 limit_int = min(1000, max(1, int(d.get('limit', 200))))
-                ranked = industrial_engine.fuzzy_rank_records(records, query_str, limit=limit_int)
+                cutoff_f = max(0.0, min(100.0, float(d.get('score_cutoff', 52.0))))
+                ranked = industrial_engine.fuzzy_rank_records(records, query_str, limit=limit_int, score_cutoff=cutoff_f)
                 self.out({'count': len(ranked), 'records': ranked})
                 return
             if p == '/api/industrial/crawl':
