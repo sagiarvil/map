@@ -171,6 +171,19 @@ ALIASES: dict[str, str] = {
     'muhasebe': 'accountant|tax consultant|financial consultant|auditor|mali musavir|denetim|danismanlik',
     'güvenlik': 'security guard service|security system|fire protection|is guvenligi|osgb|yangin sondurme',
     'temizlik': 'cleaning service|janitorial service|pest control|laundry|endustriyel temizlik|ilaclama',
+    'banka': 'bank|bank or credit union|atm|banka|sube|finans|kredi|katilim bankasi|kamu bankasi|finansal hizmetler|doviz',
+    'bank': 'bank|bank or credit union|atm|banka|sube|finans|kredi|katilim bankasi|kamu bankasi|finansal hizmetler|doviz',
+    'tobacco': 'tobacco shop|tobacco company|tobacco|tobocco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
+    'tobocco': 'tobacco shop|tobacco company|tobacco|tobocco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
+    'tütün': 'tobacco shop|tobacco company|tobacco|tobocco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
+    'tekel': 'tobacco shop|tobacco company|tobacco|tobocco|tutun|tütün|tekel|tekel bayii|nargile|puro|sigara|tutuncu',
+    'avukat': 'attorney or law firm|lawyer|legal service|notary|avukat|hukuk burosu|hukuk|baro|arabulucu',
+    'sigorta': 'insurance agency|insurance broker|insurance company|sigorta|sigorta acentesi|kasko|trafik sigortasi',
+    'veteriner': 'veterinary care|veterinarian|pet store|pet supply|veteriner|hayvancilik|yem|pet shop',
+    'kargo': 'courier service|delivery service|freight forwarding|kargo|kurye|nakliyat|lojistik',
+    'kuaför': 'hair salon|beauty salon|barber shop|kuafor|berber|guzellik merkezi',
+    'kırtasiye': 'stationery store|book store|kirtasiye|kitapci|fotokopi|ofis malzemeleri',
+    'enerji': 'energy supplier|solar energy|fuel supplier|petrol|akaryakit|istasyon|benzin|gunes enerjisi',
 }
 
 # OSM tag filter builder for common sectors so Overpass fetches ultra-relevant POIs fast.
@@ -305,10 +318,16 @@ def terms(query: str) -> list[str]:
         fp = fold(part)
         if not fp:
             continue
+        stem = re.sub(r'(?:lar[ıi]|ler[iı]|lar|ler|c[ıiuü]|c[ıiuü]ler|c[ıiuü]lar)$', '', fp).strip()
         expanded = part + '|' + FOLDED_ALIASES.get(fp, '')
+        if stem and stem != fp and stem in FOLDED_ALIASES:
+            expanded += '|' + FOLDED_ALIASES[stem]
         for first_word in fp.split():
+            first_stem = re.sub(r'(?:lar[ıi]|ler[iı]|lar|ler)$', '', first_word).strip()
             if first_word in FOLDED_ALIASES and first_word != fp:
                 expanded += '|' + FOLDED_ALIASES[first_word]
+            elif first_stem in FOLDED_ALIASES and first_stem != fp:
+                expanded += '|' + FOLDED_ALIASES[first_stem]
         out += [fold(p) for p in expanded.split('|') if fold(p)]
     return list(dict.fromkeys(out))[:80]
 

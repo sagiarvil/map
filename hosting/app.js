@@ -216,9 +216,18 @@
     const out = [];
     for (const p of parts) {
       out.push(p);
-      const aliases = manifest.taxonomy[p];
+      const aliases = manifest.taxonomy && manifest.taxonomy[p];
       if (Array.isArray(aliases)) {
         for (const a of aliases) out.push(a);
+      }
+      // Turkish plural / suffix stem (e.g. bankalar -> banka, oteller -> otel)
+      const stem = p.replace(/(?:lar[ıi]|ler[iı]|lar|ler|c[ıiuü]|c[ıiuü]ler|c[ıiuü]lar)$/, '').trim();
+      if (stem && stem !== p) {
+        out.push(stem);
+        const stemAliases = manifest.taxonomy && manifest.taxonomy[stem];
+        if (Array.isArray(stemAliases)) {
+          for (const a of stemAliases) out.push(a);
+        }
       }
     }
     return Array.from(new Set(out));
@@ -326,9 +335,10 @@
 
   function currentFilters() {
     const country = $('countrySelect').value;
-    const city = country === 'Türkiye'
-      ? $('citySelect').value
-      : ($('cityCustomInput').value.trim() || 'Berlin');
+    const cityRaw = $('citySelect').value;
+    const city = (country === 'Türkiye'
+      ? (cityRaw || 'İstanbul')
+      : ($('cityCustomInput').value.trim() || 'Berlin')) || 'İstanbul';
     const district = $('districtSelect').value.trim();
     const sector = $('sectorInput').value.trim();
     const contactMode = $('contactModeSelect').value;
@@ -370,7 +380,10 @@
   // Populate UI Selects
   function populateCities() {
     const sel = $('citySelect');
-    const prev = sel.value || 'İzmir';
+    let prev = sel.value;
+    if (!prev || !TR_PROVINCES.includes(prev)) {
+      prev = 'İstanbul';
+    }
     sel.replaceChildren();
     for (const prov of TR_PROVINCES) {
       const opt = el('option', prov);
@@ -378,6 +391,7 @@
       if (prov === prev) opt.selected = true;
       sel.append(opt);
     }
+    sel.value = prev;
   }
 
   function populateDistricts(city, extraDistricts = []) {
@@ -913,7 +927,8 @@
 
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
-        if (hasTerms && !catHit[r[1]] && !matchesTerms(` ${r[10] || ''} `, termList)) {
+        const nameFolded = fold(r[0] || '');
+        if (hasTerms && !catHit[r[1]] && !matchesTerms(` ${r[10] || ''} `, termList) && !matchesTerms(` ${nameFolded} `, termList)) {
           continue;
         }
         sectorTotal++;
@@ -1004,6 +1019,10 @@
     $('searchBtn').disabled = true;
 
     const f = currentFilters();
+    if (!f.city) {
+      f.city = 'İstanbul';
+      $('citySelect').value = 'İstanbul';
+    }
     const slug = slugify(f.city);
 
     try {
@@ -1012,6 +1031,7 @@
         $('districtStrip').replaceChildren();
       }
 
+      // 1. If local Turbo SQLite engine is connected
       if (turboConnected && !f.quick) {
         const params = new URLSearchParams({
           sector: f.sector,
@@ -1023,7 +1043,7 @@
         });
         const pData = await turboApi(`portfolio?${params}`);
 
-        if (pData.total > 0) {
+        if (pData && pData.total > 0) {
           activeMode = 'turbo-db';
           turboPageData = pData;
           renderTableRows(pData.rows, pData.total, pData);
@@ -1037,10 +1057,28 @@
           return;
         }
 
-        if (allowRemoteFetch) {
+        // If local database has 0, check if we have a CDN shard for this city
+        if (f.country === 'Türkiye' && manifest.shards && manifest.shards[slug]) {
+          const shard = await loadCdnShard(slug);
+          if (shard) {
+            filterShardRecords(shard);
+            setStatus('', '', false, null);
+            return;
+          }
+        }
+
+        // If Türkiye, we already have full nationwide data; render empty cleanly without blocking Overpass loop
+        if (f.country === 'Türkiye') {
+          renderTableRows([], 0, { total: 0, websites: 0, with_email: 0, with_phone: 0, with_both: 0 });
+          setStatus('Arama kriterine uygun kayıt bulunamadı. Sektör adını veya filtreleri kontrol edebilirsiniz.', 'Bilgi', false, null);
+          return;
+        }
+
+        // Foreign city remote fetch
+        if (allowRemoteFetch && f.country !== 'Türkiye') {
           try {
             resetResultsView();
-            setStatus(`${f.city} bölgesi taranıyor, lütfen bekleyin (yaklaşık 15–20 sn)…`, 'Taranıyor', false, 45);
+            setStatus(`${f.city} bölgesi taranıyor, lütfen bekleyin…`, 'Taranıyor', false, 45);
             const [w, s, e, n] = await resolveCityBbox(f.city, f.country);
             await turboApi('places/download', {
               region: f.region,
@@ -1066,13 +1104,12 @@
           }
         }
 
-        if (!allowRemoteFetch) {
-          renderTableRows([], 0, { total: 0, websites: 0, with_email: 0, with_phone: 0, with_both: 0 });
-          setStatus('', '', false, null);
-          return;
-        }
+        renderTableRows([], 0, { total: 0, websites: 0, with_email: 0, with_phone: 0, with_both: 0 });
+        setStatus('', '', false, null);
+        return;
       }
 
+      // 2. Cloud CDN Shard Mode
       if (f.country === 'Türkiye' && manifest.shards && manifest.shards[slug]) {
         const shard = await loadCdnShard(slug);
         if (shard) {
@@ -1082,7 +1119,8 @@
         }
       }
 
-      if (allowRemoteFetch) {
+      // 3. Fallback for foreign city when Turbo not connected
+      if (allowRemoteFetch && f.country !== 'Türkiye') {
         resetResultsView();
         const liveDataset = await fetchLiveOverpassCity(f.city, f.country, f.sector);
         filterShardRecords(liveDataset);
@@ -1394,6 +1432,22 @@
       renderDatabaseStats();
     }
 
+    if (key === 'export') {
+      const f = currentFilters();
+      const count = activeRecords.length || (turboPageData && turboPageData.total) || 0;
+      const statusTitle = $('exportStatusTitle');
+      const statusDesc = $('exportStatusDesc');
+      if (statusTitle && statusDesc) {
+        if (count > 0) {
+          statusTitle.textContent = `✓ ${f.city} · ${f.sector || 'Tüm Sektörler'}: ${fmt(count)} Firma Hazır`;
+          statusDesc.textContent = 'Aşağıdaki butonları kullanarak listeyi hemen tek sayfa Excel (.xlsx) veya CSV formatında indirebilirsiniz.';
+        } else {
+          statusTitle.textContent = `Portföy Beklemede (${f.city} · ${f.sector || 'Sektör Seçilmedi'})`;
+          statusDesc.textContent = 'Önce "Firma & İstihbarat Arama" ekranından sektör ve il seçerek sonuçları listeleyin, ardından buradan tek tıkla toplu indirme yapın.';
+        }
+      }
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -1663,6 +1717,8 @@
     if (expWsXlsx) expWsXlsx.addEventListener('click', handleExportXlsx);
     const expWsCsv = $('exportWorkspaceCsvBtn');
     if (expWsCsv) expWsCsv.addEventListener('click', handleExportCsv);
+    const jumpSearch = $('jumpSearchFromExportBtn');
+    if (jumpSearch) jumpSearch.addEventListener('click', () => openWorkspace('search'));
 
     // CT Logs buttons
     const ctBtn = $('ctQueryBtn');
