@@ -20,6 +20,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unicodedata
 from pathlib import Path
@@ -1057,6 +1058,18 @@ def meta(f: dict[str, Any], key: str, fallback_region: str = '') -> tuple[str, s
     return key, province, district, json.dumps(emails), json.dumps(phones)
 
 
+_CATALOG_EPOCH = 0
+_CATALOG_CACHE_LOCK = threading.Lock()
+_PORTFOLIO_CACHE: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+
+def _bump_catalog_epoch() -> None:
+    global _CATALOG_EPOCH
+    with _CATALOG_CACHE_LOCK:
+        _CATALOG_EPOCH += 1
+        _PORTFOLIO_CACHE.clear()
+
+
 def _upsert_pairs(store: Any, pairs: list[tuple[tuple[Any, ...], tuple[str, str, str, str, str]]]) -> None:
     if not pairs:
         return
@@ -1083,6 +1096,7 @@ def _upsert_pairs(store: Any, pairs: list[tuple[tuple[Any, ...], tuple[str, str,
                  phones=CASE WHEN excluded.phones!='[]' THEN excluded.phones ELSE place_meta.phones END''',
             metas,
         )
+    _bump_catalog_epoch()
 
 
 def ingest(store: Any, data: Any, region: str, source: str = SOURCE) -> dict[str, int]:
@@ -1560,6 +1574,7 @@ def _ingest_osm_elements(
                          emails=excluded.emails, phones=excluded.phones''',
                     (pid, prov_v, dist_v, em_v, ph_v),
                 )
+        _bump_catalog_epoch()
     return {'osm_read': len(elements), 'osm_added': added, 'osm_merged': merged}
 
 
@@ -1824,9 +1839,15 @@ def portfolio_listing(
     """Unified industrial portfolio query merging catalog places + crawled website contacts & phones."""
     if contact_mode and contact_mode not in CONTACT_MODES:
         raise ValueError('Geçersiz iletişim filtresi')
+    offset_i = int(offset)
+    limit_i = int(limit)
+    if offset_i < 0:
+        raise ValueError('Sayfa başlangıcı (offset) negatif olamaz')
+    if not (1 <= limit_i <= 1000):
+        raise ValueError('Sayfa sınırı (limit) 1..1000 arasında olmalı')
     where, args = condition(sector, region, minimum, box, district)
-    limit = max(1, min(limit, 500))
-    offset = max(0, offset)
+    limit = limit_i
+    offset = offset_i
 
     target_k = offset + limit
     is_wild, wild_country = is_wildcard_region(region)
@@ -1862,7 +1883,11 @@ def portfolio_listing(
                                   coalesce(sum(m.emails != '' AND m.emails != '[]'), 0),
                                   coalesce(sum(m.phones != '' AND m.phones != '[]'), 0),
                                   coalesce(sum(m.emails != '' AND m.emails != '[]' AND m.phones != '' AND m.phones != '[]'), 0),
-                                  coalesce(sum(m.phones LIKE '%+905%'), 0)
+                                  coalesce(sum(m.phones LIKE '%+905%'), 0),
+                                  coalesce(sum(
+                                    p.name LIKE '%A.Ş.%' OR p.name LIKE '%A.S.%' OR p.name LIKE '%Anonim%'
+                                    OR p.name LIKE '%Ltd.%' OR p.name LIKE '%Limited%' OR m.emails LIKE '%.kep.tr%'
+                                  ), 0)
                            FROM places p LEFT JOIN place_meta m ON m.place_id = p.id
                            WHERE p.region {reg_op} ?''',
                         (reg_clean,),
@@ -1885,7 +1910,7 @@ def portfolio_listing(
                         'with_phone': int(agg[3]),
                         'with_both': int(agg[4]),
                         'with_whatsapp': int(agg[5]),
-                        'with_efatura': int(round(int(agg[1]) * 0.35)),
+                        'with_efatura': int(agg[6]),
                         'with_tech': int(agg[2]),
                         'districts': top_dists,
                     }
@@ -1940,6 +1965,34 @@ def portfolio_listing(
                         'tech': tech,
                     })
                 return {**summary, 'rows': fast_page, 'terms': []}
+
+        sig_row = c.execute(
+            """SELECT
+                 (SELECT count(*) || ':' || coalesce(max(rowid), 0) FROM places),
+                 (SELECT count(*) || ':' || coalesce(max(id), 0) FROM contacts),
+                 (SELECT count(*) FROM job_phones),
+                 (SELECT count(*) || ':' || coalesce(max(rowid), 0) FROM suppression)"""
+        ).fetchone()
+        p_cache_key = (
+            str(getattr(store, 'path', id(store))),
+            _CATALOG_EPOCH,
+            sig_row[0],
+            sig_row[1],
+            sig_row[2],
+            sig_row[3],
+            sector.strip(),
+            region.strip(),
+            district.strip(),
+            contact_mode or 'all',
+            str(minimum),
+            repr(box),
+            offset,
+            limit,
+        )
+        with _CATALOG_CACHE_LOCK:
+            cached_port = _PORTFOLIO_CACHE.get(p_cache_key)
+            if cached_port is not None:
+                return dict(cached_port)
 
         prev_rf = c.row_factory
         c.row_factory = None
@@ -2067,7 +2120,7 @@ def portfolio_listing(
                 'tech': tech,
             })
 
-    return {
+    out_port = {
         'total': total,
         'websites': websites,
         'with_email': with_email,
@@ -2080,6 +2133,11 @@ def portfolio_listing(
         'rows': page_rows,
         'terms': terms(sector),
     }
+    with _CATALOG_CACHE_LOCK:
+        if len(_PORTFOLIO_CACHE) >= 96:
+            _PORTFOLIO_CACHE.clear()
+        _PORTFOLIO_CACHE[p_cache_key] = out_port
+    return dict(out_port)
 
 
 def listing(
@@ -2340,6 +2398,7 @@ def deduplicate_region(store: Any, region: str) -> int:
             placeholders = ','.join('?' for _ in chunk)
             c.execute(f'DELETE FROM places WHERE id IN ({placeholders})', chunk)
 
+    _bump_catalog_epoch()
     return len(drop_ids)
 
 

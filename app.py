@@ -8,7 +8,9 @@ import datetime
 import io
 import inspect
 import json
+import math
 import os
+import queue
 import secrets
 import shutil
 import sqlite3
@@ -43,7 +45,7 @@ from engine import (
     normalize,
     now,
 )
-from export_xlsx import generate as generate_xlsx
+from export_xlsx import generate as generate_xlsx, generate_csv
 
 ROOT = Path(__file__).resolve().parent
 DATA = Path(os.environ.get('LEAD_DATA', str(ROOT / 'data'))).expanduser()
@@ -79,12 +81,13 @@ CREATE INDEX IF NOT EXISTS contacts_job ON contacts(job_id);
 
 
 class Store:
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, pool_size: int = 24) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._local = threading.local()
         self._conns_lock = threading.Lock()
         self._conns: list[sqlite3.Connection] = []
+        self._pool: queue.LifoQueue[sqlite3.Connection] = queue.LifoQueue(maxsize=max(4, pool_size))
         self._finalizer = weakref.finalize(self, Store._cleanup_conns, self._conns, self._conns_lock)
         with self.db() as c:
             c.execute('PRAGMA journal_mode=WAL')
@@ -98,20 +101,16 @@ class Store:
                     if f_cnt == 0:
                         c.execute("INSERT INTO places_fts(places_fts) VALUES('rebuild')")
 
-    def _get_conn(self) -> sqlite3.Connection:
-        c: sqlite3.Connection | None = getattr(self._local, 'conn', None)
-        if c is None:
-            c = sqlite3.connect(self.path, timeout=30.0, check_same_thread=False)
-            c.row_factory = sqlite3.Row
-            c.execute('PRAGMA foreign_keys=ON')
-            c.execute('PRAGMA busy_timeout=30000')
-            c.execute('PRAGMA synchronous=NORMAL')
-            c.execute('PRAGMA temp_store=MEMORY')
-            c.execute('PRAGMA cache_size=-32768')
-            c.execute('PRAGMA mmap_size=134217728')
-            self._local.conn = c
-            with self._conns_lock:
-                self._conns.append(c)
+    def _new_conn(self) -> sqlite3.Connection:
+        c = sqlite3.connect(self.path, timeout=30.0, check_same_thread=False)
+        c.row_factory = sqlite3.Row
+        c.execute('PRAGMA foreign_keys=ON')
+        c.execute('PRAGMA busy_timeout=30000')
+        c.execute('PRAGMA synchronous=NORMAL')
+        c.execute('PRAGMA temp_store=MEMORY')
+        c.execute('PRAGMA cache_size=-16384')
+        with self._conns_lock:
+            self._conns.append(c)
         return c
 
     @staticmethod
@@ -127,17 +126,41 @@ class Store:
 
     def close(self) -> None:
         self._local = threading.local()
+        while True:
+            try:
+                self._pool.get_nowait()
+            except queue.Empty:
+                break
         Store._cleanup_conns(self._conns, self._conns_lock)
 
     @contextmanager
     def db(self) -> Iterator[sqlite3.Connection]:
-        c = self._get_conn()
+        active: sqlite3.Connection | None = getattr(self._local, 'active_conn', None)
+        if active is not None:
+            yield active
+            return
+        try:
+            c = self._pool.get_nowait()
+        except queue.Empty:
+            c = self._new_conn()
+        self._local.active_conn = c
         try:
             with c:
                 yield c
         finally:
+            self._local.active_conn = None
             if c.in_transaction:
                 c.rollback()
+            try:
+                self._pool.put_nowait(c)
+            except queue.Full:
+                with self._conns_lock:
+                    if c in self._conns:
+                        self._conns.remove(c)
+                try:
+                    c.close()
+                except sqlite3.Error:
+                    pass
 
     def add(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
         accepted = duplicates = 0
@@ -677,20 +700,37 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if p.path == '/api/ct_logs':
                 query_str = q.get('query', [''])[0]
+                limit_int = int(q.get('limit', ['50'])[0])
+                if not (1 <= limit_int <= 200):
+                    raise ValueError('Sertifika sorgu sınırı 1..200 arasında olmalı')
                 try:
-                    limit_int = min(200, max(1, int(q.get('limit', ['50'])[0])))
-                except (ValueError, TypeError):
-                    limit_int = 50
-                try:
+                    if engine.fetch_ct_logs is getattr(engine, '_ORIG_FETCH_CT_LOGS', None):
+                        ct_meta = asyncio.run(engine.fetch_ct_logs_with_meta(query_str, limit_int))
+                        if ct_meta.get('upstream_failed'):
+                            self.out(
+                                {
+                                    'error': 'Sertifika şeffaflık sunucularına ulaşılamadı',
+                                    'tier_errors': ct_meta.get('tier_errors', []),
+                                },
+                                502,
+                            )
+                            return
+                        logs = ct_meta['records']
+                        self.out({
+                            'query': query_str,
+                            'count': len(logs),
+                            'domains': logs,
+                            'records': logs,
+                            'source_engine': ct_meta.get('source_engine', ''),
+                            'tier_errors': ct_meta.get('tier_errors', []),
+                        })
+                        return
                     res_ct = engine.fetch_ct_logs(query_str, limit_int)
-                    if inspect.isawaitable(res_ct):
-                        logs = asyncio.run(res_ct)
-                    else:
-                        logs = res_ct
+                    logs = asyncio.run(res_ct) if inspect.isawaitable(res_ct) else res_ct
                 except Exception as exc:
                     self.out({'error': str(exc)}, 500)
                     return
-                self.out({'query': query_str, 'count': len(logs), 'domains': logs, 'records': logs})
+                self.out({'query': query_str, 'count': len(logs), 'domains': logs, 'records': logs, 'source_engine': 'custom'})
                 return
             if p.path == '/api/export.xlsx':
                 with tempfile.TemporaryDirectory(prefix='lead_export_') as tmp:
@@ -712,6 +752,31 @@ class Handler(BaseHTTPRequestHandler):
                     )
                     self.send_header('Content-Length', str(dest.stat().st_size))
                     self.send_header('Content-Disposition', 'attachment; filename="firmalar.xlsx"')
+                    self.send_header('Cache-Control', 'no-store')
+                    self.send_header('X-Content-Type-Options', 'nosniff')
+                    for k, v in self._cors_headers().items():
+                        self.send_header(k, v)
+                    self.end_headers()
+                    with dest.open('rb') as f:
+                        shutil.copyfileobj(f, self.wfile)
+                return
+            if p.path == '/api/portfolio.csv':
+                with tempfile.TemporaryDirectory(prefix='lead_csv_export_') as tmp:
+                    dest = Path(tmp) / 'firmalar.csv'
+                    generate_csv(
+                        s,
+                        dest,
+                        q.get('sector', [''])[0],
+                        q.get('region', [''])[0],
+                        float(q.get('minimum', ['0'])[0]),
+                        q.get('box', [''])[0],
+                        q.get('district', [''])[0],
+                        q.get('contact_mode', ['all'])[0],
+                    )
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/csv; charset=utf-8')
+                    self.send_header('Content-Length', str(dest.stat().st_size))
+                    self.send_header('Content-Disposition', 'attachment; filename="firmalar.csv"')
                     self.send_header('Cache-Control', 'no-store')
                     self.send_header('X-Content-Type-Options', 'nosniff')
                     for k, v in self._cors_headers().items():
@@ -770,17 +835,21 @@ class Handler(BaseHTTPRequestHandler):
                 records = d.get('records', [])
                 if not isinstance(records, list) or len(records) > 50000:
                     raise ValueError('En çok 50.000 kayıt')
-                self.out({'records': industrial_engine.deduplicate_records_splink(records)})
+                self.out(industrial_engine.deduplicate_records_splink_with_meta(records))
                 return
             if p == '/api/industrial/fuzzy_match':
                 records = d.get('records', [])
                 query_str = str(d.get('query', '')).strip()
                 if not isinstance(records, list) or len(records) > 50000:
                     raise ValueError('En çok 50.000 kayıt')
-                limit_int = min(1000, max(1, int(d.get('limit', 200))))
-                cutoff_f = max(0.0, min(100.0, float(d.get('score_cutoff', 52.0))))
+                limit_int = int(d.get('limit', 200))
+                if not (1 <= limit_int <= 1000):
+                    raise ValueError('Sıralama sınırı 1..1000 arasında olmalı')
+                cutoff_f = float(d.get('score_cutoff', 52.0))
+                if not math.isfinite(cutoff_f) or not (0.0 <= cutoff_f <= 100.0):
+                    raise ValueError('Geçersiz bulanık eşleşme eşiği (0..100 arası sonlu sayı olmalı)')
                 ranked = industrial_engine.fuzzy_rank_records(records, query_str, limit=limit_int, score_cutoff=cutoff_f)
-                self.out({'count': len(ranked), 'records': ranked})
+                self.out({'count': len(ranked), 'records': ranked, 'engine_used': 'rapidfuzz-3.14-cpp-simd'})
                 return
             if p == '/api/industrial/crawl':
                 url = d.get('url', '')
@@ -795,14 +864,20 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(raw_bbox, (list, tuple)) or len(raw_bbox) != 4:
                     raise ValueError('Geçersiz BBox formatı [minx, miny, maxx, maxy]')
                 bbox_tuple = (float(raw_bbox[0]), float(raw_bbox[1]), float(raw_bbox[2]), float(raw_bbox[3]))
-                limit = min(2000, max(1, int(d.get('limit', 500))))
+                limit = int(d.get('limit', 500))
+                if not (1 <= limit <= 2000):
+                    raise ValueError('Overture kayıt sınırı 1..2000 arasında olmalı')
                 places = industrial_engine.fetch_overture_places(bbox_tuple, limit=limit)
-                self.out({'count': len(places), 'places': places})
+                self.out({'count': len(places), 'places': places, 'engine_used': 'overture-s3-pyarrow'})
                 return
             if p == '/api/industrial/global_search':
                 city_str = str(d.get('city', '')).strip()[:100] or '__all__'
                 country_str = str(d.get('country', 'Türkiye')).strip()[:100] or 'Türkiye'
                 sector_str = str(d.get('sector', '')).strip()[:200]
+                offset_i = int(d.get('offset', 0))
+                limit_i = int(d.get('limit', 100))
+                if offset_i < 0 or not (1 <= limit_i <= 1000):
+                    raise ValueError('Sayfalama parametreleri geçersiz')
                 if not self.server.discovery.acquire(timeout=45.0):  # type: ignore[attr-defined]
                     self.out({'error': 'Önceki küresel tarama tamamlanıyor, birkaç saniye sonra tekrar deneyin'}, 409)
                     return
@@ -815,11 +890,13 @@ class Handler(BaseHTTPRequestHandler):
                         box=d.get('box'),
                         contact_mode=str(d.get('contact_mode', 'all'))[:40],
                         district=str(d.get('district', ''))[:100],
-                        offset=max(0, int(d.get('offset', 0))),
-                        limit=min(500, max(1, int(d.get('limit', 100)))),
+                        offset=offset_i,
+                        limit=limit_i,
                         force_refresh=bool(d.get('force_refresh', False)),
                     )
                     self.out(res)
+                except (RuntimeError, TimeoutError) as up_err:
+                    self.out({'error': str(up_err), 'upstream_failed': True}, 502)
                 finally:
                     self.server.discovery.release()  # type: ignore[attr-defined]
                 return

@@ -634,7 +634,7 @@
     if (raw === '__all__' || raw === '__all_country__') return '__all__';
     if (raw === '__custom__') {
       const typed = customEl ? customEl.value.trim() : '';
-      return typed || '__all__';
+      return typed || '__empty_custom__';
     }
     return raw || '__all__';
   }
@@ -642,21 +642,23 @@
   function currentFilters() {
     const country = $('countrySelect').value || 'Türkiye';
     const cityRaw = resolveSelectedCity(country, $('citySelect'), $('cityCustomInput'));
+    const isEmptyCustom = cityRaw === '__empty_custom__';
     const isAll = cityRaw === '__all__' || cityRaw === '__all_country__';
-    const city = isAll ? '__all__' : cityRaw;
-    const cityDisplay = isAll
-      ? (country === 'Türkiye' ? 'Tüm Şehirler (81 İl)' : `Tüm Şehirler (${country})`)
-      : city;
+    const city = isEmptyCustom ? '__empty_custom__' : (isAll ? '__all__' : cityRaw);
+    const cityDisplay = isEmptyCustom
+      ? 'Özel Şehir Girilmedi'
+      : (isAll ? (country === 'Türkiye' ? 'Tüm Şehirler (81 İl)' : `Tüm Şehirler (${country})`) : city);
     const district = $('districtSelect').value.trim();
     const sector = $('sectorInput').value.trim();
     const contactMode = $('contactModeSelect').value;
     const quick = fold($('quickSearchInput').value);
-    const region = `${city}, ${country}`;
-    return { country, city, cityDisplay, district, sector, contactMode, quick, region };
+    const region = `${isEmptyCustom ? '__all__' : city}, ${country}`;
+    return { country, city, cityDisplay, district, sector, contactMode, quick, region, isEmptyCustom };
   }
 
-  // Apple Motion Architecture
+  // Apple Motion Architecture (Scroll-Driven Staggered 80ms Reveal across Launchpad & Workspaces)
   function initMotion() {
+    document.querySelectorAll('.flow-tile').forEach(tile => tile.classList.add('reveal'));
     const nodes = Array.from(document.querySelectorAll('.reveal'));
     if (!('IntersectionObserver' in window)) {
       nodes.forEach(n => n.classList.add('is-visible'));
@@ -683,6 +685,16 @@
       }
     }, { threshold: 0.06 });
     nodes.forEach(n => io.observe(n));
+  }
+
+  function revealWorkspaceCards(sectionEl) {
+    if (!sectionEl) return;
+    const cards = Array.from(sectionEl.querySelectorAll(':scope > .card, :scope > .flow-help'));
+    cards.forEach((card, idx) => {
+      card.classList.add('reveal');
+      card.style.setProperty('--stagger', `${idx * 80}ms`);
+      requestAnimationFrame(() => card.classList.add('is-visible'));
+    });
   }
 
   // Populate UI Selects (Supports 'Tüm Şehirler' on BOTH Türkiye 81 Provinces & all 46 Global Export Countries)
@@ -799,12 +811,24 @@
         // Check Industrial Engine matrix with physical self-test verification
         try {
           const indRes = await turboApi('industrial/status?selftest=1', undefined, 9000);
-          if (indRes && indRes.status === 'active') {
+          if (indRes && (indRes.status === 'active' || indRes.status === 'degraded')) {
             const indBadge = $('industrialBadge');
             if (indBadge) indBadge.style.display = 'inline-flex';
             const indText = $('industrialBadgeText');
-            if (indText && indRes.active_engines && indRes.total_engines) {
-              indText.textContent = `${indRes.active_engines}/${indRes.total_engines} Pro Motor (DuckDB · H3 · Splink · RapidFuzz)`;
+            const actN = Number(indRes.active_engines || 0);
+            const totN = Number(indRes.total_engines || 9);
+            if (indText) {
+              indText.textContent = actN === totN
+                ? `${actN}/${totN} Pro Motor (DuckDB · H3 · Splink · RapidFuzz)`
+                : `${actN}/${totN} Pro Motor (Kısmi Mod — ${totN - actN} Motor Devre Dışı)`;
+            }
+            if ($('engineMatrixTitle')) {
+              $('engineMatrixTitle').textContent = actN === totN
+                ? `Endüstriyel Motor Matrisi — ${actN}/${totN} Yerel C/C++/Rust Motoru Öz-Testten Geçti`
+                : `Endüstriyel Motor Matrisi — Kısmi Çalışma (${actN}/${totN} Aktif, ${totN - actN} Devre Dışı)`;
+            }
+            if ($('engineMatrixSubtitle')) {
+              $('engineMatrixSubtitle').textContent = 'Yerel masaüstü servisi bağlı; her motor gerçek girdi üzerinde fiziksel öz-test ile doğrulandı:';
             }
             if (indRes.engines && typeof indRes.engines === 'object') {
               for (const [key, eng] of Object.entries(indRes.engines)) {
@@ -816,7 +840,7 @@
                     badgeEl.textContent = `● Doğrulandı (${ver}${lat})`;
                     badgeEl.className = 'badge mx-ok';
                   } else {
-                    badgeEl.textContent = `⚠ Devre Dışı`;
+                    badgeEl.textContent = `⚠ Devre Dışı (${eng.state || 'Hata'})`;
                     badgeEl.className = 'badge dist';
                   }
                 }
@@ -848,12 +872,23 @@
     turboToken = '';
     const badge = $('engineBadge');
     if (badge) badge.className = 'engine-badge cloud';
-    $('engineText').textContent = 'Hazır';
+    $('engineText').textContent = 'Bulut Modu Hazır';
     $('enrichBtn').textContent = 'E-posta Kayıtlarını Doğrula';
     const indBadge = $('industrialBadge');
     if (indBadge) indBadge.style.display = 'none';
+    if ($('engineMatrixTitle')) {
+      $('engineMatrixTitle').textContent = 'Endüstriyel Motor Matrisi — Bulut Modu (Yerel Servis Bağlı Değil)';
+    }
+    if ($('engineMatrixSubtitle')) {
+      $('engineMatrixSubtitle').textContent =
+        'Şu anda tarayıcı Bulut Modunda (86 Ön-İndeksli CDN Parçası + Fastly OSM v0.6 + DNS-over-HTTPS) çalışıyor. Aşağıdaki 9 derlenmiş C/C++/Rust motoru için yerel masaüstü servisi gereklidir:';
+    }
+    document.querySelectorAll('[data-engine-badge]').forEach(elBadge => {
+      elBadge.textContent = '☁ Yerel Servis Kapalı (Bulut Yedeği)';
+      elBadge.className = 'badge dist';
+    });
     if ($('enrichLiveStatus')) {
-      $('enrichLiveStatus').textContent = 'Durum: Bulut DNS-over-HTTPS MX/SPF/DMARC doğrulama motoru hazır.';
+      $('enrichLiveStatus').textContent = 'Durum: Bulut DNS-over-HTTPS MX/SPF/DMARC doğrulama motoru hazır (Yerel masaüstü tarayıcı bağlı değil).';
     }
     return false;
   }
@@ -1089,7 +1124,7 @@
         const hh = (n - s) * 0.32;
         return fetchSingleOsmV06Tile(cx - hw, cy - hh, cx + hw, cy + hh, attempt + 1);
       }
-      if (!r.ok) return [];
+      if (!r.ok) return { ok: false, pois: [] };
       const j = await r.json();
       const els = Array.isArray(j.elements) ? j.elements : [];
       const nodeCoords = new Map();
@@ -1119,9 +1154,9 @@
           pois.push({ lat, lon, tags: el0.tags });
         }
       }
-      return pois;
+      return { ok: true, pois };
     } catch {
-      return [];
+      return { ok: false, pois: [] };
     } finally {
       clearTimeout(timer);
     }
@@ -1137,16 +1172,17 @@
     ].slice(0, tileCount);
     const hw = 0.0050;
     const hh = 0.0040;
-    const batches = await Promise.all(
+    const tileResults = await Promise.all(
       offsets.map(([dx, dy]) =>
         fetchSingleOsmV06Tile(cLon + dx - hw, cLat + dy - hh, cLon + dx + hw, cLat + dy + hh)
       )
     );
+    const anyTileOk = tileResults.some(t => t && t.ok);
     const hasExact = Boolean(exactTags && exactTags.length);
     const hasTerms = Boolean(termList && termList.length);
     const matched = [];
-    for (const batch of batches) {
-      for (const item of batch) {
+    for (const tr of tileResults) {
+      for (const item of (tr.pois || [])) {
         const t = item.tags || {};
         const tagHit = hasExact && elementMatchesTagClauses(t, exactTags);
         if (!hasExact && !hasTerms) {
@@ -1168,7 +1204,7 @@
         }
       }
     }
-    return matched;
+    return { elements: matched, anyTileOk };
   }
 
   async function fetchPhotonOsmFallback(city, country, sector, bbox, tagClauses) {
@@ -1217,12 +1253,14 @@
       queries.push(kwUrl.toString());
     }
 
+    let anyPhotonHttpOk = false;
     const settled = await Promise.allSettled(queries.map(async u => {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 4500);
       try {
         const r = await fetch(u, { signal: ctrl.signal });
         if (!r.ok) return [];
+        anyPhotonHttpOk = true;
         const j = await r.json();
         return Array.isArray(j.features) ? j.features : [];
       } finally {
@@ -1248,7 +1286,7 @@
         if (!featMap.has(key)) featMap.set(key, { p, lon, lat });
       }
     }
-    if (!featMap.size) return null;
+    if (!featMap.size) return { elements: [], anyOk: anyPhotonHttpOk };
 
     const nodeIds = [];
     const wayIds = [];
@@ -1305,7 +1343,7 @@
         _tagMatched: Boolean(uniqueKv.length)
       });
     }
-    return out;
+    return { elements: out, anyOk: true };
   }
 
   function resolveSectorExactTags(sector) {
@@ -1490,16 +1528,23 @@
         }
       }
 
+      let cloudSource = 'Overpass API';
       if (!elements || !elements.length) {
         setStatus(`Tüm Şehirler (${country}) için resmi OpenStreetMap Fastly CDN v0.6 motoru devreye alındı…`, 'Fastly OSM v0.6', false, 68);
         const perHubBatches = await Promise.all(
           hubCoords.map((hc, idx) =>
-            fetchOsmApiV06CityTiles(hc.lat, hc.lon, exactTags, termList, idx === 0 ? 2 : 1).then(arr =>
-              arr.map(x => Object.assign({}, x, { _hubCity: hc.city }))
-            )
+            fetchOsmApiV06CityTiles(hc.lat, hc.lon, exactTags, termList, idx === 0 ? 2 : 1).then(resObj => ({
+              anyTileOk: Boolean(resObj && resObj.anyTileOk),
+              items: ((resObj && resObj.elements) || []).map(x => Object.assign({}, x, { _hubCity: hc.city }))
+            }))
           )
         );
-        elements = perHubBatches.flat();
+        const anyHubOk = perHubBatches.some(b => b.anyTileOk);
+        if (!fromOverpass && !anyHubOk) {
+          throw new Error(`Küresel harita sunucularına ulaşılamadı (${country} için Overpass ve OpenStreetMap API v0.6 yanıt vermedi).`);
+        }
+        cloudSource = 'Fastly OSM API v0.6';
+        elements = perHubBatches.flatMap(b => b.items);
       }
 
       const built = buildRecordsFromOsmElements(
@@ -1511,7 +1556,12 @@
         hubCoords
       );
       populateDistricts(`Tüm Şehirler (${country})`, Array.from(built.distSet));
-      const packedAll = { city: `Tüm Şehirler (${country})`, region: `Tüm Şehirler, ${country}`, records: built.records };
+      const packedAll = {
+        city: `Tüm Şehirler (${country})`,
+        region: `Tüm Şehirler, ${country}`,
+        records: built.records,
+        sourceEngine: cloudSource
+      };
       if (built.records.length > 0) shardCache.set(multiKey, packedAll);
       return packedAll;
     }
@@ -1552,6 +1602,7 @@
 
     let elements = null;
     let fromOverpass = false;
+    let cloudSource = 'Overpass API';
     const mirrors = OVERPASS_MIRRORS.slice(0, 2);
     const controllers = mirrors.map(() => new AbortController());
     try {
@@ -1577,9 +1628,18 @@
     } catch {
       controllers.forEach(c => c.abort());
       setStatus(`${city} için resmi OpenStreetMap Fastly CDN v0.6 motoru devreye alındı…`, 'Fastly OSM v0.6', false, 70);
-      elements = await fetchOsmApiV06CityTiles(cLat, cLon, exactTags, termList, 3);
+      const v06Res = await fetchOsmApiV06CityTiles(cLat, cLon, exactTags, termList, 3);
+      elements = v06Res.elements;
+      cloudSource = 'Fastly OSM API v0.6';
+      let photonOk = false;
       if (!elements || !elements.length) {
-        elements = await fetchPhotonOsmFallback(city, country, sector, [tightW, tightS, tightE, tightN], tagClauses);
+        const phRes = await fetchPhotonOsmFallback(city, country, sector, [tightW, tightS, tightE, tightN], tagClauses);
+        elements = phRes.elements;
+        photonOk = Boolean(phRes.anyOk);
+        if (elements && elements.length) cloudSource = 'Photon + OSM v0.6';
+      }
+      if (!v06Res.anyTileOk && !photonOk) {
+        throw new Error(`Canlı harita sunucularına ulaşılamadı (${city} için Overpass ve OpenStreetMap API v0.6 yanıt vermedi).`);
       }
     }
     if (!elements) {
@@ -1588,7 +1648,7 @@
 
     const built = buildRecordsFromOsmElements(elements, city, country, sector, fromOverpass && hasExactSectorTags, null);
     populateDistricts(city, Array.from(built.distSet));
-    const packed = { city, region: `${city}, ${country}`, records: built.records };
+    const packed = { city, region: `${city}, ${country}`, records: built.records, sourceEngine: cloudSource };
     if (built.records.length > 0) shardCache.set(cacheKey, packed);
     return packed;
   }
@@ -2019,9 +2079,10 @@
       with_efatura
     });
 
+    const srcPill = dataset.sourceEngine || (dataset.isTupleShard || dataset.isMultiTrShard ? 'Bulut CDN' : 'Hazır');
     setStatus(
       `${f.cityDisplay || f.city} kataloğunda "${f.sector || 'Tüm Sektörler'}" için ${fmt(finalRows.length)} temiz firma listelendi (${fmt(with_whatsapp)} WhatsApp, ${fmt(with_phone)} telefonlu, ${fmt(with_email)} e-postalı).`,
-      'Hazır',
+      srcPill,
       false,
       null
     );
@@ -2056,6 +2117,21 @@
       $('citySelect').value = '__all__';
     }
     const f = currentFilters();
+    if (f.isEmptyCustom) {
+      searchInFlight = false;
+      if (searchBtn) {
+        searchBtn.disabled = false;
+        searchBtn.textContent = 'Firmaları Listele';
+      }
+      setStatus(
+        'Özel şehir alanı boş bırakıldı. Lütfen şehir adını yazın (örn: Mannheim, Lyon) veya menüden "Tüm Şehirler" seçeneğini seçin.',
+        'Şehir Gerekli',
+        true,
+        null
+      );
+      if ($('cityCustomInput')) $('cityCustomInput').focus();
+      return;
+    }
     const cityLabel = f.cityDisplay || f.city;
     if ($('exportSectorInput')) $('exportSectorInput').value = f.sector;
     if ($('exportCountrySelect') && $('exportCountrySelect').value !== f.country) {
@@ -2646,26 +2722,48 @@
     }
   }
 
-  // CSV Export
+  // CSV Export (Full Dataset Server Streaming in Turbo Mode + Formula-Safe Client Export in Cloud Mode)
   async function handleExportCsv() {
     const filtersChanged = syncExportInputsToSearch();
-    if (filtersChanged || (!activeRecords.length && (!turboConnected || activeMode !== 'turbo-db'))) {
+    const preF = currentFilters();
+    if (
+      filtersChanged ||
+      (!activeRecords.length && (!turboConnected || activeMode !== 'turbo-db')) ||
+      (turboConnected && preF.country !== 'Türkiye' && (!turboPageData || !turboPageData.total))
+    ) {
       await executeSearch(true);
     }
     const f = currentFilters();
     const locSlug = slugify(f.city === '__all__' ? `tum-${f.country}` : f.city);
     const fileSlug = `${locSlug}-${slugify(f.sector || 'firmalar')}.csv`;
-    let rowsToExport = activeRecords.length
-      ? activeRecords
-      : (turboPageData && Array.isArray(turboPageData.rows) ? turboPageData.rows : []);
 
-    if (turboConnected && activeMode === 'turbo-db' && !rowsToExport.length) {
-      const res = await fetch(`${LOCAL_API}/api/export`, { headers: { 'X-Local-Token': turboToken } });
-      if (res.ok) {
-        triggerDownload(await res.blob(), fileSlug);
-        return;
+    if (turboConnected && !f.quick) {
+      const params = new URLSearchParams({
+        sector: f.sector,
+        region: f.region,
+        district: f.district,
+        contact_mode: f.contactMode
+      });
+      try {
+        setStatus('Tüm eşleşen firmalar CSV olarak hazırlanıyor…', 'CSV Üretimi', false, 55);
+        const res = await fetch(`${LOCAL_API}/api/portfolio.csv?${params}`, {
+          headers: turboToken ? { 'X-Local-Token': turboToken } : {}
+        });
+        if (res.ok) {
+          const blob = await res.blob();
+          triggerDownload(blob, fileSlug);
+          const totalHint = (turboPageData && turboPageData.total) ? `${fmt(turboPageData.total)} firmalık ` : '';
+          setStatus(`${totalHint}CSV dosyası indirildi: ${fileSlug}`, 'İndirildi', false, null);
+          return;
+        }
+      } catch {
+        // Fall through to client CSV export if local service drops
       }
     }
+
+    const rowsToExport = activeRecords.length
+      ? activeRecords
+      : (turboPageData && Array.isArray(turboPageData.rows) ? turboPageData.rows : []);
 
     if (!rowsToExport.length) {
       setStatus('Seçilen kriterlere uygun CSV kaydı bulunamadı.', 'Uyarı', true, null);
@@ -2770,12 +2868,40 @@
     return Array.from(groups.values());
   }
 
-  // Splink 5.0 Probabilistic Entity Clustering on DuckDB (with deterministic Cloud fallback & branch merging)
+  async function loadCandidatePoolForEngine(maxRows = 1000) {
+    if (activeMode !== 'turbo-db') {
+      return activeRecords.slice(0, maxRows);
+    }
+    const pageRows = (turboPageData && Array.isArray(turboPageData.rows)) ? turboPageData.rows : [];
+    const totalAvailable = (turboPageData && Number(turboPageData.total)) || pageRows.length;
+    if (!turboConnected || totalAvailable <= pageRows.length) {
+      return pageRows;
+    }
+    const f = currentFilters();
+    try {
+      const params = new URLSearchParams({
+        sector: f.sector,
+        region: f.region,
+        district: f.district,
+        contact_mode: f.contactMode,
+        q: f.quick,
+        offset: '0',
+        limit: String(Math.min(1000, maxRows))
+      });
+      const data = await turboApi(`portfolio?${params}`, undefined, 15000);
+      if (data && Array.isArray(data.rows) && data.rows.length) {
+        return data.rows;
+      }
+    } catch {
+      // Fall back to currently loaded page rows if full pool fetch fails
+    }
+    return pageRows;
+  }
+
+  // Splink 5.0 Probabilistic Entity Clustering on DuckDB (with explicit fallback disclosure)
   async function handleSplinkDedup() {
     await ensureResultsLoaded();
-    const currentRows = activeMode === 'turbo-db'
-      ? (turboPageData && turboPageData.rows ? turboPageData.rows : [])
-      : activeRecords;
+    const currentRows = await loadCandidatePoolForEngine(1000);
     if (!currentRows || !currentRows.length) {
       setStatus('Tekilleştirilecek firma kaydı bulunamadı.', 'Bilgi', false, null);
       return;
@@ -2787,34 +2913,32 @@
     setStatus('Splink 5.0 ile çoklu şubeler ve mükerrer firma kayıtları birleştiriliyor…', 'AI Tekilleştirme', false, 55);
     try {
       let clustered = null;
-      let engineUsed = 'Splink 5.0 (DuckDB)';
+      let engineUsed = '';
       if (turboConnected && currentRows.length >= 2) {
         try {
-          const res = await turboApi('industrial/dedup', { records: currentRows }, 18000);
+          const res = await turboApi('industrial/dedup', { records: currentRows }, 20000);
           if (res && Array.isArray(res.records) && res.records.length) {
             clustered = res.records;
+            engineUsed = res.fallback_used
+              ? 'Deterministik Yedek Birleştirici (Splink Yedeği)'
+              : 'Splink 5.0 (DuckDB)';
           }
         } catch (e) {
           console.warn('Splink local fallback to client entity resolution:', e);
         }
       }
       if (!clustered) {
-        engineUsed = 'Kurumsal Varlık Birleştirici';
+        engineUsed = 'İstemci Varlık Birleştirici (Bulut Yedeği)';
         clustered = currentRows.map(r => Object.assign({}, r));
       }
 
       const mergedList = collapseClusteredRecords(clustered);
       const collapsedBranches = Math.max(0, beforeCount - mergedList.length);
 
-      if (activeMode === 'turbo-db' && turboPageData) {
-        turboPageData.rows = mergedList;
-        const st = computeRowsStats(mergedList);
-        renderTableRows(mergedList, mergedList.length, Object.assign({}, turboPageData, st, { total: mergedList.length }));
-      } else {
-        activeRecords = mergedList;
-        currentOffset = 0;
-        renderTableRows(mergedList.slice(0, PAGE_SIZE), mergedList.length, computeRowsStats(mergedList));
-      }
+      activeMode = 'cloud';
+      activeRecords = mergedList;
+      currentOffset = 0;
+      renderTableRows(mergedList.slice(0, PAGE_SIZE), mergedList.length, computeRowsStats(mergedList));
       setStatus(
         `${engineUsed}: ${fmt(beforeCount)} kayıt incelendi → ${fmt(mergedList.length)} tekil ana işletme kaldı (${fmt(collapsedBranches)} mükerrer şube birleştirildi).`,
         'Tekilleştirildi',
@@ -2828,14 +2952,12 @@
     }
   }
 
-  // RapidFuzz C++ SIMD WRatio Ranking (with client-side fallback in Cloud Mode)
+  // RapidFuzz C++ SIMD WRatio Ranking (with explicit fallback disclosure in Cloud Mode)
   async function handleRapidFuzzRank() {
     await ensureResultsLoaded();
     const f = currentFilters();
     const queryStr = ($('quickSearchInput').value || f.sector || f.cityDisplay || f.city || 'Firma').trim();
-    const currentRows = activeMode === 'turbo-db'
-      ? (turboPageData && turboPageData.rows ? turboPageData.rows : [])
-      : activeRecords.slice(0, 1500);
+    const currentRows = await loadCandidatePoolForEngine(1000);
     if (!currentRows || !currentRows.length) {
       setStatus('Sıralanacak firma kaydı bulunamadı.', 'Bilgi', false, null);
       return;
@@ -2850,19 +2972,15 @@
           const res = await turboApi('industrial/fuzzy_match', {
             records: currentRows,
             query: queryStr,
-            limit: currentRows.length,
+            limit: Math.min(1000, currentRows.length),
             score_cutoff: 0
           }, 15000);
           if (res && Array.isArray(res.records) && res.records.length) {
-            if (activeMode === 'turbo-db' && turboPageData) {
-              turboPageData.rows = res.records;
-              renderTableRows(turboPageData.rows, turboPageData.total || res.records.length, turboPageData);
-            } else {
-              activeRecords = res.records;
-              currentOffset = 0;
-              renderTableRows(activeRecords.slice(0, PAGE_SIZE), activeRecords.length, computeRowsStats(activeRecords));
-            }
-            setStatus(`RapidFuzz C++ SIMD ile ${fmt(res.records.length)} firma "${queryStr}" ilgisine göre (% uyum puanıyla) sıralandı.`, 'Sıralandı', false, null);
+            activeMode = 'cloud';
+            activeRecords = res.records;
+            currentOffset = 0;
+            renderTableRows(activeRecords.slice(0, PAGE_SIZE), activeRecords.length, computeRowsStats(activeRecords));
+            setStatus(`RapidFuzz C++ SIMD ile ${fmt(res.records.length)} firma "${queryStr}" ilgisine göre (% uyum puanıyla) sıralandı.`, 'RapidFuzz C++', false, null);
             return;
           }
         } catch (err) {
@@ -2870,7 +2988,7 @@
         }
       }
 
-      // Pure-JS token + alias similarity fallback for Cloud Mode
+      // Pure-JS token + alias similarity fallback for Cloud Mode (explicitly labeled as fallback)
       const expandedTerms = expandSectorTerms(queryStr);
       const qFold = fold(queryStr);
       const qTokens = qFold.split(' ').filter(Boolean);
@@ -2887,15 +3005,11 @@
         return Object.assign({}, r, { fuzzy_score: Math.min(100, score) });
       }).sort((a, b) => b.fuzzy_score - a.fuzzy_score);
 
-      if (activeMode === 'turbo-db' && turboPageData) {
-        turboPageData.rows = scored;
-        renderTableRows(scored, turboPageData.total || scored.length, turboPageData);
-      } else {
-        activeRecords = scored;
-        currentOffset = 0;
-        renderTableRows(scored.slice(0, PAGE_SIZE), scored.length, computeRowsStats(scored));
-      }
-      setStatus(`${fmt(scored.length)} firma "${queryStr}" ilgisine göre (% uyum puanıyla) sıralandı.`, 'Sıralandı', false, null);
+      activeMode = 'cloud';
+      activeRecords = scored;
+      currentOffset = 0;
+      renderTableRows(scored.slice(0, PAGE_SIZE), scored.length, computeRowsStats(scored));
+      setStatus(`Tarayıcı Benzerlik Yedeği (RapidFuzz Kapalı): ${fmt(scored.length)} firma "${queryStr}" ilgisine göre sıralandı.`, 'Bulut Yedeği', false, null);
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -2922,8 +3036,29 @@
       if (turboConnected) {
         const res = await turboApi('industrial/crawl', { url: raw }, 22000);
         box.replaceChildren();
-        const head = el('div', `✓ ${res.title || res.url || raw} (${res.engine_used || res.tier_used || 'http2'})`, 'firm-name');
         const domInfo = res.domain_intel || {};
+
+        if (res.success === false) {
+          const reason = res.error || res.blocked_reason || 'Sayfa yanıt vermedi veya erişim engellendi';
+          const failHead = el('div', `⚠ ${res.url || raw} — Web Sayfası Taranamadı (${reason})`, 'firm-name');
+          const dnsLine = el(
+            'div',
+            `DNS Durumu: ${domInfo.provider || 'Bilinmiyor'} · MX: ${domInfo.has_mx ? 'Aktif' : 'Yok'} · SPF: ${(domInfo.spf || domInfo.has_spf) ? 'Var' : 'Yok'} · DMARC: ${domInfo.has_dmarc ? 'Var' : 'Yok'}`,
+            'text-muted'
+          );
+          dnsLine.style.marginTop = '6px';
+          const noteLine = el(
+            'div',
+            'Sayfa içeriği çekilemediği için VKN/MERSİS, e-posta ve telefon alanları doğrulanmamış olarak bırakıldı (sahte "bulunamadı" üretilmedi).',
+            'text-muted'
+          );
+          noteLine.style.marginTop = '4px';
+          noteLine.style.fontSize = '12.5px';
+          box.append(failHead, dnsLine, noteLine);
+          return;
+        }
+
+        const head = el('div', `✓ ${res.title || res.url || raw} (${res.engine_used || res.tier_used || 'http2'})`, 'firm-name');
         const corpIds = res.corporate_identifiers || res.corporate_ids || {};
         const execs = Array.isArray(res.decision_makers) ? res.decision_makers : [];
         const pat = res.email_pattern || {};
@@ -2937,7 +3072,7 @@
 
         const b2 = el('div', null, 'intel-box');
         const vkns = Array.isArray(corpIds.all_vkns) && corpIds.all_vkns.length ? corpIds.all_vkns : (corpIds.vkn ? [corpIds.vkn] : []);
-        const vknText = vkns.length ? `VKN: ${vkns.join(', ')} (GİB Doğrulamalı)` : 'VKN: Sayfada Açık Değil';
+        const vknText = vkns.length ? `VKN: ${vkns.join(', ')} (GİB Doğrulamalı)` : 'VKN: Sayfa Metninde Yer Almıyor';
         const mersisText = corpIds.mersis ? ` · MERSİS: ${corpIds.mersis}` : '';
         const kepText = (corpIds.kep_addresses && corpIds.kep_addresses.length) ? ` · KEP: ${corpIds.kep_addresses.join(', ')}` : '';
         const vatList = corpIds.international_reg_ids || corpIds.vat_numbers || [];
@@ -2953,19 +3088,14 @@
 
         grid.append(b1, b2, b3);
 
-        const emLine = el('div', `E-postalar: ${(res.emails && res.emails.length) ? res.emails.join(', ') : 'Bulunamadı'}`, 'contact-item');
+        const emLine = el('div', `E-postalar: ${(res.emails && res.emails.length) ? res.emails.join(', ') : 'Sayfada Açık E-posta Yok'}`, 'contact-item');
         emLine.style.marginTop = '10px';
         const phList = (res.phones || []).map(p => (typeof p === 'string' ? p : `${p.e164} (${p.line_type}${p.whatsapp_eligible ? ' · WhatsApp' : ''})`));
-        const phLine = el('div', `Telefonlar: ${phList.length ? phList.join(', ') : 'Bulunamadı'}`, 'contact-item');
+        const phLine = el('div', `Telefonlar: ${phList.length ? phList.join(', ') : 'Sayfada Açık Telefon Yok'}`, 'contact-item');
         phLine.style.marginTop = '4px';
         box.append(head, grid, emLine, phLine);
-        const errMsg = res.error || res.blocked_reason;
         const snippet = res.markdown_snippet || res.markdown_preview;
-        if (errMsg) {
-          const warn = el('div', `Not: ${errMsg}`, 'text-muted');
-          warn.style.marginTop = '6px';
-          box.append(warn);
-        } else if (snippet) {
+        if (snippet) {
           const prev = el('p', snippet.slice(0, 360) + (snippet.length > 360 ? '…' : ''), 'text-muted');
           prev.style.marginTop = '8px';
           prev.style.fontSize = '12.5px';
@@ -2974,13 +3104,38 @@
         return;
       }
 
-      // Cloud fallback: DNS-over-HTTPS MX + TXT (SPF/DMARC) check via dns.google
+      // Cloud fallback: DNS-over-HTTPS MX + TXT (SPF/DMARC) check via dns.google (explicitly discloses DNS-only scope & NXDOMAIN/network errors)
       const dom = raw.replace(/^https?:\/\//i, '').split('/')[0].replace(/^www\./i, '').toLowerCase();
+      let mxHttpOk = false;
+      const fetchDns = async (name, type) => {
+        const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`);
+        if (!r.ok) throw new Error(`DNS HTTP ${r.status}`);
+        mxHttpOk = true;
+        return r.json();
+      };
       const [mxRes, txtRes, dmarcRes] = await Promise.all([
-        fetch(`https://dns.google/resolve?name=${encodeURIComponent(dom)}&type=MX`).then(r => r.json()).catch(() => ({})),
-        fetch(`https://dns.google/resolve?name=${encodeURIComponent(dom)}&type=TXT`).then(r => r.json()).catch(() => ({})),
-        fetch(`https://dns.google/resolve?name=${encodeURIComponent('_dmarc.' + dom)}&type=TXT`).then(r => r.json()).catch(() => ({}))
+        fetchDns(dom, 'MX'),
+        fetchDns(dom, 'TXT').catch(() => ({})),
+        fetchDns('_dmarc.' + dom, 'TXT').catch(() => ({}))
       ]);
+      if (!mxHttpOk) {
+        throw new Error('DNS-over-HTTPS doğrulama sunucusuna ulaşılamadı.');
+      }
+      box.replaceChildren();
+      if (mxRes.Status === 3) {
+        box.append(
+          el('div', `⚠ ${dom} — Alan Adı Mevcut Değil (NXDOMAIN)`, 'firm-name'),
+          el('div', 'Girilen alan adı küresel DNS kayıtlarında kayıtlı görünmüyor.', 'text-muted')
+        );
+        return;
+      }
+      if (typeof mxRes.Status === 'number' && mxRes.Status !== 0) {
+        box.append(
+          el('div', `⚠ ${dom} — DNS Sorgu Hatası (RCODE ${mxRes.Status})`, 'firm-name'),
+          el('div', 'Alan adı DNS sunucuları geçerli bir yanıt döndürmedi.', 'text-muted')
+        );
+        return;
+      }
       const mxHosts = (mxRes.Answer || []).filter(a => a.type === 15).map(a => String(a.data || '').toLowerCase());
       const txtVals = (txtRes.Answer || []).map(a => String(a.data || ''));
       const hasSpf = txtVals.some(t => t.toLowerCase().includes('v=spf1'));
@@ -2991,13 +3146,13 @@
       else if (joinedMx.includes('google.com') || joinedMx.includes('googlemail.com')) provider = 'Google Workspace';
       else if (joinedMx.includes('yandex')) provider = 'Yandex 360 Kurumsal';
 
-      box.replaceChildren();
       box.append(
-        el('div', `✓ ${dom} — Canlı DNS-over-HTTPS Altyapı Raporu`, 'firm-name'),
-        el('div', `Posta Altyapısı: ${provider} · MX: ${mxHosts.length ? 'Aktif (' + mxHosts.length + ' sunucu)' : 'Yok'} · SPF: ${hasSpf ? 'Aktif' : 'Yok'} · DMARC: ${hasDmarc ? 'Aktif' : 'Yok'}`, 'text-muted')
+        el('div', `✓ ${dom} — Canlı DNS-over-HTTPS Altyapı Raporu (Bulut Yedeği)`, 'firm-name'),
+        el('div', `Posta Altyapısı: ${provider} · MX: ${mxHosts.length ? 'Aktif (' + mxHosts.length + ' sunucu)' : 'Yok'} · SPF: ${hasSpf ? 'Aktif' : 'Yok'} · DMARC: ${hasDmarc ? 'Aktif' : 'Yok'}`, 'text-muted'),
+        el('div', 'Not: Bulut modunda tarayıcı CORS sınırı nedeniyle yalnızca canlı DNS kayıtları doğrulanır; tam HTML/VKN/e-posta kazıma için yerel masaüstü motoru gerekir.', 'text-muted')
       );
     } catch (err) {
-      box.replaceChildren(el('div', 'İnceleme hatası: ' + (err.message || err), 'text-muted'));
+      box.replaceChildren(el('div', '⚠ İnceleme hatası: ' + (err.message || err), 'text-muted'));
     } finally {
       btn.disabled = false;
       btn.textContent = 'Canlı İstihbarat Çıkar';
@@ -3379,38 +3534,93 @@
     }
   }
 
-  // DuckDB Vectorized Columnar Analytics
+  // DuckDB Vectorized Columnar Analytics (with honest Cloud CDN Manifest fallback & zero invented numbers)
   async function loadDuckDbAnalytics(forceRefresh = false) {
     const btn = $('refreshDuckDbBtn');
     if (btn && forceRefresh) {
       btn.disabled = true;
       btn.textContent = '⚡ Yenileniyor…';
     }
+    const pctStr = (part, whole, suffix) => {
+      if (!whole || whole <= 0) return '—';
+      const p = ((Number(part || 0) / Number(whole)) * 100).toFixed(1).replace('.', ',');
+      return `%${p} ${suffix}`;
+    };
     try {
       if (turboConnected) {
         const endpoint = forceRefresh ? 'industrial/analytics?refresh=1' : 'industrial/analytics';
         const data = await turboApi(endpoint, undefined, 15000);
-        if (data && data.total_places) {
-          if ($('duckdbTotalPlaces')) $('duckdbTotalPlaces').textContent = fmt(data.total_places);
-          if ($('duckdbTotalWebsites')) $('duckdbTotalWebsites').textContent = fmt(data.with_website);
-          if ($('duckdbTotalPhones')) $('duckdbTotalPhones').textContent = fmt(data.with_phones);
-          if ($('duckdbTotalEmails')) $('duckdbTotalEmails').textContent = fmt(data.with_emails);
+        if (data && typeof data.total_places === 'number') {
+          const tot = data.total_places;
+          if ($('duckdbTotalPlaces')) $('duckdbTotalPlaces').textContent = fmt(tot);
+          if ($('duckdbTotalWebsites')) $('duckdbTotalWebsites').textContent = fmt(data.with_website || 0);
+          if ($('duckdbTotalPhones')) $('duckdbTotalPhones').textContent = fmt(data.with_phones || 0);
+          if ($('duckdbTotalEmails')) $('duckdbTotalEmails').textContent = fmt(data.with_emails || 0);
+          if ($('duckdbWebPct')) $('duckdbWebPct').textContent = pctStr(data.with_website, tot, 'Web Varlığı');
+          if ($('duckdbPhonePct')) $('duckdbPhonePct').textContent = pctStr(data.with_phones, tot, 'Telefon Oranı');
+          if ($('duckdbEmailPct')) $('duckdbEmailPct').textContent = pctStr(data.with_emails, tot, 'E-posta Oranı');
+          if ($('duckdbTotalLabel')) {
+            $('duckdbTotalLabel').textContent = data.fallback_used
+              ? 'Toplam Firma (SQLite Yedeği)'
+              : 'Toplam Firma (DuckDB)';
+          }
+          if ($('duckdbCoverageLabel')) {
+            $('duckdbCoverageLabel').textContent = `● ${fmt(data.distinct_regions || 0)} Bölge/Şehir Kayıtlı`;
+          }
+          if ($('duckdbEngineSource')) {
+            const fbNote = data.fallback_used ? ` · Yedek Motor (${data.fallback_reason || 'DuckDB devre dışı'})` : '';
+            $('duckdbEngineSource').textContent = `Kaynak: ${data.engine || 'DuckDB'} · ${data.speed_ms || ''}${fbNote}`;
+          }
+          if ($('dbPoolTitle')) {
+            $('dbPoolTitle').textContent = data.fallback_used
+              ? 'SQLite Salt-Okunur Analitik Havuzu (DuckDB Yedeği)'
+              : 'DuckDB Sütunsal Analitik Veri Havuzu (Canlı Yerel Motor)';
+          }
+          return;
         }
-      } else if (manifest && manifest.shards) {
+      }
+
+      if (manifest && manifest.shards) {
         let total = 0;
-        for (const s of Object.values(manifest.shards)) {
-          total += Number(s.total || s.count || 0);
+        let websites = 0;
+        let phones = 0;
+        let emails = 0;
+        const shardValues = Object.values(manifest.shards);
+        for (const s of shardValues) {
+          total += Number(s.count || s.total || 0);
+          websites += Number(s.websites || 0);
+          phones += Number(s.phones || 0);
+          emails += Number(s.emails || 0);
         }
-        if (total > 0 && $('duckdbTotalPlaces')) {
-          $('duckdbTotalPlaces').textContent = fmt(Math.max(1708585, total));
+        if ($('duckdbTotalPlaces')) $('duckdbTotalPlaces').textContent = fmt(total);
+        if ($('duckdbTotalWebsites')) $('duckdbTotalWebsites').textContent = fmt(websites);
+        if ($('duckdbTotalPhones')) $('duckdbTotalPhones').textContent = fmt(phones);
+        if ($('duckdbTotalEmails')) $('duckdbTotalEmails').textContent = fmt(emails);
+        if ($('duckdbWebPct')) $('duckdbWebPct').textContent = pctStr(websites, total, 'Web Varlığı');
+        if ($('duckdbPhonePct')) $('duckdbPhonePct').textContent = pctStr(phones, total, 'Telefon Oranı');
+        if ($('duckdbEmailPct')) $('duckdbEmailPct').textContent = pctStr(emails, total, 'E-posta Oranı');
+        if ($('duckdbTotalLabel')) $('duckdbTotalLabel').textContent = 'Toplam Firma (CDN Havuzu)';
+        if ($('duckdbCoverageLabel')) $('duckdbCoverageLabel').textContent = `● ${fmt(shardValues.length)} Ön-İndeksli Bölge Parçası`;
+        if ($('duckdbEngineSource')) {
+          $('duckdbEngineSource').textContent = 'Kaynak: Bulut CDN Manifest Özeti (Yerel DuckDB Servisi Bağlı Değil)';
+        }
+        if ($('dbPoolTitle')) {
+          $('dbPoolTitle').textContent = 'Bulut CDN Bölgesel Veri Havuzu (81 İl + Uluslararası Ön-İndeks)';
+        }
+      } else {
+        if ($('duckdbEngineSource')) {
+          $('duckdbEngineSource').textContent = '⚠ Veri havuzu manifestosuna ve yerel DuckDB motoruna ulaşılamadı.';
         }
       }
     } catch (e) {
       console.warn('DuckDB analytics error:', e);
+      if ($('duckdbEngineSource')) {
+        $('duckdbEngineSource').textContent = '⚠ Analitik sorgusu başarısız: ' + (e.message || e);
+      }
     } finally {
       if (btn && forceRefresh) {
         btn.disabled = false;
-        btn.textContent = '⚡ DuckDB Analizini Yenile';
+        btn.textContent = '⚡ Analizi Yenile';
       }
     }
   }
@@ -3480,6 +3690,7 @@
 
     $('amBreadcrumb').textContent = ws.breadcrumb;
     $('pageTitle').textContent = ws.title;
+    revealWorkspaceCards($(ws.id));
 
     if (key === 'database') {
       renderDatabaseStats();
@@ -3603,6 +3814,9 @@
     wrap.hidden = false;
 
     let records = [];
+    let anyProviderOk = false;
+    let sourceLabel = '';
+    let lastErrMsg = '';
     try {
       let handled = false;
       if (turboConnected) {
@@ -3610,12 +3824,18 @@
           const res = await fetch(`${LOCAL_API}/api/ct_logs?query=${encodeURIComponent(q)}&limit=${limit}`, {
             headers: turboToken ? { 'X-Local-Token': turboToken } : {}
           });
+          const data = await res.json().catch(() => ({}));
           if (res.ok) {
-            const data = await res.json();
+            anyProviderOk = true;
             records = data.records || data.domains || [];
-            handled = records.length > 0;
+            sourceLabel = data.source_engine || 'local-ct';
+            handled = true;
+          } else {
+            lastErrMsg = data.error || `Yerel CT HTTP ${res.status}`;
           }
-        } catch {}
+        } catch (e) {
+          lastErrMsg = e.message || 'Yerel CT bağlantı hatası';
+        }
       }
 
       if (!handled) {
@@ -3627,6 +3847,8 @@
         try {
           const res = await fetch(`https://crt.sh/?q=${encodeURIComponent(safeQ)}&output=json`, { signal: ctrl.signal });
           if (res.ok) {
+            anyProviderOk = true;
+            sourceLabel = 'crt.sh';
             const raw = await res.json();
             for (const item of (Array.isArray(raw) ? raw : [])) {
               const cands = String(item.name_value || item.common_name || '').split('\n');
@@ -3643,9 +3865,11 @@
               }
               if (records.length >= limit) break;
             }
+          } else {
+            lastErrMsg = `crt.sh HTTP ${res.status}`;
           }
-        } catch {
-          // crt.sh 502/timeout -> fallback to RFC 6962 CertSpotter API below
+        } catch (e) {
+          lastErrMsg = e && e.name === 'AbortError' ? 'crt.sh zaman aşımı' : 'crt.sh erişim hatası';
         } finally {
           clearTimeout(t);
         }
@@ -3655,7 +3879,12 @@
           for (const domTarget of csTargets) {
             try {
               const r = await fetch(`https://api.certspotter.com/v1/issuances?domain=${encodeURIComponent(domTarget)}&include_subdomains=true&expand=dns_names,issuer`);
-              if (!r.ok) continue;
+              if (!r.ok) {
+                lastErrMsg = `CertSpotter HTTP ${r.status}`;
+                continue;
+              }
+              anyProviderOk = true;
+              sourceLabel = 'CertSpotter';
               const arr = await r.json();
               if (!Array.isArray(arr)) continue;
               for (const item of arr) {
@@ -3670,12 +3899,15 @@
                 }
                 if (records.length >= limit) break;
               }
-            } catch {}
+            } catch (e) {
+              lastErrMsg = e.message || 'CertSpotter bağlantı hatası';
+            }
             if (records.length >= limit) break;
           }
         }
       }
     } catch (err) {
+      lastErrMsg = err.message || String(err);
       console.warn('CT logs error:', err);
     } finally {
       ctQueryInFlight = false;
@@ -3686,7 +3918,10 @@
     tbody.replaceChildren();
     if (!records.length) {
       const emptyRow = el('tr');
-      const emptyTd = el('td', 'Bu sorgu için sertifika günlüğü kaydı bulunamadı.', 'empty-state');
+      const msg = anyProviderOk
+        ? `Bu sorgu için sertifika günlüğü kaydı bulunamadı (Kaynak: ${sourceLabel || 'CT Günlüğü'}).`
+        : `⚠ Sertifika şeffaflık sunucularına ulaşılamadı (${lastErrMsg || 'crt.sh / CertSpotter yanıt vermedi'}). Bağlantı hatası "0 kayıt" olarak sayılmadı.`;
+      const emptyTd = el('td', msg, 'empty-state');
       emptyTd.colSpan = 4;
       emptyRow.append(emptyTd);
       tbody.append(emptyRow);
@@ -4111,7 +4346,7 @@
     resetResultsView();
 
     try {
-      const res = await fetch('/data/manifest.json?v=7.1.0', { cache: 'no-cache' });
+      const res = await fetch('/data/manifest.json?v=7.3.0', { cache: 'no-cache' });
       if (res.ok) {
         manifest = await res.json();
         const curCity = $('citySelect') ? $('citySelect').value : '__all__';

@@ -1,6 +1,7 @@
 """Zero-N+1, single-sheet streaming XLSX exporter; formula-injection safe (V3 Pro)."""
 from __future__ import annotations
 
+import csv
 import json
 import tempfile
 from collections import defaultdict
@@ -9,6 +10,14 @@ from typing import Any
 
 import catalog
 import engine
+
+
+def _csv_safe(val: Any) -> str:
+    s = str(val or '')
+    stripped = s.lstrip(' \t\r\n')
+    if stripped and stripped[0] in ('=', '+', '-', '@'):
+        return "'" + s
+    return s
 
 
 def generate(
@@ -277,3 +286,198 @@ def generate(
                         if value:
                             ws.write_string(i, j, value[:32767], body)
         result.replace(path)
+
+
+def generate_csv(
+    store: Any,
+    path: str | Path,
+    sector: str = '',
+    region: str = '',
+    minimum: float = 0,
+    box: Any = None,
+    district: str = '',
+    contact_mode: str = 'all',
+) -> int:
+    """Zero-N+1, streaming UTF-8-SIG corporate CSV exporter with OWASP formula-injection guard and XLSX row parity."""
+    if contact_mode and contact_mode not in catalog.CONTACT_MODES:
+        raise ValueError('Geçersiz iletişim filtresi')
+    path = Path(path)
+    where, args = catalog.condition(sector, region, minimum, box, district)
+
+    with tempfile.TemporaryDirectory(prefix='lead_csv_', dir=path.parent) as tmp:
+        result = Path(tmp) / 'result.csv'
+        total = 0
+
+        with store.db() as c, result.open('w', encoding='utf-8-sig', newline='') as out_f:
+            c.execute('BEGIN')
+            writer = csv.writer(out_f, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow([
+                'Firma Adı',
+                'Kategori / Sektör',
+                'NACE Kodu',
+                'NACE Açıklaması',
+                'e-Fatura Durumu',
+                'Bilişim Altyapısı',
+                'WhatsApp Hattı',
+                'İl',
+                'İlçe',
+                'E-postalar',
+                'Telefonlar',
+                'Web Sitesi',
+                'Adres',
+            ])
+            excluded = {r[0] for r in c.execute('SELECT email FROM suppression')}
+
+            place_emails: dict[str, set[str]] = defaultdict(set)
+            for pid, em in c.execute(
+                "SELECT l.place_id, t.email FROM place_jobs l JOIN contacts t ON t.job_id = l.job_id "
+                "WHERE t.mx NOT IN ('nxdomain', 'null_mx')"
+            ):
+                place_emails[pid].add(em)
+
+            place_phones: dict[str, set[str]] = defaultdict(set)
+            for pid, ph in c.execute(
+                'SELECT l.place_id, t.phone FROM place_jobs l JOIN job_phones t ON t.job_id = l.job_id'
+            ):
+                place_phones[pid].add(ph)
+
+            place_web_meta: dict[str, tuple[str, str, str]] = {}
+            for pid, prov, dist, addr in c.execute(
+                '''SELECT l.place_id, jm.province, jm.district, jm.address
+                   FROM place_jobs l JOIN job_meta jm ON jm.job_id = l.job_id'''
+            ):
+                if pid not in place_web_meta and (prov or dist or addr):
+                    place_web_meta[pid] = (prov, dist, addr)
+
+            def write_row(
+                name: str,
+                cat: str,
+                city: str,
+                dist: str,
+                emails: set[str] | list[str],
+                phones: set[str] | list[str],
+                address: str,
+                website: str = '',
+            ) -> None:
+                nonlocal total
+                clean_emails = sorted(set(emails) - excluded)
+                clean_phones = sorted(set(phones))
+                wa_num = next((p for p in clean_phones if engine.is_whatsapp_phone(p)), '')
+                wa_url = engine.whatsapp_url(wa_num) if wa_num else ''
+                has_wa = bool(wa_num)
+                is_efat = catalog.is_efatura_company(name, clean_emails)
+
+                first_em = next((e for e in clean_emails if '@' in e), '')
+                em_dom = first_em.split('@')[1].lower() if first_em else ''
+                tech = engine.detect_tech_stack(email_domain=em_dom)
+                has_ent = bool(tech and tech in ('Microsoft 365', 'Google Workspace', 'Özel Kurumsal Sunucu'))
+                nace_code, nace_title = catalog.resolve_nace(cat, name)
+
+                if not catalog.contact_match(
+                    bool(clean_emails),
+                    bool(clean_phones),
+                    contact_mode,
+                    has_whatsapp=has_wa,
+                    has_efatura=is_efat,
+                    has_enterprise_mail=has_ent,
+                ):
+                    return
+
+                total += 1
+                writer.writerow([
+                    _csv_safe(name),
+                    _csv_safe(cat),
+                    _csv_safe(nace_code),
+                    _csv_safe(nace_title),
+                    'e-Fatura Mükellefi' if is_efat else 'Standart',
+                    _csv_safe(tech or 'Standart'),
+                    _csv_safe(wa_url),
+                    _csv_safe(city),
+                    _csv_safe(dist),
+                    _csv_safe(', '.join(clean_emails)),
+                    _csv_safe(', '.join(clean_phones)),
+                    _csv_safe(website),
+                    _csv_safe(address),
+                ])
+
+            cursor = c.execute(
+                '''SELECT p.*, m.province, m.district, m.emails, m.phones
+                   FROM places p LEFT JOIN place_meta m ON m.place_id = p.id'''
+                + where
+                + ' ORDER BY p.name, p.id',
+                args,
+            )
+            for p in cursor:
+                pid = p['id']
+                email = set(json.loads(p['emails'] or '[]')) | place_emails.get(pid, set())
+                phone = set(json.loads(p['phones'] or '[]')) | place_phones.get(pid, set())
+                w_prov, w_dist, w_addr = place_web_meta.get(pid, ('', '', ''))
+                city = (
+                    p['province']
+                    or catalog.province_of(w_prov)
+                    or catalog.province_of(p['region'].split(',')[0])
+                    or p['region'].split(',')[0].strip()
+                )
+                dist = p['district'] or w_dist or ''
+                address = p['address'] or w_addr or ''
+                write_row(
+                    p['name'],
+                    p['category'].replace('_', ' '),
+                    city,
+                    dist,
+                    email,
+                    phone,
+                    address,
+                    website=p['website'] or '',
+                )
+
+            if not minimum and not box:
+                sql = 'SELECT j.*, jm.province AS w_prov, jm.district AS w_dist, jm.address AS w_addr FROM jobs j LEFT JOIN job_meta jm ON jm.job_id = j.id WHERE NOT EXISTS(SELECT 1 FROM place_jobs l WHERE l.job_id = j.id)'
+                params: list[Any] = []
+                if sector:
+                    sql += ' AND j.sector=?'
+                    params.append(sector)
+                is_wild_reg, wild_country = catalog.is_wildcard_region(region)
+                if is_wild_reg:
+                    sql += ' AND j.region LIKE ?'
+                    params.append(f'%, {wild_country}')
+                elif region:
+                    sql += ' AND j.region=?'
+                    params.append(region)
+
+                standalone = c.execute(sql + ' ORDER BY j.id', params).fetchall()
+                if standalone:
+                    job_emails: dict[int, list[str]] = defaultdict(list)
+                    for jid, em in c.execute(
+                        'SELECT job_id, email FROM contacts WHERE NOT EXISTS(SELECT 1 FROM place_jobs l WHERE l.job_id = contacts.job_id)'
+                    ):
+                        job_emails[jid].append(em)
+                    job_phones: dict[int, list[str]] = defaultdict(list)
+                    for jid, ph in c.execute(
+                        'SELECT job_id, phone FROM job_phones WHERE NOT EXISTS(SELECT 1 FROM place_jobs l WHERE l.job_id = job_phones.job_id)'
+                    ):
+                        job_phones[jid].append(ph)
+                    d_fold = catalog.fold(district) if district else ''
+                    for j in standalone:
+                        jid = j['id']
+                        w_dist = j['w_dist'] or ''
+                        if d_fold and d_fold not in catalog.fold(w_dist + ' ' + (j['w_addr'] or '')):
+                            continue
+                        city = (
+                            catalog.province_of(j['w_prov'] or '')
+                            or catalog.province_of(j['region'].split(',')[0])
+                            or j['region'].split(',')[0].strip()
+                        )
+                        write_row(
+                            j['title'] or j['domain'],
+                            j['sector'],
+                            city,
+                            w_dist,
+                            job_emails.get(jid, []),
+                            job_phones.get(jid, []),
+                            j['w_addr'] or '',
+                            website=j['url'],
+                        )
+
+        result.replace(path)
+        return total

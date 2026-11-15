@@ -20,6 +20,7 @@ import ipaddress
 import importlib.metadata
 import json
 import logging
+import math
 import re
 import sqlite3
 import socket
@@ -30,6 +31,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlsplit
 
+import dns.exception
 import dns.resolver
 import duckdb
 import h3
@@ -46,6 +48,7 @@ import engine as core_engine
 
 logging.getLogger("splink").setLevel(logging.WARNING)
 
+_DUCKDB_ENGINE_LOCK = threading.RLock()
 _ANALYTICS_LOCK = threading.Lock()
 _ANALYTICS_CACHE: dict[str, tuple[float, Dict[str, Any]]] = {}
 _ANALYTICS_TTL_SEC = 60.0
@@ -311,12 +314,13 @@ def get_engine_status(force_selftest: bool = False) -> Dict[str, Any]:
             return dict(_SELFTEST_CACHE[1])
 
         def _t_duckdb() -> None:
-            c = duckdb.connect(":memory:")
-            try:
-                val = c.execute("SELECT sum(i) FROM range(100) t(i)").fetchone()
-                assert val and int(val[0]) == 4950
-            finally:
-                c.close()
+            with _DUCKDB_ENGINE_LOCK:
+                c = duckdb.connect(":memory:")
+                try:
+                    val = c.execute("SELECT sum(i) FROM range(100) t(i)").fetchone()
+                    assert val and int(val[0]) == 4950
+                finally:
+                    c.close()
 
         def _t_overture() -> None:
             import overturemaps
@@ -329,15 +333,30 @@ def get_engine_status(force_selftest: bool = False) -> Dict[str, Any]:
             assert callable(overturemaps.record_batch_reader)
 
         def _t_splink() -> None:
-            from splink import SettingsCreator, block_on
+            import pandas as pd
+            import splink
             import splink.comparison_library as cl
 
-            s = SettingsCreator(
-                link_type="dedupe_only",
-                comparisons=[cl.ExactMatch("phone")],
-                blocking_rules_to_generate_predictions=[block_on("phone")],
-            )
-            assert s is not None
+            with _DUCKDB_ENGINE_LOCK:
+                c_sp = duckdb.connect(":memory:")
+                try:
+                    df_sp = pd.DataFrame([
+                        {"unique_id": "1", "phone": "+902120000001"},
+                        {"unique_id": "2", "phone": "+902120000001"},
+                    ])
+                    c_sp.register("sp_probe", df_sp)
+                    s = splink.SettingsCreator(
+                        link_type="dedupe_only",
+                        comparisons=[cl.ExactMatch("phone").configure(m_probabilities=[0.95, 0.05], u_probabilities=[0.01, 0.99])],
+                        blocking_rules_to_generate_predictions=[splink.block_on("phone")],
+                    )
+                    db_api = splink.DuckDBAPI(c_sp)
+                    sp_df = db_api.table_to_splink_dataframe("sp_probe", "sp_probe")
+                    linker = splink.Linker(sp_df, s)
+                    preds = linker.inference.predict()
+                    assert preds is not None
+                finally:
+                    c_sp.close()
 
         def _t_rapidfuzz() -> None:
             sc = fuzz.WRatio("Fabricants de Meubles", "Meubles")
@@ -747,38 +766,62 @@ def inspect_domain_infrastructure(domain_or_email: str, timeout: float = 2.5) ->
     resolver.timeout = timeout
 
     mx_hosts: list[str] = []
+    dns_status = "no_mx"
+    dns_error = ""
     try:
         answers = resolver.resolve(domain, "MX")
         mx_hosts = sorted(str(r.exchange).rstrip(".").lower() for r in answers if str(r.exchange).strip("."))
-    except Exception:
-        pass
+        if mx_hosts:
+            dns_status = "ok"
+    except dns.resolver.NXDOMAIN:
+        dns_status = "nxdomain"
+        dns_error = "Alan adı DNS kayıtlarında mevcut değil (NXDOMAIN)"
+    except dns.exception.Timeout:
+        dns_status = "timeout"
+        dns_error = "DNS sunucusu zaman aşımına uğradı"
+    except dns.resolver.NoNameservers as exc:
+        dns_status = "dns_error"
+        dns_error = f"DNS isim sunucusu hatası: {type(exc).__name__}"
+    except dns.resolver.NoAnswer:
+        dns_status = "no_mx"
+    except Exception as exc:
+        dns_status = "dns_error"
+        dns_error = f"{type(exc).__name__}: {exc}"
 
     spf_record = ""
-    try:
-        for txt in resolver.resolve(domain, "TXT"):
-            joined = b"".join(txt.strings).decode("utf-8", errors="replace")
-            if joined.lower().startswith("v=spf1"):
-                spf_record = joined
-                break
-    except Exception:
-        pass
+    if dns_status not in ("nxdomain", "timeout"):
+        try:
+            for txt in resolver.resolve(domain, "TXT"):
+                joined = b"".join(txt.strings).decode("utf-8", errors="replace")
+                if joined.lower().startswith("v=spf1"):
+                    spf_record = joined
+                    break
+        except Exception:
+            pass
 
     dmarc_policy = "none"
     dmarc_record = ""
-    try:
-        for txt in resolver.resolve(f"_dmarc.{domain}", "TXT"):
-            joined = b"".join(txt.strings).decode("utf-8", errors="replace")
-            if "v=dmarc1" in joined.lower():
-                dmarc_record = joined
-                m = re.search(r"\bp=([a-zA-Z]+)", joined)
-                if m:
-                    dmarc_policy = m.group(1).lower()
-                break
-    except Exception:
-        pass
+    if dns_status not in ("nxdomain", "timeout"):
+        try:
+            for txt in resolver.resolve(f"_dmarc.{domain}", "TXT"):
+                joined = b"".join(txt.strings).decode("utf-8", errors="replace")
+                if "v=dmarc1" in joined.lower():
+                    dmarc_record = joined
+                    m = re.search(r"\bp=([a-zA-Z]+)", joined)
+                    if m:
+                        dmarc_policy = m.group(1).lower()
+                    break
+        except Exception:
+            pass
 
     mx_blob = " ".join(mx_hosts) + " " + spf_record.lower()
-    if any(k in mx_blob for k in ("outlook.com", "protection.outlook.com", "spf.protection.outlook.com")):
+    if dns_status == "nxdomain":
+        provider = "Alan Adı Mevcut Değil (NXDOMAIN)"
+    elif dns_status == "timeout":
+        provider = "DNS Zaman Aşımı (Sorgu Tamamlanamadı)"
+    elif dns_status == "dns_error":
+        provider = "DNS Sunucusu Yanıt Vermedi"
+    elif any(k in mx_blob for k in ("outlook.com", "protection.outlook.com", "spf.protection.outlook.com")):
         provider = "Microsoft 365 Kurumsal"
     elif any(k in mx_blob for k in ("google.com", "googlemail.com", "_spf.google.com")):
         provider = "Google Workspace"
@@ -797,6 +840,8 @@ def inspect_domain_infrastructure(domain_or_email: str, timeout: float = 2.5) ->
 
     return {
         "domain": domain,
+        "dns_status": dns_status,
+        "dns_error": dns_error,
         "has_mx": bool(mx_hosts),
         "mx_hosts": mx_hosts[:5],
         "provider": provider,
@@ -810,63 +855,80 @@ def get_database_analytics(sqlite_path: str | Path, force_refresh: bool = False)
     """Run single-pass vectorized analytics across SQLite leads using DuckDB with thread-safe singleflight cache."""
     db_file = Path(sqlite_path).resolve()
     if not db_file.exists():
-        return {"error": "Veritabanı dosyası bulunamadı", "total": 0, "total_places": 0}
+        return {"error": "Veritabanı dosyası bulunamadı", "total": 0, "total_places": 0, "fallback_used": False}
 
     with _ANALYTICS_LOCK:
-        cache_key = f"{db_file}:{db_file.stat().st_mtime_ns}"
+        s_sig = ""
+        try:
+            sc_sig = sqlite3.connect(f"file:{db_file}?mode=ro", uri=True)
+            try:
+                r_sig = sc_sig.execute(
+                    "SELECT (SELECT count(*) || ':' || coalesce(max(rowid),0) FROM places) || '|' || "
+                    "(SELECT count(*) || ':' || coalesce(max(rowid),0) FROM place_meta)"
+                ).fetchone()
+                s_sig = str(r_sig[0]) if r_sig else ""
+            finally:
+                sc_sig.close()
+        except Exception:
+            s_sig = str(db_file.stat().st_mtime_ns)
+        cache_key = f"{db_file}:{s_sig}"
         now_mono = time.monotonic()
         cached = _ANALYTICS_CACHE.get(cache_key)
-        # Singleflight coalesce: even on force_refresh bursts within 0.5s, share the fresh computation
-        if cached and ((not force_refresh and (now_mono - cached[0]) < _ANALYTICS_TTL_SEC) or (now_mono - cached[0]) < 0.5):
+        if cached and not force_refresh and (now_mono - cached[0]) < _ANALYTICS_TTL_SEC:
             res = dict(cached[1])
             res["cached"] = True
             return res
 
         t0 = time.perf_counter()
         escaped_db = str(db_file).replace("'", "''")
+        fallback_used = False
+        fallback_reason = ""
         try:
-            con = duckdb.connect(":memory:")
-            try:
-                con.execute(f"ATTACH '{escaped_db}' AS sqlite (TYPE SQLITE, READ_ONLY)")
-                p_stats = con.execute(
-                    """SELECT
-                         COUNT(*) AS total_places,
-                         COUNT(CASE WHEN website != '' AND website IS NOT NULL THEN 1 END) AS with_web,
-                         COUNT(DISTINCT region) AS distinct_regions
-                       FROM sqlite.places"""
-                ).fetchone()
-                total_places, with_web, distinct_regions = int(p_stats[0]), int(p_stats[1]), int(p_stats[2])
+            with _DUCKDB_ENGINE_LOCK:
+                con = duckdb.connect(":memory:")
+                try:
+                    con.execute(f"ATTACH '{escaped_db}' AS sqlite (TYPE SQLITE, READ_ONLY)")
+                    p_stats = con.execute(
+                        """SELECT
+                             COUNT(*) AS total_places,
+                             COUNT(CASE WHEN website != '' AND website IS NOT NULL THEN 1 END) AS with_web,
+                             COUNT(DISTINCT region) AS distinct_regions
+                           FROM sqlite.places"""
+                    ).fetchone()
+                    total_places, with_web, distinct_regions = int(p_stats[0]), int(p_stats[1]), int(p_stats[2])
 
-                top_cats = con.execute(
-                    """SELECT category, COUNT(*) AS cnt
-                       FROM sqlite.places
-                       WHERE category != '' AND category IS NOT NULL
-                       GROUP BY category
-                       ORDER BY cnt DESC
-                       LIMIT 10"""
-                ).fetchall()
+                    top_cats = con.execute(
+                        """SELECT category, COUNT(*) AS cnt
+                           FROM sqlite.places
+                           WHERE category != '' AND category IS NOT NULL
+                           GROUP BY category
+                           ORDER BY cnt DESC
+                           LIMIT 10"""
+                    ).fetchall()
 
-                meta_stats = con.execute(
-                    """SELECT
-                         COUNT(CASE WHEN emails != '' AND emails != '[]' THEN 1 END),
-                         COUNT(CASE WHEN phones != '' AND phones != '[]' THEN 1 END)
-                       FROM sqlite.place_meta"""
-                ).fetchone()
-                email_cnt, phone_cnt = int(meta_stats[0]), int(meta_stats[1])
+                    meta_stats = con.execute(
+                        """SELECT
+                             COUNT(CASE WHEN emails != '' AND emails != '[]' THEN 1 END),
+                             COUNT(CASE WHEN phones != '' AND phones != '[]' THEN 1 END)
+                           FROM sqlite.place_meta"""
+                    ).fetchone()
+                    email_cnt, phone_cnt = int(meta_stats[0]), int(meta_stats[1])
 
-                top_provinces = con.execute(
-                    """SELECT province, COUNT(*) AS cnt
-                       FROM sqlite.place_meta
-                       WHERE province != '' AND province IS NOT NULL
-                       GROUP BY province
-                       ORDER BY cnt DESC
-                       LIMIT 15"""
-                ).fetchall()
-                engine_label = "DuckDB Spatial v2.0 (Vectorized Columnar OLAP)"
-            finally:
-                con.close()
-        except Exception:
-            # Resilient read-only SQLite fallback if WAL checkpoint is mid-write
+                    top_provinces = con.execute(
+                        """SELECT province, COUNT(*) AS cnt
+                           FROM sqlite.place_meta
+                           WHERE province != '' AND province != '[]' AND province IS NOT NULL
+                           GROUP BY province
+                           ORDER BY cnt DESC
+                           LIMIT 15"""
+                    ).fetchall()
+                    engine_label = "DuckDB Spatial v2.0 (Vectorized Columnar OLAP)"
+                finally:
+                    con.close()
+        except Exception as exc:
+            # Resilient read-only SQLite fallback with explicit disclosure
+            fallback_used = True
+            fallback_reason = f"{type(exc).__name__}: {exc}"
             scon = sqlite3.connect(f"file:{db_file}?mode=ro", uri=True)
             try:
                 p_stats = scon.execute(
@@ -890,6 +952,8 @@ def get_database_analytics(sqlite_path: str | Path, force_refresh: bool = False)
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
         payload = {
             "engine": engine_label,
+            "fallback_used": fallback_used,
+            "fallback_reason": fallback_reason,
             "total_places": total_places,
             "distinct_regions": distinct_regions,
             "with_website": with_web,
@@ -900,8 +964,9 @@ def get_database_analytics(sqlite_path: str | Path, force_refresh: bool = False)
             "speed_ms": f"{elapsed_ms} ms",
             "cached": False,
         }
-        _ANALYTICS_CACHE.clear()
-        _ANALYTICS_CACHE[cache_key] = (time.monotonic(), payload)
+        if not fallback_used:
+            _ANALYTICS_CACHE.clear()
+            _ANALYTICS_CACHE[cache_key] = (time.monotonic(), payload)
         return dict(payload)
 
 
@@ -911,98 +976,139 @@ def _clean_corp_name(name: str) -> str:
     return " ".join(cleaned.split())
 
 
-def deduplicate_records_splink(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Deduplicate company records using calibrated Splink 5.0 on DuckDB + RapidFuzz C++ scoring."""
+def deduplicate_records_splink_with_meta(records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Deduplicate company records using calibrated Splink 5.0 on DuckDB with explicit engine/fallback telemetry."""
     if not records or len(records) < 2:
-        return records
+        out_single = []
+        for idx, r in enumerate(records or []):
+            orig = dict(r)
+            orig.setdefault("cluster_id", idx + 1)
+            orig.setdefault("cluster_size", 1)
+            orig.setdefault("is_duplicate_group", False)
+            out_single.append(orig)
+        return {
+            "records": out_single,
+            "engine_used": "splink-5.0-duckdb",
+            "fallback_used": False,
+            "fallback_reason": "",
+        }
 
     import pandas as pd
-    from splink import DuckDBAPI, Linker, SettingsCreator, block_on
+    import splink
     import splink.comparison_library as cl
 
-    con = duckdb.connect(":memory:")
+    rows = []
+    for idx, r in enumerate(records):
+        uid = f"{idx}_{r.get('id') or idx + 1}"
+        raw_name = str(r.get("name") or "").strip()
+        norm_name = _clean_corp_name(raw_name) or raw_name.lower()
+        city = str(r.get("city") or "").strip().lower()
+        phones_val = r.get("phones")
+        first_phone = phones_val[0] if (isinstance(phones_val, list) and phones_val) else r.get("phone", "")
+        norm_ph = normalize_and_classify_phone(first_phone)
+        clean_phone = norm_ph["e164"] if norm_ph else re.sub(r"\D+", "", str(first_phone or ""))
+        if clean_phone.startswith("0") and len(clean_phone) == 11:
+            clean_phone = "+9" + clean_phone
+        rows.append({
+            "unique_id": uid,
+            "name": norm_name,
+            "city": city,
+            "phone": clean_phone or f"__no_phone_{uid}",
+        })
+
+    engine_used = "splink-5.0-duckdb"
+    fallback_used = False
+    fallback_reason = ""
+    raw_cluster_map: dict[str, str] = {}
+
+    con = None
     try:
-        rows = []
-        for idx, r in enumerate(records):
-            uid = f"{idx}_{r.get('id') or idx + 1}"
-            raw_name = str(r.get("name") or "").strip()
-            norm_name = _clean_corp_name(raw_name) or raw_name.lower()
-            city = str(r.get("city") or "").strip().lower()
-            phones_val = r.get("phones")
-            first_phone = phones_val[0] if (isinstance(phones_val, list) and phones_val) else r.get("phone", "")
-            norm_ph = normalize_and_classify_phone(first_phone)
-            clean_phone = norm_ph["e164"] if norm_ph else re.sub(r"\D+", "", str(first_phone or ""))
-            if clean_phone.startswith("0") and len(clean_phone) == 11:
-                clean_phone = "+9" + clean_phone
-            rows.append({
-                "unique_id": uid,
-                "name": norm_name,
-                "city": city,
-                "phone": clean_phone or f"__no_phone_{uid}",
-            })
+        with _DUCKDB_ENGINE_LOCK:
+            con = duckdb.connect(":memory:")
+            try:
+                df = pd.DataFrame(rows)
+                con.register("firms", df)
 
-        try:
-            df = pd.DataFrame(rows)
-            con.register("firms", df)
+                settings = splink.SettingsCreator(
+                    link_type="dedupe_only",
+                    comparisons=[
+                        cl.ExactMatch("phone").configure(
+                            m_probabilities=[0.96, 0.04],
+                            u_probabilities=[0.001, 0.999],
+                        ),
+                        cl.LevenshteinAtThresholds("name", [3, 12]).configure(
+                            m_probabilities=[0.55, 0.30, 0.10, 0.05],
+                            u_probabilities=[0.001, 0.009, 0.04, 0.95],
+                        ),
+                        cl.ExactMatch("city").configure(
+                            m_probabilities=[0.90, 0.10],
+                            u_probabilities=[0.05, 0.95],
+                        ),
+                    ],
+                    blocking_rules_to_generate_predictions=[
+                        splink.block_on("phone"),
+                        "l.city = r.city AND substr(l.name, 1, 6) = substr(r.name, 1, 6)",
+                    ],
+                    probability_two_random_records_match=0.05,
+                )
 
-            settings = SettingsCreator(
-                link_type="dedupe_only",
-                comparisons=[
-                    cl.ExactMatch("phone").configure(
-                        m_probabilities=[0.96, 0.04],
-                        u_probabilities=[0.001, 0.999],
-                    ),
-                    cl.LevenshteinAtThresholds("name", [3, 12]).configure(
-                        m_probabilities=[0.55, 0.30, 0.10, 0.05],
-                        u_probabilities=[0.001, 0.009, 0.04, 0.95],
-                    ),
-                    cl.ExactMatch("city").configure(
-                        m_probabilities=[0.90, 0.10],
-                        u_probabilities=[0.05, 0.95],
-                    ),
-                ],
-                blocking_rules_to_generate_predictions=[
-                    block_on("phone"),
-                    "l.city = r.city AND substr(l.name, 1, 6) = substr(r.name, 1, 6)",
-                ],
-                probability_two_random_records_match=0.05,
-            )
-
-            db_api = DuckDBAPI(con)
-            splink_df = db_api.table_to_splink_dataframe("firms", "firms")
-            linker = Linker(splink_df, settings)
-            predictions = linker.inference.predict()
-            clusters = linker.clustering.cluster_pairwise_predictions_at_threshold(predictions, 0.5)
-            res_df = clusters.as_pandas_dataframe()
-            raw_cluster_map = dict(zip(res_df["unique_id"].astype(str), res_df["cluster_id"].astype(str)))
-        except Exception:
-            raw_cluster_map = {}
-            for row in rows:
-                ph_key = row["phone"] if not row["phone"].startswith("__no_phone_") else ""
-                nm_key = f"{row['city']}:{row['name'][:16]}" if row["name"] else row["unique_id"]
-                raw_cluster_map[row["unique_id"]] = ph_key or nm_key
-
-        canonical_ids: dict[str, int] = {}
-        cluster_counts: Counter[int] = Counter()
-        mapped_ids: list[int] = []
-        for idx, r in enumerate(records):
-            uid = f"{idx}_{r.get('id') or idx + 1}"
-            raw_cid = raw_cluster_map.get(uid, uid)
-            cid = canonical_ids.setdefault(raw_cid, len(canonical_ids) + 1)
-            cluster_counts[cid] += 1
-            mapped_ids.append(cid)
-
-        out = []
-        for r, cid in zip(records, mapped_ids):
-            orig = dict(r)
-            orig["cluster_id"] = cid
-            orig["cluster_size"] = cluster_counts[cid]
-            orig["is_duplicate_group"] = cluster_counts[cid] > 1
-            out.append(orig)
-
-        return out
+                db_api = splink.DuckDBAPI(con)
+                splink_df = db_api.table_to_splink_dataframe("firms", "firms")
+                linker = splink.Linker(splink_df, settings)
+                predictions = linker.inference.predict()
+                clusters = linker.clustering.cluster_pairwise_predictions_at_threshold(predictions, 0.5)
+                res_df = clusters.as_pandas_dataframe()
+                raw_cluster_map = dict(zip(res_df["unique_id"].astype(str), res_df["cluster_id"].astype(str)))
+            finally:
+                con.close()
+                con = None
+    except Exception as exc:
+        engine_used = "deterministic-fallback"
+        fallback_used = True
+        fallback_reason = f"{type(exc).__name__}: {exc}"
+        raw_cluster_map = {}
+        for row in rows:
+            ph_key = row["phone"] if not row["phone"].startswith("__no_phone_") else ""
+            nm_key = f"{row['city']}:{row['name'][:16]}" if row["name"] else row["unique_id"]
+            raw_cluster_map[row["unique_id"]] = ph_key or nm_key
     finally:
-        con.close()
+        if con is not None:
+            try:
+                con.close()
+            except Exception:
+                pass
+
+    canonical_ids: dict[str, int] = {}
+    cluster_counts: Counter[int] = Counter()
+    mapped_ids: list[int] = []
+    for idx, r in enumerate(records):
+        uid = f"{idx}_{r.get('id') or idx + 1}"
+        raw_cid = raw_cluster_map.get(uid, uid)
+        cid = canonical_ids.setdefault(raw_cid, len(canonical_ids) + 1)
+        cluster_counts[cid] += 1
+        mapped_ids.append(cid)
+
+    out = []
+    for r, cid in zip(records, mapped_ids):
+        orig = dict(r)
+        orig["cluster_id"] = cid
+        orig["cluster_size"] = cluster_counts[cid]
+        orig["is_duplicate_group"] = cluster_counts[cid] > 1
+        out.append(orig)
+
+    return {
+        "records": out,
+        "engine_used": engine_used,
+        "fallback_used": fallback_used,
+        "fallback_reason": fallback_reason,
+    }
+
+
+def deduplicate_records_splink(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Deduplicate company records using calibrated Splink 5.0 on DuckDB."""
+    if not records or len(records) < 2:
+        return records
+    return deduplicate_records_splink_with_meta(records)["records"]
 
 
 def fuzzy_rank_records(
@@ -1012,9 +1118,12 @@ def fuzzy_rank_records(
     score_cutoff: float = 52.0,
 ) -> List[Dict[str, Any]]:
     """Rank company records against a messy/typo or multilingual sector query at C++ SIMD speed via RapidFuzz."""
+    cutoff_val = float(score_cutoff)
+    if not math.isfinite(cutoff_val) or not (0.0 <= cutoff_val <= 100.0):
+        raise ValueError("Geçersiz bulanık eşleşme eşiği (0..100 arası sonlu sayı olmalı)")
     q = _clean_corp_name(query) or str(query or "").strip().lower()
     if not q or not records:
-        return records[:limit]
+        return records[: max(1, min(int(limit), 1000))]
 
     import catalog
 
@@ -1024,11 +1133,11 @@ def fuzzy_rank_records(
         for idx, r in enumerate(records)
     }
     best_scores: dict[int, float] = {}
-    lim = max(1, min(limit, 500))
+    lim = max(1, min(int(limit), 1000))
     for probe in probe_terms:
         if not probe:
             continue
-        for _, score, idx in process.extract(probe, choices, scorer=fuzz.WRatio, limit=len(choices), score_cutoff=score_cutoff):
+        for _, score, idx in process.extract(probe, choices, scorer=fuzz.WRatio, limit=len(choices), score_cutoff=cutoff_val):
             sc = float(score)
             if sc > best_scores.get(idx, -1.0):
                 best_scores[idx] = sc
@@ -1048,7 +1157,10 @@ def compute_h3_industrial_clusters(
     top_n: int = 15,
 ) -> List[Dict[str, Any]]:
     """Cluster corporate leads into Uber H3 hexagonal industrial zones (~5.16 km² at res 7) with 6-vertex GeoJSON rings."""
-    resolution = max(5, min(resolution, 10))
+    res_int = int(resolution)
+    if not (4 <= res_int <= 10):
+        raise ValueError("Geçersiz H3 çözünürlüğü (4..10 arası olmalı)")
+    resolution = res_int
     buckets: dict[str, list[Dict[str, Any]]] = defaultdict(list)
 
     for r in records:
@@ -1100,6 +1212,10 @@ def compute_h3_industrial_clusters(
     return clusters[: max(1, min(top_n, 50))]
 
 
+_H3_CACHE: dict[tuple[Any, ...], tuple[float, Dict[str, Any]]] = {}
+_H3_CACHE_LOCK = threading.Lock()
+
+
 def get_city_h3_clusters(
     sqlite_path: str | Path,
     region: str = "İstanbul, Türkiye",
@@ -1110,14 +1226,24 @@ def get_city_h3_clusters(
     """Compute Uber H3 industrial density clusters directly from the SQLite catalog."""
     import sqlite3
 
+    res_int = int(resolution)
+    if not (4 <= res_int <= 10):
+        raise ValueError("Geçersiz H3 çözünürlüğü (4..10 arası olmalı)")
+
     db_file = Path(sqlite_path).resolve()
     if not db_file.exists():
-        return {"region": region, "clusters": []}
+        return {"region": region, "resolution": res_int, "clusters": []}
 
     where, args = catalog.condition(sector, region, 0, None, "")
     con = sqlite3.connect(f"file:{db_file}?mode=ro", uri=True)
-    con.row_factory = sqlite3.Row
     try:
+        p_sig_row = con.execute("SELECT count(*), coalesce(max(rowid), 0) FROM places").fetchone()
+        h3_key = (str(db_file), p_sig_row[0], p_sig_row[1], region.strip(), sector.strip(), res_int, int(top_n))
+        with _H3_CACHE_LOCK:
+            cached_h3 = _H3_CACHE.get(h3_key)
+            if cached_h3 and (time.monotonic() - cached_h3[0]) < 120.0:
+                return dict(cached_h3[1])
+
         cur = con.execute(
             """SELECT p.name, p.category, p.lat, p.lon, p.website,
                       m.district, m.emails, m.phones
@@ -1125,31 +1251,34 @@ def get_city_h3_clusters(
             + where,
             args,
         )
-        rows = []
-        for r in cur:
-            if r["lat"] is None or r["lon"] is None:
-                continue
-            raw_em = r["emails"]
-            raw_ph = r["phones"]
-            rows.append({
-                "name": r["name"],
-                "category": r["category"],
-                "lat": r["lat"],
-                "lon": r["lon"],
-                "website": r["website"],
-                "district": r["district"] or "",
-                "emails": orjson.loads(raw_em) if (raw_em and raw_em != "[]") else [],
-                "phones": orjson.loads(raw_ph) if (raw_ph and raw_ph != "[]") else [],
-            })
-        clusters = compute_h3_industrial_clusters(rows, resolution=resolution, top_n=top_n)
-        return {
+        rows = [
+            {
+                "name": r[0],
+                "category": r[1],
+                "lat": r[2],
+                "lon": r[3],
+                "website": r[4],
+                "district": r[5] or "",
+                "emails": orjson.loads(r[6]) if (r[6] and r[6] != "[]") else [],
+                "phones": orjson.loads(r[7]) if (r[7] and r[7] != "[]") else [],
+            }
+            for r in cur
+            if r[2] is not None and r[3] is not None
+        ]
+        clusters = compute_h3_industrial_clusters(rows, resolution=res_int, top_n=top_n)
+        out_payload = {
             "engine": "Uber H3 v4.5 Spatial Hexagonal Radar",
             "region": region,
             "sector": sector,
             "scanned_firms": len(rows),
-            "resolution": resolution,
+            "resolution": res_int,
             "clusters": clusters,
         }
+        with _H3_CACHE_LOCK:
+            if len(_H3_CACHE) > 64:
+                _H3_CACHE.clear()
+            _H3_CACHE[h3_key] = (time.monotonic(), out_payload)
+        return dict(out_payload)
     finally:
         con.close()
 
@@ -1331,6 +1460,7 @@ def global_sector_city_search(
             city_clean = catalog.country_english_name(country_clean)
         else:
             target_hubs = hubs[:3]
+            hub_errors: list[str] = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=len(target_hubs)) as hub_pool:
                 futs = [
                     hub_pool.submit(
@@ -1351,8 +1481,8 @@ def global_sector_city_search(
                 for fut in concurrent.futures.as_completed(futs, timeout=36.0):
                     try:
                         fut.result()
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        hub_errors.append(f"{type(exc).__name__}: {exc}")
 
             agg_res = catalog.portfolio_listing(
                 store,
@@ -1363,8 +1493,12 @@ def global_sector_city_search(
                 offset=offset,
                 limit=limit,
             )
+            if len(hub_errors) == len(target_hubs) and agg_res["total"] == 0:
+                raise RuntimeError(f"Küresel çoklu şehir kaynaklarına ulaşılamadı ({hub_errors[0]})")
             agg_res["country_iso"] = iso_country
             agg_res["source_engine"] = "multi-city-global-hybrid"
+            if hub_errors:
+                agg_res["partial_warnings"] = hub_errors
             return agg_res
 
     region = f"{city_clean}, {country_clean}"
@@ -1409,7 +1543,7 @@ def global_sector_city_search(
 
     def _stream_sector_overture() -> list[tuple[tuple[Any, ...], tuple[str, str, str, str, str]]]:
         if not catalog.HAS_OVERTURE_CORE:
-            return []
+            raise RuntimeError("Overture Maps PyArrow motoru yüklü değil")
         import pyarrow.compute as pc  # C++ SIMD vectorized column filter
 
         deadline = time.monotonic() + 20.0
@@ -1472,18 +1606,20 @@ def global_sector_city_search(
 
     ov_pairs: list[tuple[tuple[Any, ...], tuple[str, str, str, str, str]]] = []
     osm_els: list[dict[str, Any]] = []
+    ov_err: Exception | None = None
+    osm_err: Exception | None = None
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
     try:
         ov_fut = pool.submit(_stream_sector_overture)
         osm_fut = pool.submit(catalog._fetch_osm_overpass, w, s, e, n, sector, city_clean)
         try:
             osm_els = osm_fut.result(timeout=14.0)
-        except Exception:
-            pass
+        except Exception as exc:
+            osm_err = exc
         try:
             ov_pairs = ov_fut.result(timeout=21.0)
-        except Exception:
-            pass
+        except Exception as exc:
+            ov_err = exc
     finally:
         pool.shutdown(wait=False, cancel_futures=True)
 
@@ -1503,11 +1639,30 @@ def global_sector_city_search(
         offset=offset,
         limit=limit,
     )
+    if ov_err is not None and osm_err is not None and result["total"] == 0:
+        raise RuntimeError(
+            f"Küresel veri kaynaklarına ulaşılamadı "
+            f"(Overture S3: {type(ov_err).__name__}; OSM Overpass: {type(osm_err).__name__})"
+        )
+    if ov_err is None and osm_err is None:
+        src_engine = "overture-s3+osm-overpass-hybrid"
+    elif ov_err is None:
+        src_engine = "overture-s3-only"
+    elif osm_err is None:
+        src_engine = "osm-overpass-only"
+    else:
+        src_engine = "local-sqlite-cache"
+
     result["country_iso"] = iso_country
     result["bbox"] = [w, s, e, n]
     result["overture_matched"] = len(ov_pairs)
     result["osm_matched"] = len(osm_els)
-    result["source_engine"] = "overture-s3+osm-overpass-hybrid"
+    result["source_engine"] = src_engine
+    if ov_err is not None or osm_err is not None:
+        result["partial_warnings"] = [
+            *([] if ov_err is None else [f"Overture S3: {type(ov_err).__name__}"]),
+            *([] if osm_err is None else [f"OSM Overpass: {type(osm_err).__name__}"]),
+        ]
     return result
 
 
@@ -1517,6 +1672,21 @@ def fetch_overture_places(
     default_country: str = "TR",
 ) -> List[Dict[str, Any]]:
     """Stream business places directly from AWS S3 GeoParquet via Overture Maps + PyArrow."""
+    if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+        raise ValueError("Geçersiz BBox formatı [minx, miny, maxx, maxy]")
+    minx, miny, maxx, maxy = float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])
+    if not all(math.isfinite(v) for v in (minx, miny, maxx, maxy)):
+        raise ValueError("BBox koordinatları sonlu sayı olmalıdır")
+    if not (-180.0 <= minx < maxx <= 180.0 and -90.0 <= miny < maxy <= 90.0):
+        raise ValueError("Geçersiz BBox sınırları: boylam [-180,180], enlem [-90,90] ve min < max olmalıdır")
+    if (maxx - minx) * (maxy - miny) > 4.0:
+        raise ValueError("Canlı Overture S3 akışı için BBox alanı en fazla 4.0 derece² olabilir")
+    limit_int = int(limit)
+    if not (1 <= limit_int <= 5000):
+        raise ValueError("Kayıt sınırı 1..5000 arasında olmalıdır")
+    limit = limit_int
+    bbox = (minx, miny, maxx, maxy)
+
     import overturemaps
 
     reader = overturemaps.record_batch_reader("place", bbox=bbox)
@@ -1636,6 +1806,72 @@ def dispatch_erp_webhook(webhook_url: str, payload: Dict[str, Any], timeout: flo
     }
 
 
+def extract_corporate_html_intelligence(html: str, url: str = "https://example.com.tr") -> Dict[str, Any]:
+    """Pure deterministic corporate HTML5 intelligence extractor (Lexbor + Trafilatura + GİB VKN/MERSİS/KEP + libphonenumber)."""
+    import trafilatura
+
+    norm_url = core_engine.normalize(url)
+    domain = core_engine.domain_key(norm_url)
+    page_parsed = core_engine.Page(html)
+
+    clean_emails: list[str] = []
+    for em in page_parsed.emails(domain):
+        ve = validate_and_normalize_email(em)
+        if ve and ve not in clean_emails:
+            clean_emails.append(ve)
+
+    tld = domain.rsplit(".", 1)[-1].lower() if "." in domain else "tr"
+    tld_iso = {
+        "de": "DE", "nl": "NL", "uk": "GB", "fr": "FR", "it": "IT", "es": "ES",
+        "ae": "AE", "az": "AZ", "ru": "RU", "pl": "PL", "ch": "CH", "at": "AT",
+        "be": "BE", "se": "SE", "sa": "SA", "qa": "QA", "us": "US", "ca": "CA",
+    }.get(tld, "TR")
+
+    phone_objects: list[Dict[str, Any]] = []
+    clean_phones: list[str] = []
+    whatsapp_links: list[str] = []
+    for ph in page_parsed.phones():
+        vp = normalize_and_classify_phone(ph, tld_iso)
+        if vp and vp["e164"] not in clean_phones:
+            clean_phones.append(vp["e164"])
+            phone_objects.append(vp)
+            if vp["whatsapp_url"] and vp["whatsapp_url"] not in whatsapp_links:
+                whatsapp_links.append(vp["whatsapp_url"])
+
+    meta = trafilatura.extract_metadata(html, default_url=norm_url)
+    md_text = trafilatura.extract(html, output_format="markdown", favor_recall=True) or ""
+
+    title = (meta.title if meta and meta.title else "") or " ".join(page_parsed.title).strip()
+    if not title:
+        tree = LexborHTMLParser(html)
+        if tree.root and tree.root.css_first("title"):
+            title = tree.root.css_first("title").text(strip=True)
+
+    identifiers = extract_corporate_identifiers(html + "\n" + md_text)
+    for kep in identifiers.get("kep_addresses", []):
+        if kep not in clean_emails:
+            clean_emails.append(kep)
+
+    executives = extract_decision_makers(html)
+    email_pattern = infer_email_pattern(clean_emails, domain)
+
+    return {
+        "title": title[:200],
+        "description": (meta.description or "")[:300] if meta else "",
+        "markdown_snippet": md_text[:600].strip(),
+        "emails": clean_emails[:12],
+        "phones": phone_objects[:10],
+        "phone_e164s": clean_phones[:10],
+        "whatsapp_links": whatsapp_links[:5],
+        "vkn_candidates": identifiers.get("all_vkns", []),
+        "mersis_candidates": [identifiers["mersis"]] if identifiers.get("mersis") else [],
+        "kep_addresses": identifiers.get("kep_addresses", []),
+        "corporate_identifiers": identifiers,
+        "decision_makers": executives,
+        "email_pattern": email_pattern,
+    }
+
+
 async def tiered_crawl_intelligence(url: str, prefer_stealth: bool = False) -> Dict[str, Any]:
     """High-speed, strictly compliant corporate website intelligence extractor.
 
@@ -1717,47 +1953,7 @@ async def tiered_crawl_intelligence(url: str, prefer_stealth: bool = False) -> D
         }
 
     combined_html = html + ("\n" + extra_html if extra_html else "")
-    page_parsed = core_engine.Page(combined_html)
-    clean_emails: list[str] = []
-    for em in page_parsed.emails(domain):
-        ve = validate_and_normalize_email(em)
-        if ve and ve not in clean_emails:
-            clean_emails.append(ve)
-
-    # Infer default phone country from TLD (.de -> DE, .uk -> GB, .nl -> NL, .fr -> FR, .ae -> AE, .az -> AZ, else TR)
-    tld = domain.rsplit(".", 1)[-1].lower()
-    tld_iso = {
-        "de": "DE", "nl": "NL", "uk": "GB", "fr": "FR", "it": "IT", "es": "ES",
-        "ae": "AE", "az": "AZ", "ru": "RU", "pl": "PL", "ch": "CH", "at": "AT",
-        "be": "BE", "se": "SE", "sa": "SA", "qa": "QA", "us": "US", "ca": "CA",
-    }.get(tld, "TR")
-
-    clean_phones: list[str] = []
-    whatsapp_links: list[str] = []
-    for ph in page_parsed.phones():
-        vp = normalize_and_classify_phone(ph, tld_iso)
-        if vp:
-            if vp["e164"] not in clean_phones:
-                clean_phones.append(vp["e164"])
-            if vp["whatsapp_url"] and vp["whatsapp_url"] not in whatsapp_links:
-                whatsapp_links.append(vp["whatsapp_url"])
-
-    meta = trafilatura.extract_metadata(html, default_url=final_url)
-    md_text = trafilatura.extract(combined_html, output_format="markdown", favor_recall=True) or ""
-
-    title = (meta.title if meta and meta.title else "") or " ".join(page_parsed.title).strip()
-    if not title:
-        tree = LexborHTMLParser(html)
-        if tree.root and tree.root.css_first("title"):
-            title = tree.root.css_first("title").text(strip=True)
-
-    identifiers = extract_corporate_identifiers(combined_html + "\n" + md_text)
-    for kep in identifiers.get("kep_addresses", []):
-        if kep not in clean_emails:
-            clean_emails.append(kep)
-
-    executives = extract_decision_makers(combined_html)
-    email_pattern = infer_email_pattern(clean_emails, domain)
+    extracted = extract_corporate_html_intelligence(combined_html, final_url)
 
     dom_intel = {}
     try:
@@ -1768,15 +1964,16 @@ async def tiered_crawl_intelligence(url: str, prefer_stealth: bool = False) -> D
     return {
         "url": final_url,
         "engine_used": engine_used,
-        "title": title[:200],
-        "description": (meta.description or "")[:300] if meta else "",
-        "markdown_snippet": md_text[:600].strip(),
-        "emails": clean_emails[:12],
-        "phones": clean_phones[:10],
-        "whatsapp_links": whatsapp_links[:5],
-        "corporate_identifiers": identifiers,
-        "decision_makers": executives,
-        "email_pattern": email_pattern,
+        "title": extracted["title"],
+        "description": extracted["description"],
+        "markdown_snippet": extracted["markdown_snippet"],
+        "emails": extracted["emails"],
+        "phones": extracted["phone_e164s"],
+        "phone_details": extracted["phones"],
+        "whatsapp_links": extracted["whatsapp_links"],
+        "corporate_identifiers": extracted["corporate_identifiers"],
+        "decision_makers": extracted["decision_makers"],
+        "email_pattern": extracted["email_pattern"],
         "domain_intel": dom_intel,
         "success": True,
     }

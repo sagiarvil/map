@@ -1448,8 +1448,8 @@ def _inspect_live_tls_cert(host: str) -> list[dict[str, str]]:
     return out
 
 
-async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
-    """Query RFC 6962 Certificate Transparency logs (crt.sh + CertSpotter + Live TLS X.509 Handshake)."""
+async def fetch_ct_logs_with_meta(query: str, limit: int = 100) -> dict[str, Any]:
+    """Query RFC 6962 Certificate Transparency logs with explicit source attribution and upstream outage telemetry."""
     tr_ascii = query.translate(str.maketrans('İIıÇçĞğÖöŞşÜü', 'iiiccggoossuu'))
     safe_q = re.sub(r'[^a-zA-Z0-9.\-]', '', tr_ascii).strip('.').lower()
     if not safe_q:
@@ -1461,6 +1461,9 @@ async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
 
     results: list[dict[str, Any]] = []
     seen: set[str] = set()
+    sources_used: list[str] = []
+    tier_errors: list[str] = []
+    any_http_ok = False
 
     # Tier 1: crt.sh with proper URL parameter encoding & fast failover timeout
     try:
@@ -1468,11 +1471,13 @@ async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
             res = await client.get(
                 'https://crt.sh/',
                 params={'q': crt_q, 'output': 'json'},
-                headers={'User-Agent': 'Mozilla/5.0 (compatible; LeadIntelPro/7.1)'},
+                headers={'User-Agent': 'Mozilla/5.0 (compatible; LeadIntelPro/7.3)'},
             )
             if res.status_code == 200:
+                any_http_ok = True
                 data = res.json()
                 if isinstance(data, list):
+                    before_n = len(results)
                     for row in data:
                         if not isinstance(row, dict):
                             continue
@@ -1488,11 +1493,18 @@ async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
                                     'entry_timestamp': ts,
                                     'logged_at': ts,
                                     'not_before': row.get('not_before', ''),
+                                    'source': 'crt.sh',
                                 })
                                 if len(results) >= limit:
-                                    return results
-    except Exception:
-        pass
+                                    break
+                        if len(results) >= limit:
+                            break
+                    if len(results) > before_n:
+                        sources_used.append('crt.sh')
+            else:
+                tier_errors.append(f'crt.sh: HTTP {res.status_code}')
+    except Exception as exc:
+        tier_errors.append(f'crt.sh: {type(exc).__name__}')
 
     # Tier 2: Single non-burst CertSpotter RFC 6962 CT Log query
     if len(results) < limit and safe_q:
@@ -1502,9 +1514,11 @@ async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
                 r2 = await client.get(
                     'https://api.certspotter.com/v1/issuances',
                     params={'domain': primary_dom, 'include_subdomains': 'true', 'expand': 'dns_names,issuer'},
-                    headers={'User-Agent': 'LeadIntelPro/7.1'},
+                    headers={'User-Agent': 'LeadIntelPro/7.3'},
                 )
                 if r2.status_code == 200 and isinstance(r2.json(), list):
+                    any_http_ok = True
+                    before_n = len(results)
                     for item in r2.json():
                         issuer_obj = item.get('issuer') or {}
                         issuer_name = issuer_obj.get('name', 'CA') if isinstance(issuer_obj, dict) else 'CA'
@@ -1519,11 +1533,18 @@ async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
                                     'entry_timestamp': nb,
                                     'logged_at': nb,
                                     'not_before': nb,
+                                    'source': 'certspotter',
                                 })
                                 if len(results) >= limit:
-                                    return results
-        except Exception:
-            pass
+                                    break
+                        if len(results) >= limit:
+                            break
+                    if len(results) > before_n:
+                        sources_used.append('certspotter')
+                else:
+                    tier_errors.append(f'certspotter: HTTP {r2.status_code}')
+        except Exception as exc:
+            tier_errors.append(f'certspotter: {type(exc).__name__}')
 
     # Tier 3: Direct Live TLS 1.3 X.509 Certificate Handshake across matching corporate domains
     if len(results) < limit and safe_q:
@@ -1559,6 +1580,7 @@ async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
                 pass
 
         if tls_targets:
+            before_n = len(results)
             loop = asyncio.get_running_loop()
             tls_batches = await asyncio.gather(
                 *(loop.run_in_executor(None, _inspect_live_tls_cert, h) for h in tls_targets[:24])
@@ -1568,9 +1590,31 @@ async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
                     dom = cert_row['domain']
                     if dom not in seen:
                         seen.add(dom)
-                        results.append(cert_row)
+                        row_copy = dict(cert_row)
+                        row_copy.setdefault('source', 'live-tls-x509')
+                        results.append(row_copy)
                         if len(results) >= limit:
-                            return results
+                            break
+                if len(results) >= limit:
+                    break
+            if len(results) > before_n:
+                sources_used.append('live-tls-x509')
 
-    return results
+    upstream_failed = (not results) and (not any_http_ok) and bool(tier_errors)
+    return {
+        'records': results[:limit],
+        'source_engine': '+'.join(sources_used) if sources_used else ('none' if not upstream_failed else 'upstream_error'),
+        'tier_errors': tier_errors,
+        'upstream_failed': upstream_failed,
+    }
+
+
+async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
+    """Query RFC 6962 Certificate Transparency logs (crt.sh + CertSpotter + Live TLS X.509 Handshake)."""
+    meta = await fetch_ct_logs_with_meta(query, limit)
+    return meta['records']
+
+
+_ORIG_FETCH_CT_LOGS = fetch_ct_logs
+
 
