@@ -27,6 +27,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import catalog
 import engine
+import industrial_engine
 from engine import (
     AsyncCrawlSession,
     Fetcher,
@@ -642,6 +643,9 @@ class Handler(BaseHTTPRequestHandler):
                     )
                 )
                 return
+            if p.path == '/api/industrial/status':
+                self.out(industrial_engine.get_engine_status())
+                return
             if p.path == '/api/ct_logs':
                 query_str = q.get('query', [''])[0]
                 try:
@@ -721,6 +725,20 @@ class Handler(BaseHTTPRequestHandler):
             if self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
                 raise ValueError('JSON gerekli')
             d = json.loads(self.rfile.read(size))
+            if p == '/api/industrial/dedup':
+                records = d.get('records', [])
+                if not isinstance(records, list) or len(records) > 50000:
+                    raise ValueError('En çok 50.000 kayıt')
+                self.out({'records': industrial_engine.deduplicate_records_splink(records)})
+                return
+            if p == '/api/industrial/crawl':
+                url = d.get('url', '')
+                if not url:
+                    raise ValueError('URL gerekli')
+                stealth = bool(d.get('stealth', False))
+                res = asyncio.run(industrial_engine.tiered_crawl_intelligence(url, stealth))
+                self.out(res)
+                return
             if p in ('/api/places/import', '/api/places/download', '/api/places/queue'):
                 if d.get('authorized') is not True:
                     raise ValueError('Kaynak ve kullanım koşulları onayı gerekli')

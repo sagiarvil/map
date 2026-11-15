@@ -380,22 +380,25 @@
   // Populate UI Selects
   function populateCities() {
     const sel = $('citySelect');
+    if (!sel) return;
     let prev = sel.value;
     if (!prev || !TR_PROVINCES.includes(prev)) {
       prev = 'İstanbul';
     }
-    sel.replaceChildren();
-    for (const prov of TR_PROVINCES) {
-      const opt = el('option', prov);
-      opt.value = prov;
-      if (prov === prev) opt.selected = true;
-      sel.append(opt);
+    if (sel.options.length === 0) {
+      for (const prov of TR_PROVINCES) {
+        const opt = el('option', prov);
+        opt.value = prov;
+        if (prov === prev) opt.selected = true;
+        sel.append(opt);
+      }
     }
     sel.value = prev;
   }
 
   function populateDistricts(city, extraDistricts = []) {
     const sel = $('districtSelect');
+    if (!sel) return;
     const prev = sel.value;
     sel.replaceChildren();
     const allOpt = el('option', 'Tüm İlçeler');
@@ -413,13 +416,16 @@
       if (d === prev) opt.selected = true;
       sel.append(opt);
     }
+    if (prev && merged.includes(prev)) {
+      sel.value = prev;
+    }
   }
 
   // Local Mac Turbo Bridge Check
   async function probeTurboBridge() {
     try {
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 1600);
+      const t = setTimeout(() => ctrl.abort(), 1800);
       const res = await fetch(`${LOCAL_API}/api/session`, { signal: ctrl.signal });
       clearTimeout(t);
       if (!res.ok) throw new Error('status ' + res.status);
@@ -428,9 +434,19 @@
         turboConnected = true;
         turboToken = data.token;
         const badge = $('engineBadge');
-        badge.className = 'engine-badge turbo';
+        if (badge) badge.className = 'engine-badge turbo';
         $('engineText').textContent = 'Hızlı Tarama Aktif';
         $('enrichBtn').textContent = 'Web Sitelerinden E-posta Tara';
+
+        // Check Industrial Engine matrix
+        try {
+          const indRes = await turboApi('industrial/status');
+          if (indRes && indRes.status === 'active') {
+            const indBadge = $('industrialBadge');
+            if (indBadge) indBadge.style.display = 'inline-flex';
+          }
+        } catch {}
+
         return true;
       }
     } catch {
@@ -439,24 +455,33 @@
     turboConnected = false;
     turboToken = '';
     const badge = $('engineBadge');
-    badge.className = 'engine-badge cloud';
+    if (badge) badge.className = 'engine-badge cloud';
     $('engineText').textContent = 'Hazır';
     $('enrichBtn').textContent = 'E-posta Kayıtlarını Doğrula';
+    const indBadge = $('industrialBadge');
+    if (indBadge) indBadge.style.display = 'none';
     return false;
   }
 
-  async function turboApi(path, body) {
-    const res = await fetch(`${LOCAL_API}/api/${path}`, {
-      method: body === undefined ? 'GET' : 'POST',
-      headers: {
-        'X-Local-Token': turboToken,
-        ...(body === undefined ? {} : { 'Content-Type': 'application/json' })
-      },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) })
-    });
-    const payload = await res.json();
-    if (!res.ok) throw new Error(payload.error || 'Yerel motor hatası');
-    return payload;
+  async function turboApi(path, body, timeoutMs = 8000) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${LOCAL_API}/api/${path}`, {
+        method: body === undefined ? 'GET' : 'POST',
+        headers: {
+          'X-Local-Token': turboToken,
+          ...(body === undefined ? {} : { 'Content-Type': 'application/json' })
+        },
+        signal: ctrl.signal,
+        ...(body === undefined ? {} : { body: JSON.stringify(body) })
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || 'Yerel motor hatası');
+      return payload;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   // Zero-allocation lazy tuple wrapper for instant (<5ms) scanning across 500k+ megacity shards
@@ -1846,7 +1871,8 @@
     }
 
     populateCities();
-    populateDistricts($('citySelect').value);
+    if ($('citySelect')) $('citySelect').value = 'İstanbul';
+    populateDistricts('İstanbul');
     bindEvents();
     resetResultsView();
     await probeTurboBridge();
