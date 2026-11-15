@@ -6,6 +6,7 @@ import asyncio
 import csv
 import datetime
 import io
+import inspect
 import json
 import os
 import secrets
@@ -25,6 +26,7 @@ from typing import Any, Iterator
 from urllib.parse import parse_qs, urlsplit
 
 import catalog
+import engine
 from engine import (
     AsyncCrawlSession,
     Fetcher,
@@ -639,6 +641,23 @@ class Handler(BaseHTTPRequestHandler):
                         int(q.get('limit', ['100'])[0]),
                     )
                 )
+                return
+            if p.path == '/api/ct_logs':
+                query_str = q.get('query', [''])[0]
+                try:
+                    limit_int = min(200, max(1, int(q.get('limit', ['50'])[0])))
+                except (ValueError, TypeError):
+                    limit_int = 50
+                try:
+                    res_ct = engine.fetch_ct_logs(query_str, limit_int)
+                    if inspect.isawaitable(res_ct):
+                        logs = asyncio.run(res_ct)
+                    else:
+                        logs = res_ct
+                except Exception as exc:
+                    self.out({'error': str(exc)}, 500)
+                    return
+                self.out({'query': query_str, 'count': len(logs), 'domains': logs})
                 return
             if p.path == '/api/export.xlsx':
                 with tempfile.TemporaryDirectory(prefix='lead_export_') as tmp:

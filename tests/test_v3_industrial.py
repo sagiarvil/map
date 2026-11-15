@@ -549,6 +549,20 @@ class V4CleanlinessAndLexborTests(unittest.TestCase):
         self.assertTrue(catalog.contact_match(True, True, 'has_enterprise_mail', has_enterprise_mail=True))
         self.assertFalse(catalog.contact_match(True, True, 'has_enterprise_mail', has_enterprise_mail=False))
 
+        # 6. Real Certificate Transparency (CT Logs) Engine & Deliberate Failure Verification
+        import asyncio
+        from unittest.mock import patch
+        ct_results = asyncio.run(engine.fetch_ct_logs('mobilya', limit=5))
+        self.assertIsInstance(ct_results, list)
+        if ct_results:
+            self.assertIn('domain', ct_results[0])
+            self.assertTrue(ct_results[0]['domain'].endswith('.tr'))
+
+        # Deliberate failure test: ensure engine handles network/http error gracefully without crash
+        with patch('httpx.AsyncClient.get', side_effect=RuntimeError('Network unavailable')):
+            failed_ct = asyncio.run(engine.fetch_ct_logs('test', limit=5))
+            self.assertEqual(failed_ct, [])
+
 
 if __name__ == '__main__':
     unittest.main()

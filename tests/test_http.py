@@ -44,4 +44,9 @@ class HttpTests(unittest.TestCase):
                 self.assertEqual(self.call('api/status')['strong'],1);j=self.call('api/jobs')['rows'][0];self.assertEqual(j['status'],'done');self.assertEqual(self.call('api/contacts?id='+str(j['id']))[0]['source'],'https://firma.com/iletisim');self.assertIn(b'info@firma.com',self.call('api/export',raw=True))
                 self.assertTrue(self.call('api/pause',{'paused':True})['paused']);self.assertFalse(self.call('api/pause',{'paused':False})['paused']);self.call('api/suppress',{'email':'info@firma.com'});self.assertNotIn(b'info@firma.com',self.call('api/export',raw=True))
             finally:w.close()
+    def test_ct_logs_endpoint(self):
+        with patch('engine.fetch_ct_logs', return_value=[{'domain': 'ornek-mobilya.com.tr', 'issuer': "Let's Encrypt"}]):
+            res = self.call('api/ct_logs?query=mobilya&limit=10')
+            self.assertEqual(res['count'], 1)
+            self.assertEqual(res['domains'][0]['domain'], 'ornek-mobilya.com.tr')
 if __name__=='__main__':unittest.main()

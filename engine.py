@@ -1367,18 +1367,20 @@ async def fetch_ct_logs(query: str, limit: int = 100) -> list[dict[str, Any]]:
     """Query Certificate Transparency logs for newly created SSL certificates on Turkish commercial domains."""
     safe_q = re.sub(r'[^a-zA-Z0-9.\-]', '', query).strip('.')
     if not safe_q:
-        safe_q = '%.com.tr'
-    elif not safe_q.startswith('%'):
-        safe_q = f'%{safe_q}%.tr'
+        crt_q = '%.com.tr'
+    elif '.' in safe_q:
+        crt_q = f'%.{safe_q.lstrip("%")}' if not safe_q.startswith('%') else safe_q
+    else:
+        crt_q = f'%.{safe_q}.com.tr'
 
-    url = f'https://crt.sh/?q={safe_q}&output=json'
+    url = f'https://crt.sh/?q={crt_q}&output=json'
     results: list[dict[str, Any]] = []
     seen: set[str] = set()
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             res = await client.get(url, headers={'User-Agent': 'Mozilla/5.0 (compatible; LeadIntelPro/4.0)'})
-            if res.status_code == 200:
+            if res.status_code == 200 and 'json' in res.headers.get('content-type', ''):
                 data = res.json()
                 for row in data:
                     name_val = row.get('name_value', '').lower()
