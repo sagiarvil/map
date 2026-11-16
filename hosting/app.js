@@ -3697,13 +3697,13 @@
   // AppFlow V10.2 Navigation & Workspace Controller
   // =========================================================================
   const WORKSPACES = {
-    launchpad: { id: 'viewLaunchpad', breadcrumb: 'Haritalar Suite', title: 'Kısayollarım', taskbarTitle: 'Masaüstü' },
-    search: { id: 'viewSearch', breadcrumb: 'Haritalar / İstihbarat', title: '01. Firma & İstihbarat Arama', taskbarTitle: 'Haritalar \\ Firma Arama' },
-    export: { id: 'viewExport', breadcrumb: 'Haritalar / Veri İhracatı', title: '02. Toplu Excel & Veri İhracatı', taskbarTitle: 'Haritalar \\ Toplu Excel' },
-    enrich: { id: 'viewEnrich', breadcrumb: 'Haritalar / İletişim', title: '03. E-Posta & İletişim Tarama', taskbarTitle: 'Haritalar \\ E-Posta Tarama' },
-    ct_logs: { id: 'viewCtLogs', breadcrumb: 'Haritalar / CT Günlükleri', title: '04. Sertifika Günlükleri (CT Logs)', taskbarTitle: 'Haritalar \\ CT Günlükleri' },
-    database: { id: 'viewDatabase', breadcrumb: 'Haritalar / Veri Havuzu', title: '05. Bölgesel Veri Havuzu & H3', taskbarTitle: 'Haritalar \\ Veri Havuzu' },
-    desktop: { id: 'viewDesktop', breadcrumb: 'Haritalar / Masaüstü', title: '06. Masaüstü Hızlandırıcı & Çevrimdışı Paket', taskbarTitle: 'Haritalar \\ Masaüstü Turbo' }
+    launchpad: { id: 'viewLaunchpad', breadcrumb: 'B2B Haritalar', title: 'Kısayollarım', taskbarTitle: 'Masaüstü' },
+    search: { id: 'viewSearch', breadcrumb: 'B2B Haritalar / İstihbarat', title: '01. Firma & İstihbarat Arama', taskbarTitle: 'B2B Haritalar \\ Firma Arama' },
+    export: { id: 'viewExport', breadcrumb: 'B2B Haritalar / Veri İhracatı', title: '02. Toplu Excel & Veri İhracatı', taskbarTitle: 'B2B Haritalar \\ Toplu Excel' },
+    enrich: { id: 'viewEnrich', breadcrumb: 'B2B Haritalar / İletişim', title: '03. E-Posta & İletişim Tarama', taskbarTitle: 'B2B Haritalar \\ E-Posta Tarama' },
+    ct_logs: { id: 'viewCtLogs', breadcrumb: 'B2B Haritalar / CT Günlükleri', title: '04. Sertifika Günlükleri (CT Logs)', taskbarTitle: 'B2B Haritalar \\ CT Günlükleri' },
+    database: { id: 'viewDatabase', breadcrumb: 'B2B Haritalar / Veri Havuzu', title: '05. Bölgesel Veri Havuzu & H3', taskbarTitle: 'B2B Haritalar \\ Veri Havuzu' },
+    desktop: { id: 'viewDesktop', breadcrumb: 'B2B Haritalar / Masaüstü', title: '06. Masaüstü Hızlandırıcı & Çevrimdışı Paket', taskbarTitle: 'B2B Haritalar \\ Masaüstü Turbo' }
   };
 
   let activeWorkspace = 'launchpad';
