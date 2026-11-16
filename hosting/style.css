@@ -1414,6 +1414,16 @@ dialog.quick-dialog::backdrop {
   scrollbar-width: none;
 }
 
+body.flow-home .netsis-menu-ribbon {
+  display: none !important;
+}
+
+@media (max-width: 1240px) {
+  .netsis-menu-ribbon {
+    display: none !important;
+  }
+}
+
 .netsis-menu-ribbon::-webkit-scrollbar {
   display: none;
 }
@@ -1495,10 +1505,24 @@ dialog.quick-dialog::backdrop {
 
 .netsis-shortcuts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 20px 12px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 16px 12px;
   justify-items: center;
   align-items: start;
+}
+
+@media (max-width: 1240px) {
+  .netsis-shortcuts-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 22px 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .netsis-shortcuts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 10px;
+  }
 }
 
 .netsis-tile {
@@ -1509,18 +1533,21 @@ dialog.quick-dialog::backdrop {
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 8px 6px 10px;
-  border-radius: 8px;
+  padding: 10px 8px 12px;
+  border-radius: 10px;
   transition: all 0.16s ease;
   user-select: none;
   color: inherit;
   font-family: inherit;
   width: 100%;
-  max-width: 110px;
+  max-width: 170px;
+  white-space: normal;
+  line-height: normal;
+  box-sizing: border-box;
 }
 
 .netsis-tile:hover {
-  background: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .netsis-tile:hover .netsis-icon-box {
@@ -1531,9 +1558,9 @@ dialog.quick-dialog::backdrop {
 }
 
 .netsis-icon-box {
-  width: 52px;
-  height: 52px;
-  border-radius: 7px;
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
   background: var(--netsis-bordeaux, #7C3532);
   display: grid;
   place-items: center;
@@ -1552,30 +1579,29 @@ dialog.quick-dialog::backdrop {
 }
 
 .netsis-tile-name {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #2C3E50;
-  line-height: 1.25;
+  line-height: 1.35;
   display: block;
+  width: 100%;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  text-align: center;
 }
 
 .netsis-tile-sub {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #64748B;
-  line-height: 1.2;
-  margin-top: 2px;
+  line-height: 1.3;
+  margin-top: 4px;
   display: block;
-}
-
-.netsis-tile.add-shortcut .netsis-icon-box {
-  background: #FFFFFF;
-  border: 1.5px dashed #94A3B8;
-  color: #0078D7;
-  box-shadow: none;
-}
-
-.netsis-tile.add-shortcut .netsis-tile-name {
-  color: #0078D7;
+  width: 100%;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  text-align: center;
 }
 
 /* Netsis Classic Window Titlebar (Bordeaux #7C3532) */
