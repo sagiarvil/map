@@ -7,10 +7,10 @@
   <meta name="description" content="Kurumsal ERP mimarisiyle 81 ilde kurumsal firma arama, NACE Rev. 2, WhatsApp, e-Fatura istihbaratı ve ERP cari kartı oluşturma merkezi.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%237C3532'/%3E%3Cpath d='M9 22V10h3.5v4.5h7V10H23v12h-3.5v-4.5h-7V22z' fill='%23fff'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="/style.css?v=7.5.2">
+  <link rel="stylesheet" href="/style.css?v=7.5.4">
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer></script>
-  <script src="/xlsx-engine.js?v=7.5.2" defer></script>
-  <script src="/app.js?v=7.5.2" defer></script>
+  <script src="/xlsx-engine.js?v=7.5.4" defer></script>
+  <script src="/app.js?v=7.5.4" defer></script>
 </head>
 <body class="flow-home">
   <!-- AppFlow Header Bar -->
@@ -24,15 +24,16 @@
       <button id="flowHomeBtn" class="btn btn-secondary sm" type="button" aria-label="Tüm uygulamalar" title="Kısayollarım Ana Ekranı">⌂ Masaüstü</button>
       <button id="flowBackBtn" class="btn btn-secondary sm" type="button" aria-label="Önceki ekrana dön" hidden>← Geri</button>
       <nav class="netsis-menu-ribbon subtle-hide" aria-label="Sistem Menüsü">
-        <span onclick="document.getElementById('flowHomeBtn').click()">Genel</span>
-        <span onclick="document.getElementById('headerSearchJumpBtn').click()">Düzen</span>
-        <span onclick="document.getElementById('headerExportJumpBtn').click()">Ekstra</span>
-        <span>Diğer</span>
-        <span onclick="document.getElementById('flowHomeBtn').click()">Çalışma Alanı</span>
-        <span onclick="document.getElementById('flowHomeBtn').click()">Modüller</span>
+        <span data-open-workspace="search" title="Firma &amp; İstihbarat Arama">Firma Arama</span>
+        <span data-open-workspace="export" title="Toplu Excel İhracatı">Toplu Excel</span>
+        <span data-open-workspace="enrich" title="Derin Web &amp; E-Posta Tarama">E-Posta Tara</span>
+        <span data-open-workspace="ct_logs" title="Sertifika Günlükleri (CT Logs)">CT Günlükleri</span>
+        <span data-open-workspace="database" title="Bölgesel Veri Havuzu &amp; H3">Veri Havuzu</span>
+        <span data-open-workspace="desktop" title="Masaüstü Turbo Paketi">Masaüstü Turbo</span>
+        <span id="ribbonQuickParty" title="Hızlı Cari Kart Oluştur">Hızlı Cari</span>
       </nav>
       <div class="am-heading-text">
-        <small id="amBreadcrumb">Kurumsal ERP Suite</small>
+        <small id="amBreadcrumb">Haritalar Suite</small>
         <strong id="pageTitle" tabindex="-1">Kısayollarım</strong>
       </div>
     </div>
@@ -43,7 +44,10 @@
       </span>
       <span id="industrialBadge" class="engine-badge turbo" style="display:none" title="9/9 Endüstriyel C/C++/Rust Motoru Aktif">
         <span class="dot"></span>
-        <span id="industrialBadgeText">9/9 Pro Motor (DuckDB · H3 · Splink · RapidFuzz)</span>
+        <span id="industrialBadgeText">
+          <span class="badge-long">9/9 Pro Motor (DuckDB · H3 · Splink · RapidFuzz)</span>
+          <span class="badge-short">9/9 Pro Motor</span>
+        </span>
       </span>
       <button id="headerSearchJumpBtn" type="button" class="btn btn-secondary am-global-search">
         <span aria-hidden="true">⌕</span>
@@ -87,103 +91,76 @@
             <span class="netsis-tile-name">Kısayol Ekle</span>
           </button>
 
-          <!-- 01. Lojistik - Satış / Firma Arama -->
-          <button type="button" class="netsis-tile" data-open-workspace="search" title="Lojistik - Satış: Firma &amp; İstihbarat Arama">
+          <!-- 01. Firma & İstihbarat Arama -->
+          <button type="button" class="netsis-tile" data-open-workspace="search" title="Firma &amp; İstihbarat Arama (81 İl &amp; 46 Ülke)">
             <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><path d="M11 8v6M8 11h6"/></svg>
             </span>
-            <span class="netsis-tile-name">Lojistik - Satış</span>
-            <small class="netsis-tile-sub">Firma &amp; İstihbarat</small>
+            <span class="netsis-tile-name">Firma &amp; İstihbarat</span>
+            <small class="netsis-tile-sub">81 İl &amp; 46 Ülke Keşfi</small>
           </button>
 
-          <!-- 02. Finans / Toplu Excel İhracatı -->
-          <button type="button" class="netsis-tile" data-open-workspace="export" title="Finans: Toplu Excel &amp; Veri İhracatı">
+          <!-- 02. Toplu Excel İhracatı -->
+          <button type="button" class="netsis-tile" data-open-workspace="export" title="Toplu Excel &amp; Veri İhracatı">
             <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             </span>
-            <span class="netsis-tile-name">Finans</span>
-            <small class="netsis-tile-sub">Toplu Excel</small>
+            <span class="netsis-tile-name">Toplu Excel</span>
+            <small class="netsis-tile-sub">1M+ Satır .xlsx &amp; CSV</small>
           </button>
 
-          <!-- 03. Muhasebe / Derin Web & E-posta -->
-          <button type="button" class="netsis-tile" data-open-workspace="enrich" title="Muhasebe: Derin Web &amp; E-posta Tarama">
+          <!-- 03. Derin Web & E-Posta Tarama -->
+          <button type="button" class="netsis-tile" data-open-workspace="enrich" title="Derin Web &amp; E-Posta Tarama (128 Korutin)">
             <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             </span>
-            <span class="netsis-tile-name">Muhasebe</span>
-            <small class="netsis-tile-sub">E-posta Tarama</small>
+            <span class="netsis-tile-name">E-Posta &amp; İletişim</span>
+            <small class="netsis-tile-sub">128-Korutin Web</small>
           </button>
 
-          <!-- 04. Yönetim / Sertifika Günlükleri -->
-          <button type="button" class="netsis-tile" data-open-workspace="ct_logs" title="Yönetim: Sertifika Günlükleri (CT Logs)">
+          <!-- 04. Sertifika Günlükleri (CT Logs) -->
+          <button type="button" class="netsis-tile" data-open-workspace="ct_logs" title="Sertifika Günlükleri (CT Logs / Yeni Tesciller)">
             <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
             </span>
-            <span class="netsis-tile-name">Yönetim</span>
-            <small class="netsis-tile-sub">CT Günlükleri</small>
+            <span class="netsis-tile-name">Sertifika Günlükleri</span>
+            <small class="netsis-tile-sub">CT Logs / Yeni Web</small>
           </button>
 
-          <!-- 05. Genel / Bölgesel Veri Havuzu -->
-          <button type="button" class="netsis-tile" data-open-workspace="database" title="Genel: Bölgesel Veri Havuzu &amp; H3 Harita">
+          <!-- 05. Bölgesel Veri Havuzu & H3 -->
+          <button type="button" class="netsis-tile" data-open-workspace="database" title="Bölgesel Veri Havuzu &amp; H3 Vektör Analitik">
             <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
             </span>
-            <span class="netsis-tile-name">Genel</span>
-            <small class="netsis-tile-sub">Veri Havuzu</small>
+            <span class="netsis-tile-name">Bölgesel Veri Havuzu</span>
+            <small class="netsis-tile-sub">1.7M+ Firma &amp; H3</small>
           </button>
 
-          <!-- 06. Üretim / Masaüstü Paketi -->
-          <button type="button" class="netsis-tile" data-open-workspace="desktop" title="Üretim: Masaüstü Paketi &amp; Hızlandırıcı">
+          <!-- 06. Masaüstü Turbo Paketi -->
+          <button type="button" class="netsis-tile" data-open-workspace="desktop" title="Masaüstü Turbo Paketi &amp; Hızlandırıcı">
             <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
             </span>
-            <span class="netsis-tile-name">Üretim</span>
-            <small class="netsis-tile-sub">Masaüstü Turbo</small>
+            <span class="netsis-tile-name">Masaüstü Turbo</span>
+            <small class="netsis-tile-sub">Yerel C/Rust &amp; SQLite</small>
           </button>
 
-          <!-- 07. Cari Hesap Kayıtları -->
-          <button type="button" class="netsis-tile" id="tileQuickPartyLauncher" title="Cari Hesap Kayıtları">
+          <!-- 07. Hızlı Cari Kart Kaydı (ERP/CRM) -->
+          <button type="button" class="netsis-tile" id="tileQuickPartyLauncher" title="Hızlı Cari Kart &amp; ERP Entegrasyonu">
             <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
             </span>
-            <span class="netsis-tile-name">Cari Hesap</span>
-            <small class="netsis-tile-sub">Kayıtları</small>
+            <span class="netsis-tile-name">Hızlı Cari Kart</span>
+            <small class="netsis-tile-sub">ERP / n8n Webhook</small>
           </button>
 
-          <!-- 08. Satış Faturası -->
-          <button type="button" class="netsis-tile" data-open-workspace="search" title="Satış Faturası">
+          <!-- 08. Harita & Radar Keşfi -->
+          <button type="button" class="netsis-tile" id="tileMapLauncher" title="Harita &amp; Radar Keşfi (Mekânsal Kümeleme)">
             <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="7" y1="15" x2="7.01" y2="15"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
             </span>
-            <span class="netsis-tile-name">Satış Faturası</span>
-            <small class="netsis-tile-sub">İşlemleri</small>
-          </button>
-
-          <!-- 09. E-Fatura İşlemleri -->
-          <button type="button" class="netsis-tile" data-open-workspace="search" title="E-Fatura İşlemleri">
-            <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="12" cy="14" r="3"/></svg>
-            </span>
-            <span class="netsis-tile-name">E-Fatura</span>
-            <small class="netsis-tile-sub">İşlemleri</small>
-          </button>
-
-          <!-- 10. Stok Kartı Kayıtları -->
-          <button type="button" class="netsis-tile" data-open-workspace="database" title="Stok Kartı Kayıtları">
-            <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-            </span>
-            <span class="netsis-tile-name">Stok Kartı</span>
-            <small class="netsis-tile-sub">Kayıtları</small>
-          </button>
-
-          <!-- 11. Fatura - İrsaliye İcmali -->
-          <button type="button" class="netsis-tile" data-open-workspace="export" title="Fatura - İrsaliye İcmali">
-            <span class="netsis-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            </span>
-            <span class="netsis-tile-name">Fatura İcmali</span>
-            <small class="netsis-tile-sub">Raporları</small>
+            <span class="netsis-tile-name">Harita &amp; Radar</span>
+            <small class="netsis-tile-sub">Mekânsal GPS Görünümü</small>
           </button>
         </div>
       </div>
@@ -196,7 +173,7 @@
       <div class="netsis-win-titlebar">
         <div class="netsis-win-left">
           <span class="netsis-logo-l">E</span>
-          <span class="netsis-win-title">Gezgin \ Lojistik - Satış \ 01. Firma &amp; İstihbarat Arama</span>
+          <span class="netsis-win-title">Haritalar \ 01. Firma &amp; İstihbarat Arama</span>
         </div>
         <div class="netsis-win-meta">MSSQL | DOKUMAN / 0 | Karşıyaka Şubesi (Merkez)</div>
         <div class="netsis-win-controls">
@@ -533,7 +510,7 @@
       <div class="netsis-win-titlebar">
         <div class="netsis-win-left">
           <span class="netsis-logo-l">E</span>
-          <span class="netsis-win-title">Gezgin \ Finans \ 02. Toplu Excel &amp; Veri İhracatı</span>
+          <span class="netsis-win-title">Haritalar \ 02. Toplu Excel &amp; Veri İhracatı</span>
         </div>
         <div class="netsis-win-meta">MSSQL | DOKUMAN / 0 | Karşıyaka Şubesi (Merkez)</div>
         <div class="netsis-win-controls">
@@ -628,7 +605,7 @@
       <div class="netsis-win-titlebar">
         <div class="netsis-win-left">
           <span class="netsis-logo-l">E</span>
-          <span class="netsis-win-title">Gezgin \ Muhasebe \ 03. Derin Web &amp; E-posta Tarama</span>
+          <span class="netsis-win-title">Haritalar \ 03. E-Posta &amp; İletişim Tarama</span>
         </div>
         <div class="netsis-win-meta">MSSQL | DOKUMAN / 0 | Karşıyaka Şubesi (Merkez)</div>
         <div class="netsis-win-controls">
@@ -699,7 +676,7 @@
       <div class="netsis-win-titlebar">
         <div class="netsis-win-left">
           <span class="netsis-logo-l">E</span>
-          <span class="netsis-win-title">Gezgin \ Yönetim \ 04. Sertifika Günlükleri (CT Logs)</span>
+          <span class="netsis-win-title">Haritalar \ 04. Sertifika Günlükleri (CT Logs)</span>
         </div>
         <div class="netsis-win-meta">MSSQL | DOKUMAN / 0 | Karşıyaka Şubesi (Merkez)</div>
         <div class="netsis-win-controls">
@@ -780,7 +757,7 @@
       <div class="netsis-win-titlebar">
         <div class="netsis-win-left">
           <span class="netsis-logo-l">E</span>
-          <span class="netsis-win-title">Gezgin \ Genel \ 05. Bölgesel Veri Havuzu &amp; H3 Harita</span>
+          <span class="netsis-win-title">Haritalar \ 05. Bölgesel Veri Havuzu &amp; H3 Harita</span>
         </div>
         <div class="netsis-win-meta">MSSQL | DOKUMAN / 0 | Karşıyaka Şubesi (Merkez)</div>
         <div class="netsis-win-controls">
@@ -906,7 +883,7 @@
       <div class="netsis-win-titlebar">
         <div class="netsis-win-left">
           <span class="netsis-logo-l">E</span>
-          <span class="netsis-win-title">Gezgin \ Üretim \ 06. Masaüstü Hızlandırıcı &amp; Çevrimdışı Paket</span>
+          <span class="netsis-win-title">Haritalar \ 06. Masaüstü Hızlandırıcı &amp; Çevrimdışı Paket</span>
         </div>
         <div class="netsis-win-meta">MSSQL | DOKUMAN / 0 | Karşıyaka Şubesi (Merkez)</div>
         <div class="netsis-win-controls">
@@ -1135,7 +1112,7 @@
       </button>
       <div class="netsis-taskbar-tab active" id="taskbarActiveTab">
         <span class="taskbar-tab-l">E</span>
-        <span id="taskbarTabTitle">Gezgin \ Lojistik - Satış</span>
+        <span id="taskbarTabTitle">Masaüstü (Kısayollarım)</span>
       </div>
     </div>
     <div class="netsis-taskbar-right">

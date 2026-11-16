@@ -127,14 +127,30 @@ body {
 .engine-badge {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 5px 11px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.engine-badge .badge-short {
+  display: none;
+}
+
+@media (max-width: 1440px) {
+  .engine-badge .badge-long {
+    display: none;
+  }
+  .engine-badge .badge-short {
+    display: inline;
+  }
 }
 
 .engine-badge.turbo {
@@ -249,6 +265,8 @@ button {
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: background 0.14s ease, border-color 0.14s ease, opacity 0.14s ease;
 }
 
@@ -727,45 +745,76 @@ tbody tr:hover {
   background: var(--surface);
   border-top: 3px solid var(--brand-accent);
   border-bottom: 1px solid var(--line);
-  padding: 10px 24px;
+  padding: 8px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  min-height: 50px;
 }
 
 .am-heading {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .am-heading-text {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  max-width: 200px;
+  flex-shrink: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  margin-left: 6px;
+  border-left: 1px solid #E2E8F0;
+  padding-left: 10px;
 }
 
 .am-heading-text small {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--subtle);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
 }
 
 .am-heading-text strong {
-  font-size: 16px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--ink);
   letter-spacing: -0.01em;
   outline: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
 }
 
 .am-head-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 1360px) {
+  .am-heading-text {
+    display: none !important;
+  }
 }
 
 .app-main {
@@ -1354,17 +1403,27 @@ dialog.quick-dialog::backdrop {
 .netsis-menu-ribbon {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   font-size: 12px;
   font-weight: 600;
   color: #475569;
-  margin-left: 8px;
+  margin-left: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.netsis-menu-ribbon::-webkit-scrollbar {
+  display: none;
 }
 
 .netsis-menu-ribbon span {
   cursor: pointer;
-  padding: 3px 6px;
+  padding: 4px 8px;
   border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.12s ease;
 }
 
@@ -1671,12 +1730,16 @@ dialog.quick-dialog::backdrop {
   padding: 0 16px;
   z-index: 99;
   box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
+  white-space: nowrap;
+  flex-wrap: nowrap;
 }
 
 .netsis-taskbar-left {
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .netsis-taskbar-start {
@@ -1692,6 +1755,8 @@ dialog.quick-dialog::backdrop {
   color: #1F2937;
   cursor: pointer;
   min-height: 28px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .netsis-taskbar-start:hover {
@@ -1711,6 +1776,8 @@ dialog.quick-dialog::backdrop {
   font-weight: 600;
   color: var(--netsis-bordeaux, #7C3532);
   min-height: 28px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .netsis-taskbar-tab .taskbar-tab-l {
@@ -1730,6 +1797,8 @@ dialog.quick-dialog::backdrop {
   font-size: 11.5px;
   color: #475569;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .taskbar-status-item {

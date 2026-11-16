@@ -822,9 +822,9 @@
               const actN = Number(indRes.active_engines || 0);
               const totN = Number(indRes.total_engines || 9);
               if (indText) {
-                indText.textContent = actN === totN
-                  ? `${actN}/${totN} Pro Motor (DuckDB · H3 · Splink · RapidFuzz)`
-                  : `${actN}/${totN} Pro Motor (Kısmi Mod — ${totN - actN} Motor Devre Dışı)`;
+                indText.innerHTML = actN === totN
+                  ? `<span class="badge-long">${actN}/${totN} Pro Motor (DuckDB · H3 · Splink · RapidFuzz)</span><span class="badge-short">${actN}/${totN} Pro Motor</span>`
+                  : `<span class="badge-long">${actN}/${totN} Pro Motor (${totN - actN} Devre Dışı)</span><span class="badge-short">${actN}/${totN} Pro Motor</span>`;
               }
               if ($('engineMatrixTitle')) {
                 $('engineMatrixTitle').textContent = actN === totN
@@ -3697,13 +3697,13 @@
   // AppFlow V10.2 Navigation & Workspace Controller
   // =========================================================================
   const WORKSPACES = {
-    launchpad: { id: 'viewLaunchpad', breadcrumb: 'Kurumsal ERP Suite', title: 'Kısayollarım', taskbarTitle: 'Masaüstü' },
-    search: { id: 'viewSearch', breadcrumb: 'Gezgin / Lojistik - Satış', title: '01. Firma & İstihbarat Arama', taskbarTitle: 'Gezgin \\ Lojistik - Satış' },
-    export: { id: 'viewExport', breadcrumb: 'Gezgin / Finans', title: '02. Toplu Excel & Veri İhracatı', taskbarTitle: 'Gezgin \\ Finans' },
-    enrich: { id: 'viewEnrich', breadcrumb: 'Gezgin / Muhasebe', title: '03. Derin Web & İletişim Tarama', taskbarTitle: 'Gezgin \\ Muhasebe' },
-    ct_logs: { id: 'viewCtLogs', breadcrumb: 'Gezgin / Yönetim', title: '04. Sertifika Günlükleri (CT Logs)', taskbarTitle: 'Gezgin \\ Yönetim' },
-    database: { id: 'viewDatabase', breadcrumb: 'Gezgin / Genel', title: '05. Bölgesel Veri Havuzu', taskbarTitle: 'Gezgin \\ Genel' },
-    desktop: { id: 'viewDesktop', breadcrumb: 'Gezgin / Üretim', title: '06. Masaüstü Hızlandırıcı & Çevrimdışı Paket', taskbarTitle: 'Gezgin \\ Üretim' }
+    launchpad: { id: 'viewLaunchpad', breadcrumb: 'Haritalar Suite', title: 'Kısayollarım', taskbarTitle: 'Masaüstü' },
+    search: { id: 'viewSearch', breadcrumb: 'Haritalar / İstihbarat', title: '01. Firma & İstihbarat Arama', taskbarTitle: 'Haritalar \\ Firma Arama' },
+    export: { id: 'viewExport', breadcrumb: 'Haritalar / Veri İhracatı', title: '02. Toplu Excel & Veri İhracatı', taskbarTitle: 'Haritalar \\ Toplu Excel' },
+    enrich: { id: 'viewEnrich', breadcrumb: 'Haritalar / İletişim', title: '03. E-Posta & İletişim Tarama', taskbarTitle: 'Haritalar \\ E-Posta Tarama' },
+    ct_logs: { id: 'viewCtLogs', breadcrumb: 'Haritalar / CT Günlükleri', title: '04. Sertifika Günlükleri (CT Logs)', taskbarTitle: 'Haritalar \\ CT Günlükleri' },
+    database: { id: 'viewDatabase', breadcrumb: 'Haritalar / Veri Havuzu', title: '05. Bölgesel Veri Havuzu & H3', taskbarTitle: 'Haritalar \\ Veri Havuzu' },
+    desktop: { id: 'viewDesktop', breadcrumb: 'Haritalar / Masaüstü', title: '06. Masaüstü Hızlandırıcı & Çevrimdışı Paket', taskbarTitle: 'Haritalar \\ Masaüstü Turbo' }
   };
 
   let activeWorkspace = 'launchpad';
@@ -4277,6 +4277,23 @@
       });
     }
 
+    const ribbonQP = $('ribbonQuickParty');
+    if (ribbonQP) {
+      ribbonQP.addEventListener('click', () => {
+        openQuickPartyModal(null, currentFilters());
+      });
+    }
+
+    const tileMap = $('tileMapLauncher');
+    if (tileMap) {
+      tileMap.addEventListener('click', () => {
+        openWorkspace('search');
+        if (typeof toggleSearchMap === 'function') {
+          toggleSearchMap();
+        }
+      });
+    }
+
     const addShortcut = $('btnAddShortcut');
     if (addShortcut) {
       addShortcut.addEventListener('click', () => {
@@ -4477,6 +4494,10 @@
 
     await probeTurboBridge();
   }
+
+  // Global Bridge
+  window.openWorkspace = openWorkspace;
+  window.openQuickPartyModal = openQuickPartyModal;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
