@@ -13,7 +13,7 @@
   --line: #D1D5DB;
   --line-strong: #9CA3AF;
   --brand: #1F2937;
-  /* 100% Logo Netsis 3 Enterprise Exact Sampled Palette */
+  /* Corporate ERP Enterprise Palette */
   --netsis-bordeaux: #7C3532;
   --netsis-bordeaux-dark: #5C2322;
   --netsis-bordeaux-soft: #F9F1F1;
@@ -1316,10 +1316,10 @@ dialog.quick-dialog::backdrop {
 }
 
 /* ==========================================================================
-   LOGO NETSIS 3 ENTERPRISE CORPORATE SUITE UI SYSTEM
+   CORPORATE ERP ENTERPRISE SUITE UI SYSTEM
    ========================================================================== */
 
-/* Logo Netsis 3 Enterprise Brand Title & Menus */
+/* Corporate ERP Brand Title & Menus */
 .netsis-brand-title {
   display: flex;
   align-items: baseline;

@@ -3697,7 +3697,7 @@
   // AppFlow V10.2 Navigation & Workspace Controller
   // =========================================================================
   const WORKSPACES = {
-    launchpad: { id: 'viewLaunchpad', breadcrumb: 'Logo Netsis 3 Enterprise', title: 'Kısayollarım', taskbarTitle: 'Masaüstü' },
+    launchpad: { id: 'viewLaunchpad', breadcrumb: 'Kurumsal ERP Suite', title: 'Kısayollarım', taskbarTitle: 'Masaüstü' },
     search: { id: 'viewSearch', breadcrumb: 'Gezgin / Lojistik - Satış', title: '01. Firma & İstihbarat Arama', taskbarTitle: 'Gezgin \\ Lojistik - Satış' },
     export: { id: 'viewExport', breadcrumb: 'Gezgin / Finans', title: '02. Toplu Excel & Veri İhracatı', taskbarTitle: 'Gezgin \\ Finans' },
     enrich: { id: 'viewEnrich', breadcrumb: 'Gezgin / Muhasebe', title: '03. Derin Web & İletişim Tarama', taskbarTitle: 'Gezgin \\ Muhasebe' },
@@ -4252,7 +4252,7 @@
     const toggleMapBtn = $('toggleSearchMapBtn');
     if (toggleMapBtn) toggleMapBtn.addEventListener('click', toggleSearchMap);
 
-    // Logo Netsis 3 Enterprise Suite Navigation & Controls
+    // Enterprise Suite Navigation & Controls
     const taskbarHome = $('taskbarHomeBtn');
     if (taskbarHome) taskbarHome.addEventListener('click', goHome);
 
