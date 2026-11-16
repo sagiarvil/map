@@ -13,13 +13,17 @@
   --line: #E2E8F0;
   --line-strong: #CBD5E1;
   --brand: #0F172A;
-  --brand-accent: #0284C7;
-  --brand-soft: #F0F9FF;
+  /* Logo Netsis ERP Signature Palette */
+  --brand-accent: #D32F2F;
+  --brand-accent-hover: #B71C1C;
+  --brand-accent-active: #991B1B;
+  --brand-soft: #FEF2F2;
+  --brand-border: #FECACA;
   --ok: #059669;
   --ok-soft: #ECFDF5;
   --err: #DC2626;
   --err-soft: #FEF2F2;
-  --radius: 12px;
+  --radius: 10px;
 }
 
 *, *::before, *::after {
@@ -147,9 +151,11 @@ body {
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
+  border-top: 3px solid var(--card-accent, var(--brand-accent));
   border-radius: var(--radius);
   padding: 20px 22px;
   margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 /* 5-Column Clean Filter Grid */
@@ -197,7 +203,8 @@ body {
 }
 
 .field input:focus, .field select:focus {
-  border-color: var(--ink);
+  border-color: var(--brand-accent);
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.12);
 }
 
 /* Buttons & Action Bar */
@@ -247,15 +254,25 @@ button:disabled {
 }
 
 button.primary {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: var(--brand-accent);
+  border-color: var(--brand-accent);
   color: #FFFFFF;
   padding: 0 22px;
 }
 
 button.primary:hover:not(:disabled) {
-  background: #1E293B;
-  border-color: #1E293B;
+  background: var(--brand-accent-hover);
+  border-color: var(--brand-accent-hover);
+}
+
+button.primary:active:not(:disabled) {
+  background: var(--brand-accent-active);
+  border-color: var(--brand-accent-active);
+}
+
+button.primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.25);
 }
 
 button.accent {
@@ -384,7 +401,7 @@ button.sm {
 }
 
 .metric-pill.primary-metric {
-  background: var(--ink);
+  background: var(--brand-accent);
   color: #FFFFFF;
 }
 
@@ -423,8 +440,8 @@ button.sm {
 
 .chip.active, .chip:hover {
   background: var(--brand-soft);
-  border-color: #7DD3FC;
-  color: #0369A1;
+  border-color: var(--brand-border);
+  color: var(--brand-accent-hover);
 }
 
 /* Table Toolbar & Data Table */
@@ -451,7 +468,8 @@ button.sm {
 }
 
 .search-inline:focus {
-  border-color: var(--ink);
+  border-color: var(--brand-accent);
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.12);
 }
 
 .pager {
@@ -578,7 +596,8 @@ tbody tr:hover {
 
 .badge.dist {
   background: var(--brand-soft);
-  color: #0369A1;
+  color: var(--brand-accent-hover);
+  border: 1px solid var(--brand-border);
   margin-top: 2px;
 }
 
@@ -647,6 +666,7 @@ tbody tr:hover {
 }
 
 .ext-link:hover {
+  color: var(--brand-accent-hover);
   text-decoration: underline;
 }
 
@@ -693,6 +713,7 @@ tbody tr:hover {
   top: 0;
   z-index: 100;
   background: var(--surface);
+  border-top: 3px solid var(--brand-accent);
   border-bottom: 1px solid var(--line);
   padding: 10px 24px;
   display: flex;
@@ -803,9 +824,9 @@ tbody tr:hover {
   align-items: flex-start;
   min-height: 125px;
   padding: 18px 20px;
-  background: color-mix(in srgb, var(--app-color, #0284c7) 8%, #ffffff);
-  border: 1px solid color-mix(in srgb, var(--app-color, #0284c7) 25%, #E2E8F0);
-  border-top: 4px solid var(--app-color, #0284c7);
+  background: color-mix(in srgb, var(--app-color, #D32F2F) 8%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--app-color, #D32F2F) 25%, #E2E8F0);
+  border-top: 4px solid var(--app-color, #D32F2F);
   border-radius: 12px;
   text-align: left;
   cursor: pointer;
@@ -818,7 +839,7 @@ tbody tr:hover {
 .flow-tile:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
-  border-color: var(--app-color, #0284c7);
+  border-color: var(--app-color, #D32F2F);
 }
 
 .flow-tile:active {
@@ -829,13 +850,13 @@ tbody tr:hover {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: var(--app-color, #0284c7);
+  background: var(--app-color, #D32F2F);
   color: #FFFFFF;
   display: grid;
   place-items: center;
   margin-bottom: 12px;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--app-color, #0284c7) 35%, transparent);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--app-color, #D32F2F) 35%, transparent);
 }
 
 .flow-symbol svg {
@@ -863,7 +884,7 @@ tbody tr:hover {
   right: 16px;
   font-size: 13px;
   font-weight: 800;
-  color: var(--app-color, #0284c7);
+  color: var(--app-color, #D32F2F);
   opacity: 0.8;
   font-variant-numeric: tabular-nums;
 }
@@ -933,11 +954,23 @@ tbody tr:hover {
 
 .btn-primary {
   background: var(--brand-accent);
+  border-color: var(--brand-accent);
   color: #FFFFFF;
 }
 
 .btn-primary:hover {
-  background: #0274b3;
+  background: var(--brand-accent-hover);
+  border-color: var(--brand-accent-hover);
+}
+
+.btn-primary:active {
+  background: var(--brand-accent-active);
+  border-color: var(--brand-accent-active);
+}
+
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.25);
 }
 
 .btn-secondary {
@@ -1028,7 +1061,7 @@ tbody tr:hover {
   border-color: var(--brand-accent);
   background: var(--brand-soft);
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.1);
+  box-shadow: 0 4px 10px rgba(211, 47, 47, 0.12);
 }
 
 .db-stat-city {
@@ -1047,6 +1080,7 @@ tbody tr:hover {
 /* Quick Party Modal Dialog (Madde 3) */
 dialog.quick-dialog {
   border: 1px solid var(--line-strong);
+  border-top: 4px solid var(--brand-accent);
   border-radius: 14px;
   padding: 24px 28px;
   max-width: 680px;

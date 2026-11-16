@@ -3285,7 +3285,7 @@
       popRoot.append(quickBtn);
 
       const popup = new window.maplibregl.Popup({ offset: 18 }).setDOMContent(popRoot);
-      const marker = new window.maplibregl.Marker({ color: (r.hasWhatsapp || r.whatsapp) ? '#059669' : '#0284C7' })
+      const marker = new window.maplibregl.Marker({ color: (r.hasWhatsapp || r.whatsapp) ? '#059669' : '#D32F2F' })
         .setLngLat([r.lon, r.lat])
         .setPopup(popup)
         .addTo(searchMapInstance);
@@ -3315,7 +3315,7 @@
         ? c.boundary
         : buildRegularHexagonRing(c.center_lon, c.center_lat, 0.014);
       const ratio = (c.firm_count || 1) / maxCnt;
-      const fill = ratio > 0.66 ? '#0284C7' : (ratio > 0.33 ? '#38BDF8' : '#BAE6FD');
+      const fill = ratio > 0.66 ? '#D32F2F' : (ratio > 0.33 ? '#F87171' : '#FECACA');
       return {
         type: 'Feature',
         geometry: { type: 'Polygon', coordinates: [ring] },
