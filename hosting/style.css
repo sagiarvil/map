@@ -4,26 +4,34 @@
 
 :root {
   color-scheme: light;
-  --bg: #F8FAFC;
+  --bg: #EEF1F4;
   --surface: #FFFFFF;
-  --surface-alt: #F1F5F9;
-  --ink: #0F172A;
-  --muted: #475569;
-  --subtle: #64748B;
-  --line: #E2E8F0;
-  --line-strong: #CBD5E1;
-  --brand: #0F172A;
-  /* Logo Netsis ERP Signature Palette */
-  --brand-accent: #D32F2F;
-  --brand-accent-hover: #B71C1C;
-  --brand-accent-active: #991B1B;
-  --brand-soft: #FEF2F2;
-  --brand-border: #FECACA;
+  --surface-alt: #F3F5F7;
+  --ink: #1F2937;
+  --muted: #4B5563;
+  --subtle: #6B7280;
+  --line: #D1D5DB;
+  --line-strong: #9CA3AF;
+  --brand: #1F2937;
+  /* 100% Logo Netsis 3 Enterprise Exact Sampled Palette */
+  --netsis-bordeaux: #7C3532;
+  --netsis-bordeaux-dark: #5C2322;
+  --netsis-bordeaux-soft: #F9F1F1;
+  --netsis-bordeaux-border: #E2C1C0;
+  --netsis-table-header: #68757A;
+  --netsis-panel-bg: #E4E7EB;
+  --netsis-sidebar-bg: #3F4448;
+  --netsis-cyan: #00A3E0;
+  --brand-accent: #7C3532;
+  --brand-accent-hover: #5C2322;
+  --brand-accent-active: #471A19;
+  --brand-soft: #F9F1F1;
+  --brand-border: #E2C1C0;
   --ok: #059669;
   --ok-soft: #ECFDF5;
   --err: #DC2626;
   --err-soft: #FEF2F2;
-  --radius: 10px;
+  --radius: 6px;
 }
 
 *, *::before, *::after {
@@ -36,6 +44,7 @@ html {
 
 body {
   margin: 0;
+  padding-bottom: 46px;
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, sans-serif;
@@ -204,7 +213,7 @@ body {
 
 .field input:focus, .field select:focus {
   border-color: var(--brand-accent);
-  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.12);
+  box-shadow: 0 0 0 3px rgba(124, 53, 50, 0.15);
 }
 
 /* Buttons & Action Bar */
@@ -272,7 +281,7 @@ button.primary:active:not(:disabled) {
 
 button.primary:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.25);
+  box-shadow: 0 0 0 3px rgba(124, 53, 50, 0.25);
 }
 
 button.accent {
@@ -469,7 +478,7 @@ button.sm {
 
 .search-inline:focus {
   border-color: var(--brand-accent);
-  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.12);
+  box-shadow: 0 0 0 3px rgba(124, 53, 50, 0.15);
 }
 
 .pager {
@@ -485,7 +494,8 @@ button.sm {
   width: 100%;
   overflow-x: auto;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: var(--radius);
+  background: #FFFFFF;
 }
 
 table {
@@ -496,29 +506,31 @@ table {
 }
 
 thead th {
-  background: var(--surface-alt);
-  color: var(--muted);
-  font-weight: 650;
-  font-size: 11.5px;
+  background: var(--netsis-table-header, #68757A);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--line);
+  letter-spacing: 0.04em;
+  padding: 9px 12px;
+  border-right: 1px solid #556267;
+  border-bottom: 2px solid #4D595E;
   white-space: nowrap;
 }
 
-tbody td {
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--line);
-  vertical-align: top;
+thead th:last-child {
+  border-right: none;
 }
 
-tbody tr:last-child td {
-  border-bottom: none;
+tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid #F1F5F9;
+  vertical-align: middle;
 }
 
 tbody tr:hover {
-  background: #F8FAFC;
+  background: var(--netsis-bordeaux-soft, #F9F1F1);
 }
 
 .firm-name-row {
@@ -970,7 +982,7 @@ tbody tr:hover {
 
 .btn-primary:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.25);
+  box-shadow: 0 0 0 3px rgba(124, 53, 50, 0.25);
 }
 
 .btn-secondary {
@@ -1302,5 +1314,429 @@ dialog.quick-dialog::backdrop {
     height: 290px;
   }
 }
+
+/* ==========================================================================
+   LOGO NETSIS 3 ENTERPRISE CORPORATE SUITE UI SYSTEM
+   ========================================================================== */
+
+/* Logo Netsis 3 Enterprise Brand Title & Menus */
+.netsis-brand-title {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  user-select: none;
+  padding-right: 6px;
+}
+
+.netsis-logo-badge {
+  color: #1F2937;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.netsis-title-main {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--netsis-bordeaux, #7C3532);
+}
+
+.netsis-title-sub {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748B;
+  letter-spacing: 0.08em;
+}
+
+.netsis-menu-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  margin-left: 8px;
+}
+
+.netsis-menu-ribbon span {
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: all 0.12s ease;
+}
+
+.netsis-menu-ribbon span:hover {
+  background: var(--netsis-bordeaux-soft, #F9F1F1);
+  color: var(--netsis-bordeaux, #7C3532);
+}
+
+/* Netsis Desktop Search Bar (Pill) */
+.netsis-search-container {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0 22px;
+}
+
+.netsis-search-pill-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+}
+
+.netsis-search-pill-wrap .search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--netsis-bordeaux, #7C3532);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.netsis-search-pill {
+  width: 100%;
+  height: 44px;
+  padding: 0 20px 0 44px;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: #1F2937;
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+
+.netsis-search-pill:focus {
+  border-color: var(--netsis-bordeaux, #7C3532);
+  box-shadow: 0 0 0 3px rgba(124, 53, 50, 0.15);
+}
+
+/* Netsis Kısayollarım Desktop Canvas Panel */
+.netsis-shortcuts-panel {
+  background: var(--netsis-panel-bg, #E4E7EB);
+  border-radius: 14px;
+  padding: 30px 24px 36px;
+  margin: 10px 0 32px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.netsis-panel-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #2C3E50;
+  margin: 0 0 26px;
+  letter-spacing: -0.01em;
+}
+
+.netsis-shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 20px 12px;
+  justify-items: center;
+  align-items: start;
+}
+
+.netsis-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 6px 10px;
+  border-radius: 8px;
+  transition: all 0.16s ease;
+  user-select: none;
+  color: inherit;
+  font-family: inherit;
+  width: 100%;
+  max-width: 110px;
+}
+
+.netsis-tile:hover {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.netsis-tile:hover .netsis-icon-box {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(124, 53, 50, 0.35);
+  outline: 2px solid var(--netsis-cyan, #00A3E0);
+  outline-offset: 2px;
+}
+
+.netsis-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 7px;
+  background: var(--netsis-bordeaux, #7C3532);
+  display: grid;
+  place-items: center;
+  color: #FFFFFF;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16);
+  transition: all 0.16s ease;
+  flex-shrink: 0;
+}
+
+.netsis-icon-box svg {
+  width: 28px;
+  height: 28px;
+  stroke: #FFFFFF;
+  fill: none;
+}
+
+.netsis-tile-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #2C3E50;
+  line-height: 1.25;
+  display: block;
+}
+
+.netsis-tile-sub {
+  font-size: 10.5px;
+  color: #64748B;
+  line-height: 1.2;
+  margin-top: 2px;
+  display: block;
+}
+
+.netsis-tile.add-shortcut .netsis-icon-box {
+  background: #FFFFFF;
+  border: 1.5px dashed #94A3B8;
+  color: #0078D7;
+  box-shadow: none;
+}
+
+.netsis-tile.add-shortcut .netsis-tile-name {
+  color: #0078D7;
+}
+
+/* Netsis Classic Window Titlebar (Bordeaux #7C3532) */
+.netsis-win-titlebar {
+  background: var(--netsis-bordeaux, #7C3532);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  margin-bottom: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.netsis-win-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.netsis-logo-l {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  background: var(--netsis-cyan, #00A3E0);
+  color: #FFFFFF;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 13px;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.netsis-win-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #FFFFFF;
+}
+
+.netsis-win-meta {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.netsis-win-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.netsis-win-ctrl-btn {
+  background: transparent;
+  border: none;
+  color: #FFFFFF;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 13px;
+  padding: 0;
+  line-height: 1;
+  transition: background 0.12s ease;
+}
+
+.netsis-win-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.netsis-win-ctrl-btn.close:hover {
+  background: #DC2626;
+}
+
+/* Netsis Action Ribbon / Toolbar */
+.netsis-win-ribbon {
+  background: #F1F3F5;
+  border: 1px solid var(--line);
+  border-top: none;
+  padding: 6px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.netsis-ribbon-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.netsis-ribbon-btn {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1F2937;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  transition: all 0.12s ease;
+}
+
+.netsis-ribbon-btn:hover {
+  background: #E2E8F0;
+  border-color: #94A3B8;
+}
+
+.netsis-ribbon-sep {
+  width: 1px;
+  height: 20px;
+  background: #CBD5E1;
+  margin: 0 4px;
+}
+
+.netsis-ribbon-meta {
+  font-size: 11.5px;
+  color: #475569;
+  display: flex;
+  gap: 12px;
+}
+
+.netsis-ribbon-meta strong {
+  color: var(--netsis-bordeaux, #7C3532);
+}
+
+/* Netsis Bottom Taskbar */
+.netsis-bottom-taskbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  background: #E2E6EA;
+  border-top: 1px solid #CBD5E1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 99;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.netsis-taskbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.netsis-taskbar-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1F2937;
+  cursor: pointer;
+  min-height: 28px;
+}
+
+.netsis-taskbar-start:hover {
+  background: #F1F5F9;
+  border-color: var(--netsis-bordeaux, #7C3532);
+}
+
+.netsis-taskbar-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: #FFFFFF;
+  border: 1px solid var(--netsis-bordeaux, #7C3532);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--netsis-bordeaux, #7C3532);
+  min-height: 28px;
+}
+
+.netsis-taskbar-tab .taskbar-tab-l {
+  background: var(--netsis-cyan, #00A3E0);
+  color: #FFFFFF;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.netsis-taskbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 11.5px;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
+.taskbar-status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 
 

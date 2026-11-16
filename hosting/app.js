@@ -3285,7 +3285,7 @@
       popRoot.append(quickBtn);
 
       const popup = new window.maplibregl.Popup({ offset: 18 }).setDOMContent(popRoot);
-      const marker = new window.maplibregl.Marker({ color: (r.hasWhatsapp || r.whatsapp) ? '#059669' : '#D32F2F' })
+      const marker = new window.maplibregl.Marker({ color: (r.hasWhatsapp || r.whatsapp) ? '#059669' : '#7C3532' })
         .setLngLat([r.lon, r.lat])
         .setPopup(popup)
         .addTo(searchMapInstance);
@@ -3315,7 +3315,7 @@
         ? c.boundary
         : buildRegularHexagonRing(c.center_lon, c.center_lat, 0.014);
       const ratio = (c.firm_count || 1) / maxCnt;
-      const fill = ratio > 0.66 ? '#D32F2F' : (ratio > 0.33 ? '#F87171' : '#FECACA');
+      const fill = ratio > 0.66 ? '#7C3532' : (ratio > 0.33 ? '#B96D6B' : '#E8C9C8');
       return {
         type: 'Feature',
         geometry: { type: 'Polygon', coordinates: [ring] },
@@ -3697,13 +3697,13 @@
   // AppFlow V10.2 Navigation & Workspace Controller
   // =========================================================================
   const WORKSPACES = {
-    launchpad: { id: 'viewLaunchpad', breadcrumb: 'Haritalar İstihbarat Fabrikası', title: 'Uygulamalarım' },
-    search: { id: 'viewSearch', breadcrumb: 'Uygulamalarım / İstihbarat', title: '01. Firma & İstihbarat Arama' },
-    export: { id: 'viewExport', breadcrumb: 'Uygulamalarım / Veri İhracatı', title: '02. Toplu Excel & Veri İhracatı' },
-    enrich: { id: 'viewEnrich', breadcrumb: 'Uygulamalarım / İletişim', title: '03. Derin Web & İletişim Tarama' },
-    ct_logs: { id: 'viewCtLogs', breadcrumb: 'Uygulamalarım / Güvenlik & Tescil', title: '04. Sertifika Günlükleri (CT Logs)' },
-    database: { id: 'viewDatabase', breadcrumb: 'Uygulamalarım / Veri Havuzu', title: '05. Bölgesel Veri Havuzu' },
-    desktop: { id: 'viewDesktop', breadcrumb: 'Uygulamalarım / Altyapı', title: '06. Masaüstü Hızlandırıcı & Çevrimdışı Paket' }
+    launchpad: { id: 'viewLaunchpad', breadcrumb: 'Logo Netsis 3 Enterprise', title: 'Kısayollarım', taskbarTitle: 'Masaüstü' },
+    search: { id: 'viewSearch', breadcrumb: 'Gezgin / Lojistik - Satış', title: '01. Firma & İstihbarat Arama', taskbarTitle: 'Gezgin \\ Lojistik - Satış' },
+    export: { id: 'viewExport', breadcrumb: 'Gezgin / Finans', title: '02. Toplu Excel & Veri İhracatı', taskbarTitle: 'Gezgin \\ Finans' },
+    enrich: { id: 'viewEnrich', breadcrumb: 'Gezgin / Muhasebe', title: '03. Derin Web & İletişim Tarama', taskbarTitle: 'Gezgin \\ Muhasebe' },
+    ct_logs: { id: 'viewCtLogs', breadcrumb: 'Gezgin / Yönetim', title: '04. Sertifika Günlükleri (CT Logs)', taskbarTitle: 'Gezgin \\ Yönetim' },
+    database: { id: 'viewDatabase', breadcrumb: 'Gezgin / Genel', title: '05. Bölgesel Veri Havuzu', taskbarTitle: 'Gezgin \\ Genel' },
+    desktop: { id: 'viewDesktop', breadcrumb: 'Gezgin / Üretim', title: '06. Masaüstü Hızlandırıcı & Çevrimdışı Paket', taskbarTitle: 'Gezgin \\ Üretim' }
   };
 
   let activeWorkspace = 'launchpad';
@@ -3733,6 +3733,9 @@
 
     $('amBreadcrumb').textContent = ws.breadcrumb;
     $('pageTitle').textContent = ws.title;
+    if ($('taskbarTabTitle')) {
+      $('taskbarTabTitle').textContent = ws.taskbarTitle || ws.title;
+    }
     revealWorkspaceCards($(ws.id));
 
     if (key === 'database') {
@@ -4001,6 +4004,9 @@
     const dialog = $('quickPartyDialog');
     if (!dialog) return;
 
+    firm = firm || {};
+    f = f || {};
+
     $('partySuccessNotice').style.display = 'none';
 
     const cityCode = fold(firm.city || f.city || 'TR').slice(0, 3).toUpperCase();
@@ -4245,6 +4251,47 @@
 
     const toggleMapBtn = $('toggleSearchMapBtn');
     if (toggleMapBtn) toggleMapBtn.addEventListener('click', toggleSearchMap);
+
+    // Logo Netsis 3 Enterprise Suite Navigation & Controls
+    const taskbarHome = $('taskbarHomeBtn');
+    if (taskbarHome) taskbarHome.addEventListener('click', goHome);
+
+    const netsisSearch = $('netsisGlobalSearchInput');
+    if (netsisSearch) {
+      netsisSearch.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          const q = netsisSearch.value.trim();
+          if (q && $('sectorInput')) {
+            $('sectorInput').value = q;
+          }
+          openWorkspace('search');
+          handleSearch();
+        }
+      });
+    }
+
+    const quickLauncher = $('tileQuickPartyLauncher');
+    if (quickLauncher) {
+      quickLauncher.addEventListener('click', () => {
+        openQuickPartyModal(null, currentFilters());
+      });
+    }
+
+    const addShortcut = $('btnAddShortcut');
+    if (addShortcut) {
+      addShortcut.addEventListener('click', () => {
+        openWorkspace('search');
+      });
+    }
+
+    function updateTaskbarClock() {
+      const el = $('taskbarClock');
+      if (!el) return;
+      const now = new Date();
+      el.textContent = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    }
+    updateTaskbarClock();
+    setInterval(updateTaskbarClock, 15000);
 
     // Export Country/City Sync
     if ($('exportCountrySelect')) {
