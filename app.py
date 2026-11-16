@@ -572,7 +572,7 @@ class Handler(BaseHTTPRequestHandler):
             'Content-Security-Policy',
             "default-src 'self'; script-src 'self' https://unpkg.com blob:; worker-src 'self' blob:; child-src blob:; "
             "style-src 'self' 'unsafe-inline' https://unpkg.com; "
-            "connect-src 'self' https://dns.google https://crt.sh https://api.certspotter.com https://nominatim.openstreetmap.org "
+            "connect-src 'self' https://dns.google https://cloudflare-dns.com https://crt.sh https://api.certspotter.com https://nominatim.openstreetmap.org "
             "https://photon.komoot.io https://api.openstreetmap.org "
             "https://maps.mail.ru https://overpass-api.de https://overpass.private.coffee https://overpass.kumi.systems https://unpkg.com "
             "https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://tiles.openfreemap.org; "

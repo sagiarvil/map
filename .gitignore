@@ -14,3 +14,5 @@ data/
 .firebase/
 hosting/downloads/
 hosting/data/
+node_modules/
+functions/node_modules/

@@ -1,0 +1,13 @@
+{
+  "name": "haritalar-cloud-intelligence-functions",
+  "version": "7.4.0",
+  "private": true,
+  "description": "Serverless Cloud Intelligence API (2nd Gen) for haritalar.web.app: SSRF-hardened Corporate Crawler, GİB VKN/MERSİS/KEP, 3-Tier CT + Live TLS X.509, ERP Webhook Relay & Multi-Mirror Global Discovery",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "firebase-functions": "^6.3.2"
+  }
+}

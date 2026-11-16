@@ -207,9 +207,10 @@
   };
 
   const OVERPASS_MIRRORS = [
-    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
     'https://overpass-api.de/api/interpreter',
-    'https://overpass.private.coffee/api/interpreter'
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
   ];
 
   // State
@@ -217,6 +218,7 @@
   const shardCache = new Map(); // key -> { city, region, records }
   const mxCache = new Map();    // domain -> 'mx' | 'none'
   let turboConnected = false;
+  let cloudApiConnected = false;
   let turboToken = '';
   let turboPollTimer = null;
 
@@ -791,104 +793,123 @@
     }
   }
 
-  // Local Mac Turbo Bridge Check
-  async function probeTurboBridge() {
-    try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 1800);
-      const res = await fetch(`${LOCAL_API}/api/session`, { signal: ctrl.signal });
-      clearTimeout(t);
-      if (!res.ok) throw new Error('status ' + res.status);
-      const data = await res.json();
-      if (data && data.token) {
-        turboConnected = true;
-        turboToken = data.token;
-        const badge = $('engineBadge');
-        if (badge) badge.className = 'engine-badge turbo';
-        $('engineText').textContent = 'Hızlı Tarama Aktif';
-        $('enrichBtn').textContent = 'Web Sitelerinden E-posta Tara';
+  // Local Desktop Turbo Bridge Check (skips auto-loopback probe on iOS/Android mobile unless manually triggered)
+  async function probeTurboBridge(manualTrigger = false) {
+    const isMobileUa = /(?:iPhone|iPad|iPod|Android)/i.test(navigator.userAgent || '');
+    if (!isMobileUa || manualTrigger || window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 1800);
+        const res = await fetch(`${LOCAL_API}/api/session`, { signal: ctrl.signal });
+        clearTimeout(t);
+        if (!res.ok) throw new Error('status ' + res.status);
+        const data = await res.json();
+        if (data && data.token) {
+          turboConnected = true;
+          turboToken = data.token;
+          const badge = $('engineBadge');
+          if (badge) badge.className = 'engine-badge turbo';
+          $('engineText').textContent = 'Hızlı Tarama Aktif';
+          $('enrichBtn').textContent = 'Web Sitelerinden E-posta Tara';
 
-        // Check Industrial Engine matrix with physical self-test verification
-        try {
-          const indRes = await turboApi('industrial/status?selftest=1', undefined, 9000);
-          if (indRes && (indRes.status === 'active' || indRes.status === 'degraded')) {
-            const indBadge = $('industrialBadge');
-            if (indBadge) indBadge.style.display = 'inline-flex';
-            const indText = $('industrialBadgeText');
-            const actN = Number(indRes.active_engines || 0);
-            const totN = Number(indRes.total_engines || 9);
-            if (indText) {
-              indText.textContent = actN === totN
-                ? `${actN}/${totN} Pro Motor (DuckDB · H3 · Splink · RapidFuzz)`
-                : `${actN}/${totN} Pro Motor (Kısmi Mod — ${totN - actN} Motor Devre Dışı)`;
-            }
-            if ($('engineMatrixTitle')) {
-              $('engineMatrixTitle').textContent = actN === totN
-                ? `Endüstriyel Motor Matrisi — ${actN}/${totN} Yerel C/C++/Rust Motoru Öz-Testten Geçti`
-                : `Endüstriyel Motor Matrisi — Kısmi Çalışma (${actN}/${totN} Aktif, ${totN - actN} Devre Dışı)`;
-            }
-            if ($('engineMatrixSubtitle')) {
-              $('engineMatrixSubtitle').textContent = 'Yerel masaüstü servisi bağlı; her motor gerçek girdi üzerinde fiziksel öz-test ile doğrulandı:';
-            }
-            if (indRes.engines && typeof indRes.engines === 'object') {
-              for (const [key, eng] of Object.entries(indRes.engines)) {
-                const badgeEl = document.querySelector(`[data-engine-badge="${key}"]`);
-                if (badgeEl && eng) {
-                  if (eng.verified) {
-                    const ver = eng.version ? `v${eng.version}` : 'Aktif';
-                    const lat = typeof eng.latency_ms === 'number' ? ` · ${eng.latency_ms.toFixed(1)} ms` : '';
-                    badgeEl.textContent = `● Doğrulandı (${ver}${lat})`;
-                    badgeEl.className = 'badge mx-ok';
-                  } else {
-                    badgeEl.textContent = `⚠ Devre Dışı (${eng.state || 'Hata'})`;
-                    badgeEl.className = 'badge dist';
+          // Check Industrial Engine matrix with physical self-test verification
+          try {
+            const indRes = await turboApi('industrial/status?selftest=1', undefined, 9000);
+            if (indRes && (indRes.status === 'active' || indRes.status === 'degraded')) {
+              const indBadge = $('industrialBadge');
+              if (indBadge) indBadge.style.display = 'inline-flex';
+              const indText = $('industrialBadgeText');
+              const actN = Number(indRes.active_engines || 0);
+              const totN = Number(indRes.total_engines || 9);
+              if (indText) {
+                indText.textContent = actN === totN
+                  ? `${actN}/${totN} Pro Motor (DuckDB · H3 · Splink · RapidFuzz)`
+                  : `${actN}/${totN} Pro Motor (Kısmi Mod — ${totN - actN} Motor Devre Dışı)`;
+              }
+              if ($('engineMatrixTitle')) {
+                $('engineMatrixTitle').textContent = actN === totN
+                  ? `Endüstriyel Motor Matrisi — ${actN}/${totN} Yerel C/C++/Rust Motoru Öz-Testten Geçti`
+                  : `Endüstriyel Motor Matrisi — Kısmi Çalışma (${actN}/${totN} Aktif, ${totN - actN} Devre Dışı)`;
+              }
+              if ($('engineMatrixSubtitle')) {
+                $('engineMatrixSubtitle').textContent = 'Yerel masaüstü servisi bağlı; her motor gerçek girdi üzerinde fiziksel öz-test ile doğrulandı:';
+              }
+              if (indRes.engines && typeof indRes.engines === 'object') {
+                for (const [key, eng] of Object.entries(indRes.engines)) {
+                  const badgeEl = document.querySelector(`[data-engine-badge="${key}"]`);
+                  if (badgeEl && eng) {
+                    if (eng.verified) {
+                      const ver = eng.version ? `v${eng.version}` : 'Aktif';
+                      const lat = typeof eng.latency_ms === 'number' ? ` · ${eng.latency_ms.toFixed(1)} ms` : '';
+                      badgeEl.textContent = `● Doğrulandı (${ver}${lat})`;
+                      badgeEl.className = 'badge mx-ok';
+                    } else {
+                      badgeEl.textContent = `⚠ Devre Dışı (${eng.state || 'Hata'})`;
+                      badgeEl.className = 'badge dist';
+                    }
                   }
                 }
               }
             }
-          }
-        } catch {}
+          } catch {}
 
-        try {
-          const st = await turboApi('status', undefined, 4000);
-          if (st) {
-            turboIsPaused = Boolean(st.paused);
-            if ($('enrichPauseBtn')) {
-              $('enrichPauseBtn').textContent = turboIsPaused ? '▶ Devam Ettir' : '⏸ Duraklat';
+          try {
+            const st = await turboApi('status', undefined, 4000);
+            if (st) {
+              turboIsPaused = Boolean(st.paused);
+              if ($('enrichPauseBtn')) {
+                $('enrichPauseBtn').textContent = turboIsPaused ? '▶ Devam Ettir' : '⏸ Duraklat';
+              }
+              if ($('enrichLiveStatus')) {
+                $('enrichLiveStatus').textContent =
+                  `Durum: 128-Korutin Turbo Motor ${turboIsPaused ? 'Duraklatıldı' : 'Hazır'} · Doğrulanmış E-posta: ${fmt(st.contacts || 0)} · Tel: ${fmt(st.phones || 0)}`;
+              }
             }
-            if ($('enrichLiveStatus')) {
-              $('enrichLiveStatus').textContent =
-                `Durum: 128-Korutin Turbo Motor ${turboIsPaused ? 'Duraklatıldı' : 'Hazır'} · Doğrulanmış E-posta: ${fmt(st.contacts || 0)} · Tel: ${fmt(st.phones || 0)}`;
-            }
-          }
-        } catch {}
+          } catch {}
 
-        return true;
+          return true;
+        }
+      } catch {
+        // Expected on remote PCs/phones where local desktop server is not running
       }
-    } catch {
-      // Expected on remote PCs/phones where local Mac server is not running
     }
     turboConnected = false;
     turboToken = '';
+    // Probe optional same-origin Serverless Cloud Intelligence API only when advertised by manifest or window flag
+    cloudApiConnected = false;
+    if ((manifest && manifest.cloud_api === true) || window.HARITALAR_CLOUD_API === true) {
+      try {
+        const cCtrl = new AbortController();
+        const cTimer = setTimeout(() => cCtrl.abort(), 1600);
+        const cRes = await fetch('/api/cloud/health', { signal: cCtrl.signal });
+        clearTimeout(cTimer);
+        if (cRes.ok) {
+          const cJson = await cRes.json().catch(() => ({}));
+          if (cJson && cJson.status === 'active') cloudApiConnected = true;
+        }
+      } catch {}
+    }
+
     const badge = $('engineBadge');
     if (badge) badge.className = 'engine-badge cloud';
-    $('engineText').textContent = 'Bulut Modu Hazır';
+    $('engineText').textContent = cloudApiConnected ? 'Bulut Sunucu Aktif' : 'Bulut Modu Hazır';
     $('enrichBtn').textContent = 'E-posta Kayıtlarını Doğrula';
     const indBadge = $('industrialBadge');
     if (indBadge) indBadge.style.display = 'none';
+    const shardTotalCount = (manifest && manifest.shards) ? Object.keys(manifest.shards).length : 86;
     if ($('engineMatrixTitle')) {
       $('engineMatrixTitle').textContent = 'Endüstriyel Motor Matrisi — Bulut Modu (Yerel Servis Bağlı Değil)';
     }
     if ($('engineMatrixSubtitle')) {
       $('engineMatrixSubtitle').textContent =
-        'Şu anda tarayıcı Bulut Modunda (86 Ön-İndeksli CDN Parçası + Fastly OSM v0.6 + DNS-over-HTTPS) çalışıyor. Aşağıdaki 9 derlenmiş C/C++/Rust motoru için yerel masaüstü servisi gereklidir:';
+        `Şu anda tarayıcı Bulut Modunda (${shardTotalCount} Ön-İndeksli Küresel/Ulusal CDN Parçası + Çoklu Ayna OSM + İkili DNS-over-HTTPS) çalışıyor. Aşağıdaki 9 derlenmiş C/C++/Rust motoru için yerel masaüstü servisi gereklidir:`;
     }
     document.querySelectorAll('[data-engine-badge]').forEach(elBadge => {
       elBadge.textContent = '☁ Yerel Servis Kapalı (Bulut Yedeği)';
       elBadge.className = 'badge dist';
     });
     if ($('enrichLiveStatus')) {
-      $('enrichLiveStatus').textContent = 'Durum: Bulut DNS-over-HTTPS MX/SPF/DMARC doğrulama motoru hazır (Yerel masaüstü tarayıcı bağlı değil).';
+      $('enrichLiveStatus').textContent = 'Durum: Bulut İkili DNS-over-HTTPS (Google + Cloudflare) MX/SPF/DMARC doğrulama motoru hazır.';
     }
     return false;
   }
@@ -1500,7 +1521,7 @@
           for (const tc of tagClauses) unionParts.push(`nw${tc}${bb};`);
         }
         const unionBody = `[out:json][timeout:9];(${unionParts.join('')});out center tags 300;`;
-        const mirrors = OVERPASS_MIRRORS.slice(0, 2);
+        const mirrors = OVERPASS_MIRRORS;
         const controllers = mirrors.map(() => new AbortController());
         try {
           const ovEls = await Promise.any(mirrors.map(async (endpoint, idx) => {
@@ -1603,7 +1624,7 @@
     let elements = null;
     let fromOverpass = false;
     let cloudSource = 'Overpass API';
-    const mirrors = OVERPASS_MIRRORS.slice(0, 2);
+    const mirrors = OVERPASS_MIRRORS;
     const controllers = mirrors.map(() => new AbortController());
     try {
       elements = await Promise.any(mirrors.map(async (endpoint, idx) => {
@@ -3033,8 +3054,18 @@
     box.replaceChildren(el('div', 'Kurumsal web sayfası ve DNS MX/SPF/DMARC kayıtları inceleniyor…', 'text-muted'));
 
     try {
-      if (turboConnected) {
-        const res = await turboApi('industrial/crawl', { url: raw }, 22000);
+      if (turboConnected || cloudApiConnected) {
+        const res = turboConnected
+          ? await turboApi('industrial/crawl', { url: raw }, 22000)
+          : await fetch('/api/cloud/crawl', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: raw })
+            }).then(async r => {
+              const j = await r.json().catch(() => ({}));
+              if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+              return j;
+            });
         box.replaceChildren();
         const domInfo = res.domain_intel || {};
 
@@ -3104,14 +3135,26 @@
         return;
       }
 
-      // Cloud fallback: DNS-over-HTTPS MX + TXT (SPF/DMARC) check via dns.google (explicitly discloses DNS-only scope & NXDOMAIN/network errors)
+      // Cloud fallback: Dual-Provider DNS-over-HTTPS (Google DoH + Cloudflare 1.1.1.1 DoH failover)
       const dom = raw.replace(/^https?:\/\//i, '').split('/')[0].replace(/^www\./i, '').toLowerCase();
       let mxHttpOk = false;
       const fetchDns = async (name, type) => {
-        const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`);
-        if (!r.ok) throw new Error(`DNS HTTP ${r.status}`);
-        mxHttpOk = true;
-        return r.json();
+        const dohUrls = [
+          `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`,
+          `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${type}`
+        ];
+        let lastStatus = 0;
+        for (const u of dohUrls) {
+          try {
+            const r = await fetch(u, { headers: { Accept: 'application/dns-json' } });
+            lastStatus = r.status;
+            if (r.ok) {
+              mxHttpOk = true;
+              return await r.json();
+            }
+          } catch {}
+        }
+        throw new Error(`DNS HTTP ${lastStatus || 'Bağlantı Hatası'}`);
       };
       const [mxRes, txtRes, dmarcRes] = await Promise.all([
         fetchDns(dom, 'MX'),
@@ -3819,22 +3862,25 @@
     let lastErrMsg = '';
     try {
       let handled = false;
-      if (turboConnected) {
+      if (turboConnected || cloudApiConnected) {
         try {
-          const res = await fetch(`${LOCAL_API}/api/ct_logs?query=${encodeURIComponent(q)}&limit=${limit}`, {
-            headers: turboToken ? { 'X-Local-Token': turboToken } : {}
+          const ctUrl = turboConnected
+            ? `${LOCAL_API}/api/ct_logs?query=${encodeURIComponent(q)}&limit=${limit}`
+            : `/api/cloud/ct_logs?query=${encodeURIComponent(q)}&limit=${limit}`;
+          const res = await fetch(ctUrl, {
+            headers: (turboConnected && turboToken) ? { 'X-Local-Token': turboToken } : {}
           });
           const data = await res.json().catch(() => ({}));
           if (res.ok) {
             anyProviderOk = true;
             records = data.records || data.domains || [];
-            sourceLabel = data.source_engine || 'local-ct';
+            sourceLabel = data.source_engine || 'ct-api';
             handled = true;
           } else {
-            lastErrMsg = data.error || `Yerel CT HTTP ${res.status}`;
+            lastErrMsg = data.error || `CT HTTP ${res.status}`;
           }
         } catch (e) {
-          lastErrMsg = e.message || 'Yerel CT bağlantı hatası';
+          lastErrMsg = e.message || 'CT bağlantı hatası';
         }
       }
 
@@ -4067,6 +4113,14 @@
       if (turboConnected) {
         const res = await turboApi('erp/webhook', { webhook_url: webhookUrl, payload: party }, 12000);
         if (!res.ok) throw new Error(res.error || `HTTP ${res.status_code || 'Hata'}`);
+      } else if (cloudApiConnected) {
+        const cr = await fetch('/api/cloud/erp_webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ webhook_url: webhookUrl, payload: party })
+        });
+        const cj = await cr.json().catch(() => ({}));
+        if (!cr.ok || !cj.ok) throw new Error(cj.error || `HTTP ${cj.status_code || cr.status}`);
       } else {
         const r = await fetch(webhookUrl, {
           method: 'POST',
@@ -4318,6 +4372,24 @@
     if (refDuckDb) refDuckDb.addEventListener('click', () => loadDuckDbAnalytics(true));
     const testOverture = $('testOvertureBtn');
     if (testOverture) testOverture.addEventListener('click', handleOvertureTestSync);
+    const retryBridge = $('retryLocalBridgeBtn');
+    if (retryBridge) {
+      retryBridge.addEventListener('click', async () => {
+        retryBridge.disabled = true;
+        retryBridge.textContent = '🔌 Bağlanıyor…';
+        try {
+          const ok = await probeTurboBridge(true);
+          if (ok) {
+            setStatus('Yerel 9/9 Pro Motor (127.0.0.1:8765) köprüsü başarıyla bağlandı!', 'Turbo Aktif', false, null);
+          } else {
+            setStatus('127.0.0.1:8765 yerel servisine ulaşılamadı. Servisi başlattığınızdan ve tarayıcı adres çubuğunda Yerel Ağ Erişimi izni verdiğinizden emin olun veya "127.0.0.1:8765 Doğrudan Aç" butonunu kullanın.', 'Bağlantı Yok', true, null);
+          }
+        } finally {
+          retryBridge.disabled = false;
+          retryBridge.textContent = '🔌 Yerel Motoru Tekrar Bağla';
+        }
+      });
+    }
 
     $('prevPageBtn').addEventListener('click', () => {
       currentOffset = Math.max(0, currentOffset - PAGE_SIZE);
@@ -4346,7 +4418,7 @@
     resetResultsView();
 
     try {
-      const res = await fetch('/data/manifest.json?v=7.3.0', { cache: 'no-cache' });
+      const res = await fetch('/data/manifest.json?v=7.4.0', { cache: 'no-cache' });
       if (res.ok) {
         manifest = await res.json();
         const curCity = $('citySelect') ? $('citySelect').value : '__all__';

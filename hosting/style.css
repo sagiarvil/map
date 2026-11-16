@@ -1167,3 +1167,106 @@ dialog.quick-dialog::backdrop {
   margin-bottom: 3px;
 }
 
+/* ==========================================================================
+   MOBILE SAFARI / iOS WEBKIT & ANDROID TOUCH RESPONSIVE INTELLIGENCE
+   ========================================================================== */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .am-heading {
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .am-heading-text {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .am-heading-text strong,
+  .am-heading-text small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .am-head-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .app-main {
+    padding: 14px 12px 48px;
+  }
+
+  .flow-intro {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .flow-intro h1 {
+    font-size: 21px;
+  }
+
+  .flow-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 14px 12px;
+  }
+
+  .btn,
+  button,
+  select,
+  input[type="text"],
+  input[type="search"],
+  input[type="url"],
+  input[type="email"] {
+    min-height: 44px;
+    font-size: 16px; /* Prevents iOS Safari auto-zoom on input focus */
+  }
+
+  .btn {
+    white-space: normal;
+    text-align: center;
+  }
+
+  dialog.quick-dialog {
+    padding: 16px 14px;
+    width: 96%;
+    max-width: 96vw;
+  }
+
+  dialog.quick-dialog .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  dialog.quick-dialog .form-grid .field {
+    grid-column: span 1 !important;
+  }
+
+  .table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .map-canvas {
+    height: 290px;
+  }
+}
+
+

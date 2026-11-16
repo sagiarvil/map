@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Haritalar — AppFlow V10.2 B2B İstihbarat &amp; ERP Keşif Fabrikası</title>
   <meta name="description" content="HTMLANDHTML V10.2 AppFlow mimarisiyle 81 ilde kurumsal firma arama, NACE Rev. 2, WhatsApp, e-Fatura istihbaratı ve ERP cari oluşturma merkezi.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230284c7'/%3E%3Cpath d='M9 22V10h3.5v4.5h7V10H23v12h-3.5v-4.5h-7V22z' fill='%23fff'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="/style.css?v=7.3.0">
+  <link rel="stylesheet" href="/style.css?v=7.4.1">
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer></script>
-  <script src="/xlsx-engine.js?v=7.3.0" defer></script>
-  <script src="/app.js?v=7.3.0" defer></script>
+  <script src="/xlsx-engine.js?v=7.4.1" defer></script>
+  <script src="/app.js?v=7.4.1" defer></script>
 </head>
 <body class="flow-home">
   <!-- AppFlow Header Bar -->
@@ -700,16 +701,28 @@
       </details>
 
       <div class="card">
-        <h3>Masaüstü Turbo Paketi (Mac &amp; Windows)</h3>
-        <p class="text-muted">Tek tıkla masaüstü hızlandırıcı ZIP dosyasını indirin ve yerel olarak çalıştırın.</p>
-        <div style="margin-top:16px">
+        <h3>Masaüstü Turbo Paketi (macOS · Windows · Linux)</h3>
+        <p class="text-muted">Tek tıkla masaüstü hızlandırıcı ZIP dosyasını indirin; 9 derlenmiş C/C++/Rust motorunu ve 128-korutin kazıyıcıyı kendi bilgisayarınızda çalıştırın.</p>
+        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center">
           <a href="/downloads/lead-intelligence-pro.zip" class="btn btn-primary" download style="display:inline-flex; align-items:center; gap:8px; text-decoration:none">
             <span>↓ Masaüstü Hızlandırıcı (.zip) İndir</span>
           </a>
+          <button id="retryLocalBridgeBtn" type="button" class="btn btn-secondary" title="Tarayıcı Yerel Ağ Erişimi (PNA) iznini tetikleyerek 127.0.0.1:8765 köprüsüne bağlan">🔌 Yerel Motoru Tekrar Bağla</button>
+          <a id="openDirectLocalLink" href="http://127.0.0.1:8765" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="text-decoration:none" title="HTTPS Özel Ağ kısıtlamasına takılmadan doğrudan yerel arayüzü aç">🚀 127.0.0.1:8765 Doğrudan Aç ↗</a>
         </div>
-        <div style="margin-top:20px; font-size:12.5px; color:var(--text-muted); line-height:1.7">
-          <strong>Mac Kurulumu:</strong> ZIP'i açın ve terminalde <code>bash install-mac-service.command</code> komutunu çalıştırın.<br>
-          Yerel servis arka planda <code>http://127.0.0.1:8765</code> üzerinden devreye girer.
+        <div class="export-spec-grid" style="margin-top:18px">
+          <div class="spec-card">
+            <strong>🍎 macOS (Apple Silicon &amp; Intel)</strong>
+            <span style="font-size:12.5px; font-weight:500">ZIP'i açın ve <code>bash install-mac-service.command</code> çalıştırın (<code>launchd</code> arka plan servisi).</span>
+          </div>
+          <div class="spec-card">
+            <strong>🪟 Windows 10 / 11 (x64 &amp; ARM64)</strong>
+            <span style="font-size:12.5px; font-weight:500">ZIP'i açın, <code>setup-windows.bat</code> ile kurun veya PowerShell'de <code>.\install-windows-service.ps1</code> çalıştırın.</span>
+          </div>
+          <div class="spec-card">
+            <strong>🐧 Linux (Ubuntu / Debian / RHEL)</strong>
+            <span style="font-size:12.5px; font-weight:500">ZIP'i açın ve <code>bash install-linux-service.sh</code> çalıştırın (<code>systemd --user</code> arka plan servisi).</span>
+          </div>
         </div>
         <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center">
           <button id="testOvertureBtn" type="button" class="btn btn-secondary">🗺️ Overture Maps (AWS S3) Canlı Akışını Sına</button>
