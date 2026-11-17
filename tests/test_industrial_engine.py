@@ -185,7 +185,7 @@ class IndustrialEngineTests(unittest.TestCase):
                 base = f"http://127.0.0.1:{server.server_port}/"
                 with urllib.request.urlopen(base + "api/session", timeout=5) as r:
                     sess = json.loads(r.read())
-                self.assertEqual(sess["engine"], "v7-pro")
+                self.assertIn(sess["engine"], ("v7-pro", "v8-apex"))
                 headers = {"X-Local-Token": sess["token"], "Content-Type": "application/json"}
 
                 req_st = urllib.request.Request(base + "api/industrial/status", headers=headers)

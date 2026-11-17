@@ -42,6 +42,21 @@ from email_validator import EmailNotValidError, validate_email
 from phonenumbers import PhoneNumberFormat, PhoneNumberType, number_type
 from rapidfuzz import fuzz, process
 from selectolax.lexbor import LexborHTMLParser
+import os as _v8_os
+try:
+    import apex_v8_engine as _apex_v8
+except ImportError:  # pragma: no cover
+    _apex_v8 = None  # type: ignore[assignment]
+
+_V8_DELIVERABILITY = (
+    _apex_v8.LiveDeliverabilityEngine(
+        aftership_sidecar_url=_v8_os.environ.get('APEX_AFTERSHIP_URL', 'http://127.0.0.1:8089'),
+    )
+    if _apex_v8 is not None
+    else None
+)
+_V8_NACE_CLASSIFIER = _apex_v8.SemanticNaceClassifier() if _apex_v8 is not None else None
+_V8_QUALIFIER = _apex_v8.LocalStructuredQualifier() if _apex_v8 is not None else None
 
 import catalog
 import engine as core_engine
@@ -745,6 +760,12 @@ def validate_and_normalize_email(raw_email: Any) -> Optional[str]:
         dom = norm.split("@", 1)[1]
         if dom in _JUNK_EMAIL_DOMAINS:
             return None
+        if _apex_v8 is not None and dom in _apex_v8._DISPOSABLE_OR_JUNK_DOMAINS:
+            return None
+        if _V8_DELIVERABILITY is not None and _v8_os.environ.get('APEX_LIVE_VERIFY') == '1':
+            sidecar_check = _V8_DELIVERABILITY._call_aftership_sidecar(norm)
+            if sidecar_check is not None and sidecar_check[0] == 'undeliverable':
+                return None
         return norm
     except EmailNotValidError:
         return None
@@ -1459,9 +1480,10 @@ def global_sector_city_search(
         if not hubs:
             city_clean = catalog.country_english_name(country_clean)
         else:
-            target_hubs = hubs[:3]
+            max_hubs = max(3, int(_v8_os.environ.get('APEX_MAX_COUNTRY_HUBS', '12')))
+            target_hubs = hubs[:max_hubs]
             hub_errors: list[str] = []
-            with concurrent.futures.ThreadPoolExecutor(max_workers=len(target_hubs)) as hub_pool:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(target_hubs))) as hub_pool:
                 futs = [
                     hub_pool.submit(
                         global_sector_city_search,
@@ -1815,7 +1837,10 @@ def extract_corporate_html_intelligence(html: str, url: str = "https://example.c
     page_parsed = core_engine.Page(html)
 
     clean_emails: list[str] = []
-    for em in page_parsed.emails(domain):
+    candidate_emails = list(page_parsed.emails(domain))
+    if _apex_v8 is not None:
+        candidate_emails.extend(_apex_v8.extract_emails_with_deobfuscation(html))
+    for em in candidate_emails:
         ve = validate_and_normalize_email(em)
         if ve and ve not in clean_emails:
             clean_emails.append(ve)
@@ -1855,6 +1880,28 @@ def extract_corporate_html_intelligence(html: str, url: str = "https://example.c
     executives = extract_decision_makers(html)
     email_pattern = infer_email_pattern(clean_emails, domain)
 
+    raw_vkns = identifiers.get("all_vkns", [])
+    verified_vkns = (
+        [v for v in raw_vkns if _apex_v8.verify_turkish_vkn_checksum(v)]
+        if _apex_v8 is not None
+        else raw_vkns
+    )
+    v8_nace = (
+        _V8_NACE_CLASSIFIER.classify(title, md_text)
+        if _V8_NACE_CLASSIFIER is not None
+        else None
+    )
+    v8_qualification = (
+        _V8_QUALIFIER.qualify_text(title + "\n" + md_text)
+        if _V8_QUALIFIER is not None
+        else None
+    )
+    v8_spa_needed = (
+        _apex_v8.needs_spa_escalation(html, clean_emails, clean_phones)
+        if _apex_v8 is not None
+        else False
+    )
+
     return {
         "title": title[:200],
         "description": (meta.description or "")[:300] if meta else "",
@@ -1863,9 +1910,13 @@ def extract_corporate_html_intelligence(html: str, url: str = "https://example.c
         "phones": phone_objects[:10],
         "phone_e164s": clean_phones[:10],
         "whatsapp_links": whatsapp_links[:5],
-        "vkn_candidates": identifiers.get("all_vkns", []),
+        "vkn_candidates": verified_vkns or raw_vkns,
+        "v8_verified_vkns": verified_vkns,
         "mersis_candidates": [identifiers["mersis"]] if identifiers.get("mersis") else [],
         "kep_addresses": identifiers.get("kep_addresses", []),
+        "v8_nace": v8_nace,
+        "v8_qualification": v8_qualification,
+        "v8_spa_escalation_needed": v8_spa_needed,
         "corporate_identifiers": identifiers,
         "decision_makers": executives,
         "email_pattern": email_pattern,

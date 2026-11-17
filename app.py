@@ -46,6 +46,10 @@ from engine import (
     now,
 )
 from export_xlsx import generate as generate_xlsx, generate_csv
+try:
+    import apex_v8_engine as _apex_v8
+except ImportError:  # pragma: no cover
+    _apex_v8 = None  # type: ignore[assignment]
 
 ROOT = Path(__file__).resolve().parent
 DATA = Path(os.environ.get('LEAD_DATA', str(ROOT / 'data'))).expanduser()
@@ -629,7 +633,50 @@ class Handler(BaseHTTPRequestHandler):
         s: Store = self.server.store  # type: ignore[attr-defined]
         try:
             if p.path == '/api/session':
-                self.out({'token': TOKEN, 'engine': 'v7-pro'})
+                self.out({'token': TOKEN, 'engine': 'v8-apex' if _apex_v8 else 'v7-pro'})
+                return
+            if _apex_v8 is not None and p.path.startswith('/api/v8/'):
+                v8_db = str(getattr(s, 'path', DATA / 'leads.sqlite3'))
+                v8_res = _apex_v8.handle_apex_http_request('GET', p.path, q, v8_db)
+                if v8_res is not None:
+                    v8_code, v8_ctype, v8_body = v8_res
+                    self.send_response(v8_code)
+                    self.send_header('Content-Type', v8_ctype)
+                    self.send_header('Content-Length', str(len(v8_body)))
+                    if p.path == '/api/v8/export-crm.html':
+                        self.send_header('Content-Disposition', 'attachment; filename="Satis_Takip_CRM.html"')
+                    self.send_header('Cache-Control', 'no-store')
+                    self.send_header('X-Content-Type-Options', 'nosniff')
+                    for k, v in self._cors_headers().items():
+                        self.send_header(k, v)
+                    self.end_headers()
+                    self.wfile.write(v8_body)
+                    return
+            if _apex_v8 is not None and p.path == '/api/export.bundle':
+                with tempfile.TemporaryDirectory(prefix='vb_bundle_') as tmp:
+                    v8_db = str(getattr(s, 'path', DATA / 'leads.sqlite3'))
+                    pkg_dir = Path(tmp) / 'paket'
+                    packager = _apex_v8.VeriBankasiFulfillmentPackager(db_path=v8_db)
+                    packager.export_full_bundle(
+                        output_dir=str(pkg_dir),
+                        package_title=q.get('title', ['Kurumsal Firma Paketi'])[0][:120],
+                        quota=max(1, int(q.get('quota', ['1000'])[0])),
+                        city_filter=q.get('region', [''])[0],
+                        sector_query=q.get('sector', [''])[0],
+                    )
+                    archive_base = str(Path(tmp) / 'veri_bankasi_teslimat')
+                    zip_file = Path(shutil.make_archive(archive_base, 'zip', root_dir=str(pkg_dir)))
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/zip')
+                    self.send_header('Content-Length', str(zip_file.stat().st_size))
+                    self.send_header('Content-Disposition', 'attachment; filename="veri_bankasi_paket.zip"')
+                    self.send_header('Cache-Control', 'no-store')
+                    self.send_header('X-Content-Type-Options', 'nosniff')
+                    for k, v in self._cors_headers().items():
+                        self.send_header(k, v)
+                    self.end_headers()
+                    with zip_file.open('rb') as f:
+                        shutil.copyfileobj(f, self.wfile)
                 return
             if p.path == '/api/status':
                 self.out(s.status())

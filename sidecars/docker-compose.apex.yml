@@ -1,0 +1,8 @@
+services:
+  crawl4ai-spa-engine:
+    image: unclecode/crawl4ai:latest
+    container_name: map_crawl4ai_v8
+    ports:
+      - "127.0.0.1:11235:11235"
+    shm_size: "2g"
+    restart: unless-stopped

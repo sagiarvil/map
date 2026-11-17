@@ -23,6 +23,7 @@ out.parent.mkdir(parents=True, exist_ok=True)
 files = [
     Path(x) for x in [
         'app.py', 'engine.py', 'catalog.py', 'export_xlsx.py', 'industrial_engine.py',
+        'apex_v8_engine.py',
         'requirements.txt', 'setup.command', 'start.command', 'install-mac-service.command',
         'setup-linux.sh', 'start-linux.sh', 'install-linux-service.sh',
         'setup-windows.ps1', 'setup-windows.bat', 'start-windows.ps1', 'start-windows.bat', 'install-windows-service.ps1',

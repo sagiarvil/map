@@ -14,5 +14,7 @@ data/
 .firebase/
 hosting/downloads/
 hosting/data/
+teslimat_paketi/
+sidecars/aftership_verifier
 node_modules/
 functions/node_modules/
