@@ -417,9 +417,19 @@ button.sm {
   gap: 5px;
   padding: 5px 11px;
   border-radius: 7px;
+  border: 1px solid transparent;
   background: var(--surface-alt);
   color: var(--muted);
+  font-family: inherit;
   font-size: 12.5px;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease;
+}
+
+.metric-pill:hover {
+  border-color: var(--brand-accent);
+  color: var(--ink);
+  transform: translateY(-1px);
 }
 
 .metric-pill strong {
@@ -427,12 +437,15 @@ button.sm {
   font-weight: 700;
 }
 
-.metric-pill.primary-metric {
+.metric-pill.primary-metric,
+.metric-pill.is-active {
   background: var(--brand-accent);
+  border-color: var(--brand-accent);
   color: #FFFFFF;
 }
 
-.metric-pill.primary-metric strong {
+.metric-pill.primary-metric strong,
+.metric-pill.is-active strong {
   color: #FFFFFF;
 }
 
@@ -1505,8 +1518,8 @@ body.flow-home .netsis-menu-ribbon {
 
 .netsis-shortcuts-grid {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 16px 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px 16px;
   justify-items: center;
   align-items: start;
 }

@@ -576,6 +576,67 @@
     return { code: '46.90.01', title: 'Belirli bir mala tahsis edilmemiş toptan ticaret' };
   }
 
+  const NACE_SECTOR_HINTS = {
+    '47.59': 'Yatak',
+    '31.01': 'Ofis Mobilyası',
+    '31.02': 'Mutfak',
+    '16.23': 'Ahşap',
+    '31.09': 'Mobilya',
+    '31': 'Mobilya',
+    '41.20.02': 'Müteahhit',
+    '41.20': 'İnşaat',
+    '41': 'İnşaat',
+    '71.11': 'Mimarlık',
+    '28.99': 'Makina',
+    '28': 'Makina',
+    '25.11': 'Çelik',
+    '25': 'Metal',
+    '22.29': 'Plastik',
+    '22': 'Plastik',
+    '13.92': 'Tekstil',
+    '13': 'Tekstil',
+    '49.41': 'Lojistik',
+    '49': 'Lojistik',
+    '45.20': 'Otomotiv',
+    '45': 'Otomotiv',
+    '10.89': 'Gıda',
+    '10': 'Gıda',
+    '43.21': 'Elektrik',
+    '43': 'Elektrik',
+    '32.50': 'Medikal',
+    '47.52': 'Hırdavat'
+  };
+
+  function normalizeNaceQuery(raw) {
+    const val = String(raw || '').trim();
+    if (!val) return '';
+    const m = val.match(/^(\d{2}(?:\.\d{2})?(?:\.\d{2})?)/);
+    return m ? m[1] : val;
+  }
+
+  function naceToSectorHint(naceQuery) {
+    const q = normalizeNaceQuery(naceQuery);
+    if (!q) return '';
+    for (const prefix of Object.keys(NACE_SECTOR_HINTS).sort((a, b) => b.length - a.length)) {
+      if (q.startsWith(prefix) || prefix.startsWith(q)) {
+        return NACE_SECTOR_HINTS[prefix];
+      }
+    }
+    return '';
+  }
+
+  function matchesNaceFilter(naceObj, naceQuery) {
+    if (!naceQuery) return true;
+    const q = normalizeNaceQuery(naceQuery);
+    const code = String((naceObj && naceObj.code) || '').trim();
+    const title = fold((naceObj && naceObj.title) || '');
+    if (/^\d/.test(q)) {
+      return code.startsWith(q);
+    }
+    const qFold = fold(q);
+    return fold(code).includes(qFold) || title.includes(qFold);
+  }
+
   function detectWhatsapp(phones) {
     if (!phones || !phones.length) return null;
     for (const ph of phones) {
@@ -623,6 +684,7 @@
       case 'has_enterprise_mail': return Boolean(row && (row.isEnterpriseMail || row.tech));
       case 'has_email': return hasEmail;
       case 'has_phone': return hasPhone;
+      case 'has_website': return Boolean(row && row.website);
       case 'both': return hasEmail && hasPhone;
       case 'email_only': return hasEmail && !hasPhone;
       case 'phone_only': return hasPhone && !hasEmail;
@@ -652,10 +714,11 @@
       : (isAll ? (country === 'Türkiye' ? 'Tüm Şehirler (81 İl)' : `Tüm Şehirler (${country})`) : city);
     const district = $('districtSelect').value.trim();
     const sector = $('sectorInput').value.trim();
+    const naceCode = ($('naceInput') ? $('naceInput').value.trim() : '');
     const contactMode = $('contactModeSelect').value;
     const quick = fold($('quickSearchInput').value);
     const region = `${isEmptyCustom ? '__all__' : city}, ${country}`;
-    return { country, city, cityDisplay, district, sector, contactMode, quick, region, isEmptyCustom };
+    return { country, city, cityDisplay, district, sector, naceCode, contactMode, quick, region, isEmptyCustom };
   }
 
   // Apple Motion Architecture (Scroll-Driven Staggered 80ms Reveal across Launchpad & Workspaces)
@@ -1741,6 +1804,9 @@
     if ($('kpiBoth')) $('kpiBoth').textContent = fmt(stats.with_both || 0);
 
     const f = currentFilters();
+    document.querySelectorAll('.summary-metrics [data-contact-filter]').forEach(btn => {
+      btn.classList.toggle('is-active', btn.getAttribute('data-contact-filter') === f.contactMode);
+    });
     const cityLabel = f.cityDisplay || f.city;
     const locLabel = f.country === 'Türkiye' ? cityLabel : `${cityLabel} (${f.country})`;
     $('activeFilterSummary').textContent =
@@ -2019,6 +2085,10 @@
         if (hasTerms && !catHit[r[1]] && !matchesTerms(` ${r[10] || ''} `, termList) && !matchesTerms(` ${nameFolded} `, termList)) {
           continue;
         }
+        if (f.naceCode) {
+          const rowNace = resolveNaceClient(dataset.cats[r[1]] || '', r[0] || '');
+          if (!matchesNaceFilter(rowNace, f.naceCode)) continue;
+        }
         sectorTotal++;
         const distName = dataset.dists[r[2]] || '';
         if (distName) distCounts.set(distName, (distCounts.get(distName) || 0) + 1);
@@ -2056,6 +2126,10 @@
       const sectorMatched = [];
       for (const r of (dataset.records || [])) {
         if (!dataset.isMultiTrShard && !r.sectorTagMatched && !matchesTerms(r.search || ` ${fold(r.name)} ${fold(r.category)} `, termList)) continue;
+        if (f.naceCode) {
+          const rNace = r.nace || { code: r.nace_code || '', title: r.nace_title || '' };
+          if (!matchesNaceFilter(rNace, f.naceCode)) continue;
+        }
         sectorMatched.push(r);
       }
       if (dataset.isMultiTrShard || f.city === '__all__' || f.city === '__all_country__') {
@@ -2167,13 +2241,17 @@
     }
     const slug = slugify(f.city);
 
+    const effectiveSector = f.sector || (f.naceCode ? naceToSectorHint(f.naceCode) : '');
+    const searchLabel = f.naceCode
+      ? `NACE ${normalizeNaceQuery(f.naceCode)}${f.sector ? ` · ${f.sector}` : ''}`
+      : (f.sector || 'Tüm Sektörler');
     try {
       if (allowRemoteFetch) {
         hasStartedSearch = true;
         $('districtStrip').replaceChildren();
       }
       setStatus(
-        `${cityLabel} kataloğunda "${f.sector || 'Tüm Sektörler'}" taranıyor…`,
+        `${cityLabel} kataloğunda "${searchLabel}" taranıyor…`,
         'Taranıyor',
         false,
         35
@@ -2193,7 +2271,7 @@
             const gRes = await turboApi('industrial/global_search', {
               city: f.city,
               country: f.country,
-              sector: f.sector,
+              sector: effectiveSector,
               district: f.district,
               contact_mode: f.contactMode,
               offset: currentOffset,
@@ -2224,7 +2302,7 @@
           }
         } else {
           const params = new URLSearchParams({
-            sector: f.sector,
+            sector: effectiveSector,
             region: f.region,
             district: f.district,
             contact_mode: f.contactMode,
@@ -2269,7 +2347,7 @@
             }
 
             if (f.city === '__all__' || f.city === '__all_country__') {
-              const multiTr = await loadNationwideTrCloudShards(f.sector);
+              const multiTr = await loadNationwideTrCloudShards(effectiveSector);
               if (mySeq !== activeSearchSeq) return;
               filterShardRecords(multiTr);
               return;
@@ -2294,7 +2372,7 @@
       // 2. Cloud CDN Shard Mode (Nationwide 81 Provinces, Single TR Province, OR Pre-Sharded Global Country/Hub)
       if (f.country === 'Türkiye') {
         if (f.city === '__all__' || f.city === '__all_country__') {
-          const multiTr = await loadNationwideTrCloudShards(f.sector);
+          const multiTr = await loadNationwideTrCloudShards(effectiveSector);
           if (mySeq !== activeSearchSeq) return;
           filterShardRecords(multiTr);
           return;
@@ -2308,14 +2386,14 @@
           }
         }
       } else {
-        const intlShard = await loadCountryIntlCloudShards(f.country, f.city, f.sector);
+        const intlShard = await loadCountryIntlCloudShards(f.country, f.city, effectiveSector);
         if (mySeq !== activeSearchSeq) return;
-        if (intlShard && (intlShard.records.length >= 10 || (!f.sector && intlShard.records.length > 0))) {
+        if (intlShard && (intlShard.records.length >= 10 || (!effectiveSector && intlShard.records.length > 0))) {
           filterShardRecords(intlShard);
           return;
         }
         if (allowRemoteFetch || hasStartedSearch) {
-          const liveDataset = await fetchLiveOverpassCity(f.city, f.country, f.sector);
+          const liveDataset = await fetchLiveOverpassCity(f.city, f.country, effectiveSector);
           if (mySeq !== activeSearchSeq) return;
           if (intlShard && intlShard.records.length > 0) {
             const seenKeys = new Set(intlShard.records.map(r => `${fold(r.name)}:${fold(r.city)}`));
@@ -2342,7 +2420,7 @@
 
       // 3. Live OpenStreetMap Overpass + Fastly OSM API v0.6 Discovery for ANY un-sharded city
       if (allowRemoteFetch || hasStartedSearch) {
-        const liveDataset = await fetchLiveOverpassCity(f.city, f.country, f.sector);
+        const liveDataset = await fetchLiveOverpassCity(f.city, f.country, effectiveSector);
         if (mySeq !== activeSearchSeq) return;
         filterShardRecords(liveDataset);
       } else {
@@ -2392,6 +2470,9 @@
   async function handleEnrich() {
     await ensureResultsLoaded();
     const f = currentFilters();
+    document.querySelectorAll('.summary-metrics [data-contact-filter]').forEach(btn => {
+      btn.classList.toggle('is-active', btn.getAttribute('data-contact-filter') === f.contactMode);
+    });
     const cityLabel = f.cityDisplay || f.city;
 
     if (turboConnected) {
@@ -4294,6 +4375,28 @@
       });
     }
 
+    const tileNace = $('tileNaceLauncher');
+    if (tileNace) {
+      tileNace.addEventListener('click', () => {
+        openWorkspace('search');
+        if ($('sectorInput')) $('sectorInput').value = '';
+        if ($('naceInput')) {
+          $('naceInput').focus();
+          $('naceInput').select();
+        }
+      });
+    }
+
+    const naceInputEl = $('naceInput');
+    if (naceInputEl) {
+      naceInputEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          currentOffset = 0;
+          executeSearch(true);
+        }
+      });
+    }
+
     const addShortcut = $('btnAddShortcut');
     if (addShortcut) {
       addShortcut.addEventListener('click', () => {
@@ -4376,6 +4479,17 @@
     $('contactModeSelect').addEventListener('change', () => {
       currentOffset = 0;
       if (hasStartedSearch) executeSearch(false);
+    });
+
+    document.querySelectorAll('.summary-metrics [data-contact-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetMode = btn.getAttribute('data-contact-filter') || 'all';
+        const sel = $('contactModeSelect');
+        if (!sel) return;
+        sel.value = (sel.value === targetMode && targetMode !== 'all') ? 'all' : targetMode;
+        currentOffset = 0;
+        if (hasStartedSearch) executeSearch(false);
+      });
     });
 
     let sectorDebounce = null;
